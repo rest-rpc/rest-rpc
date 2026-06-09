@@ -1,12 +1,11 @@
 {
-	"name": "@contract-first-api/core",
-	"version": "4.2.0",
+	"name": "@contract-first-api/openapi",
+	"version": "1.0.0",
 	"type": "module",
-	"description": "Define shared API contracts and derive typed request and response helpers from Zod schemas.",
+	"description": "Generate OpenAPI documents from contract-first API contract trees.",
 	"keywords": [
 		"contract-first",
-		"api",
-		"typescript",
+		"openapi",
 		"zod",
 		"schema",
 		"contracts"
@@ -23,10 +22,6 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
-		},
-		"./contracts": {
-			"types": "./dist/contracts.d.ts",
-			"import": "./dist/contracts.js"
 		}
 	},
 	"files": [
@@ -35,9 +30,10 @@
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"typecheck": "tsc -p tsconfig.json",
-		"test": "node --test src/*.test.ts src/**/*.test.ts"
+		"test": "node --test src/**/*.test.ts"
 	},
 	"dependencies": {
+		"@contract-first-api/core": "workspace:^",
 		"zod": "^4.3.6"
 	}
 }
