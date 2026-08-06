@@ -1,14 +1,13 @@
 {
-	"name": "@contract-first-api/express",
+	"name": "@contract-first-api/server",
 	"version": "4.4.0",
 	"type": "module",
-	"description": "Mount shared API contract on an Express app with typed handlers and request validation.",
+	"description": "Shared server-side route validation, handler typing, and response normalization for contract-first-api adapters.",
 	"keywords": [
 		"contract-first",
-		"express",
 		"api",
 		"typescript",
-		"zod",
+		"standard-schema",
 		"backend"
 	],
 	"license": "MIT",
@@ -32,23 +31,10 @@
 		"build": "tsc -p tsconfig.build.json",
 		"prepack": "pnpm run build",
 		"prepublishOnly": "node ../../scripts/ensure-pnpm-publish.cjs",
-		"typecheck": "tsc -p tsconfig.json && tsd",
-		"test": "pnpm --filter @contract-first-api/server build && node --test src/**/*.test.ts"
-	},
-	"tsd": {
-		"directory": "test-d"
+		"typecheck": "tsc -p tsconfig.json",
+		"test": "node --test src/**/*.test.ts"
 	},
 	"dependencies": {
-		"@contract-first-api/core": "workspace:^",
-		"@contract-first-api/server": "workspace:^"
-	},
-	"devDependencies": {
-		"@types/express": "^5.0.1",
-		"@types/ws": "^8.18.1",
-		"zod": "^4.3.6"
-	},
-	"peerDependencies": {
-		"express": "^5.0.0",
-		"ws": "^8.21.0"
+		"@contract-first-api/core": "workspace:^"
 	}
 }
