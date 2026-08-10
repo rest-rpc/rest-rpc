@@ -1,13 +1,8 @@
 {
-	"name": "@rest-rpc/express",
+	"name": "@rest-rpc/fastify",
 	"version": "0.0.0",
 	"type": "module",
 	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/rest-rpc/rest-rpc.git"
-	},
-	"homepage": "https://github.com/rest-rpc/rest-rpc#readme",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -23,23 +18,22 @@
 		"build": "tsc -p tsconfig.build.json",
 		"prepack": "pnpm run build",
 		"prepublishOnly": "node ../../scripts/ensure-pnpm-publish.cjs",
-		"typecheck": "tsc -p tsconfig.json",
-		"test": "pnpm --filter @rest-rpc/server build && node --test src/**/*.test.ts"
+		"typecheck": "pnpm run build && tsc -p tsconfig.json"
 	},
 	"dependencies": {
 		"@rest-rpc/core": "workspace:^",
 		"@rest-rpc/server": "workspace:^"
 	},
 	"devDependencies": {
-		"@types/express": "^5.0.1",
-		"@types/ws": "^8.18.1"
+		"@fastify/websocket": "^11.0.0",
+		"fastify": "^5.0.0"
 	},
 	"peerDependencies": {
-		"express": "^5.0.0",
-		"ws": "^8.21.0"
+		"@fastify/websocket": "^11.0.0",
+		"fastify": "^5.0.0"
 	},
 	"peerDependenciesMeta": {
-		"ws": {
+		"@fastify/websocket": {
 			"optional": true
 		}
 	}
