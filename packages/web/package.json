@@ -1,5 +1,5 @@
 {
-	"name": "@rest-rpc/next",
+	"name": "@rest-rpc/web",
 	"version": "0.0.0",
 	"type": "module",
 	"license": "MIT",
@@ -18,11 +18,10 @@
 		"build": "tsc -p tsconfig.build.json",
 		"prepack": "pnpm run build",
 		"prepublishOnly": "node ../../scripts/ensure-pnpm-publish.cjs",
-		"test": "node --test src/*.test.ts src/**/*.test.ts",
 		"typecheck": "pnpm run build && tsc -p tsconfig.json"
 	},
 	"dependencies": {
 		"@rest-rpc/core": "workspace:^",
-		"@rest-rpc/web": "workspace:^"
+		"@rest-rpc/server": "workspace:^"
 	}
 }
