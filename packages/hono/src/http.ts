@@ -1,5 +1,5 @@
 import type { HttpRouteDeclaration } from "@rest-rpc/core/contract";
-import { isNoBody } from "@rest-rpc/core/contract";
+import { isNoBody, toColonPath } from "@rest-rpc/core/contract";
 import {
 	createWebResponse,
 	handleHttpRoute,
@@ -48,7 +48,7 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 		>;
 		const handler = implementation.handler;
 
-		app[method](route.path, async (c) => {
+		app[method](toColonPath(route.path), async (c) => {
 			const result = await handleHttpRoute(route, handler, {
 				request: {
 					body: await parseRequestBody(

@@ -1,5 +1,6 @@
 import type { IncomingMessage } from "node:http";
 import type { HttpMethod, HttpRouteDeclaration } from "@rest-rpc/core/contract";
+import { toColonPath } from "@rest-rpc/core/contract";
 import {
 	handleHttpRoute,
 	handleHttpRouteResult,
@@ -74,6 +75,6 @@ export const registerExpressHttpRoutes = (
 			});
 		};
 
-		app[method](route.path, serviceHandler);
+		app[method](toColonPath(route.path), serviceHandler);
 	}
 };

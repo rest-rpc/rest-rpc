@@ -6,6 +6,3 @@ export const isOpenApiRoute = (
 ): route is OpenApiRouteDeclaration =>
 	(!route.options || route.options.mode === "http") &&
 	route.responses !== undefined;
-
-export const toOpenApiPath = (path: string) =>
-	path.replace(/:([A-Za-z0-9_]+)/g, "{$1}");

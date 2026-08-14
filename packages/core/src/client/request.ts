@@ -1,6 +1,7 @@
+import { replacePathParams } from "../contract/path.ts";
 import type { RouteDeclaration } from "../contract/route.ts";
 import { isCustomBody, isNoBody } from "../contract/route.ts";
-import { groupRequestInput, pathParamPattern } from "../contract/validate.ts";
+import { groupRequestInput } from "../contract/validate.ts";
 import type {
 	ApiClientFetchOptions,
 	FetchArgs,
@@ -107,7 +108,7 @@ const serializeParams = (
 	route: RouteDeclaration,
 	params: Record<string, unknown> | undefined,
 ) => {
-	return route.path.replace(pathParamPattern, (_, key: string) => {
+	return replacePathParams(route.path, (key) => {
 		const value = stringifyRequestValue(route, "params", key, params?.[key]);
 		if (value === undefined) {
 			throw new Error(

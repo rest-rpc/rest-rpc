@@ -1,7 +1,8 @@
+import { toOpenApiPath } from "../contract/path.ts";
 import type { Contract } from "../contract/route.ts";
 import { contractRoutes } from "../contract/traversal.ts";
 import { createOperation } from "./operation.ts";
-import { isOpenApiRoute, toOpenApiPath } from "./routes.ts";
+import { isOpenApiRoute } from "./routes.ts";
 import type {
 	CreateOpenApiDocumentOptions,
 	OpenApiDocument,

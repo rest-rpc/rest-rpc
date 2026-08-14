@@ -1,5 +1,6 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import { validateStandardSchema } from "../standard-schema/index.ts";
+import { getPathParamNames } from "./path.ts";
 import {
 	type RequestKeyResolverOptions,
 	resolveSchemaKeys,
@@ -40,7 +41,6 @@ export type RequestValidationResult =
 	| { success: false; errors: StandardSchemaV1.Issue[] };
 
 const requestSegments = ["body", "query", "params", "headers"] as const;
-export const pathParamPattern = /:([A-Za-z0-9_]+)/g;
 
 const assertNoDuplicateKeys = (
 	route: RouteDeclaration,
@@ -93,11 +93,8 @@ const assertNoCaseInsensitiveHeaderDuplicates = (route: RouteDeclaration) => {
 	}
 };
 
-const getPathParams = (route: RouteDeclaration) =>
-	[...route.path.matchAll(pathParamPattern)].map((match) => match[1] as string);
-
 const assertPathParamsResolved = (route: RouteDeclaration) => {
-	const pathParams = getPathParams(route);
+	const pathParams = getPathParamNames(route.path);
 	for (const key of pathParams) {
 		if (route.request?.requestKeys?.[key] !== "params") {
 			throw new Error(

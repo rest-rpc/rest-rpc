@@ -12,6 +12,15 @@ export {
 	route,
 	router,
 } from "./define.ts";
+export {
+	getPathParamNames,
+	getPathParamSegmentName,
+	isPathParamSegment,
+	pathParamPattern,
+	replacePathParams,
+	toColonPath,
+	toOpenApiPath,
+} from "./path.ts";
 export type {
 	ClientErrors,
 	ClientReceived,

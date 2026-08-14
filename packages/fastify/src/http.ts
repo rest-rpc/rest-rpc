@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import type { HttpMethod, HttpRouteDeclaration } from "@rest-rpc/core/contract";
+import { toColonPath } from "@rest-rpc/core/contract";
 import {
 	handleHttpRoute,
 	handleHttpRouteResult,
@@ -31,7 +32,7 @@ export const registerFastifyHttpRoutes = (
 		const handler = implementation.handler;
 
 		app[method](
-			route.path,
+			toColonPath(route.path),
 			async (req: FastifyRequest, reply: FastifyReply) => {
 				const result = await handleHttpRoute(route, handler, {
 					request: {
