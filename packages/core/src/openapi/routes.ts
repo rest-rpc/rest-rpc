@@ -1,4 +1,4 @@
-import type { RouteDeclaration } from "../contract/route.ts";
+import type { RouteDeclaration } from "../contract/contract.ts";
 import type { OpenApiRouteDeclaration } from "./types.ts";
 
 export const isOpenApiRoute = (

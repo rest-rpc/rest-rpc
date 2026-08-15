@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
 import { schemaConverter } from "../../test/factories/openapi.ts";
-import { customBody, noBody, stream } from "../contract/route.ts";
+import { customBody, noBody, stream } from "../contract/response.ts";
 import {
 	createHeaderParameters,
 	createOperation,

@@ -1,15 +1,75 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import { normalizeContract } from "./normalize.ts";
-import type { ResolveRequestSchemaKeys } from "./requestKeys.ts";
 import type {
-	CommonOpenApiRouteOptions,
-	Contract,
-	OpenApiRouteOptions,
-	RouteDeclaration,
-	RouteMetadata,
-	RouteResponses,
-} from "./route.ts";
+	RequestBodySchema,
+	RequestKeys,
+	RequestSchemaRecord,
+} from "./request.ts";
+import type { ResolveRequestSchemaKeys } from "./requestKeys.ts";
+import type { RouteResponses } from "./response.ts";
 import { validateContractSync } from "./validate.ts";
+
+export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+
+export type RouteMetadata = Record<string, unknown>;
+export type OpenApiRouteOptions = {
+	summary?: string;
+	description?: string;
+	operationId?: string;
+	tags?: string[];
+	deprecated?: boolean;
+	security?: Array<Record<string, string[]>>;
+	externalDocs?: { url: string; description?: string };
+	responseDescriptions?: Record<number, string>;
+	extensions?: Record<`x-${string}`, unknown>;
+};
+export type CommonOpenApiRouteOptions = Omit<
+	OpenApiRouteOptions,
+	"summary" | "description" | "operationId"
+>;
+
+export type ContractOptions = {
+	mode?: "http" | "websocket";
+};
+
+export type BaseRouteDeclaration = {
+	path: string;
+	method: HttpMethod;
+	cacheKey?: readonly string[];
+	body?: RequestBodySchema;
+	query?: StandardSchemaV1 | RequestSchemaRecord;
+	pathParams?: StandardSchemaV1 | RequestSchemaRecord;
+	headers?: RequestSchemaRecord;
+	requestKeys?: RequestKeys;
+	metadata?: RouteMetadata;
+	openApi?: OpenApiRouteOptions;
+};
+
+export type HttpRouteDeclaration = BaseRouteDeclaration & {
+	responses: RouteResponses;
+	options?: { mode?: "http" };
+	messages?: never;
+};
+
+export type WebSocketRouteDeclaration = BaseRouteDeclaration & {
+	method: "GET";
+	options: { mode: "websocket" };
+	messages: {
+		client: StandardSchemaV1;
+		server: StandardSchemaV1;
+	};
+	responses?: never;
+};
+
+export type RouteDeclaration = HttpRouteDeclaration | WebSocketRouteDeclaration;
+
+export type Contract = RouteDeclaration | { [k: string]: Contract };
+
+export const isRouteDeclaration = (value: unknown): value is RouteDeclaration =>
+	typeof value === "object" &&
+	value !== null &&
+	"path" in value &&
+	"method" in value;
 
 export type RouteContractOptions = {
 	resolveRequestKeys?: ResolveRequestSchemaKeys;

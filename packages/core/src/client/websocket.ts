@@ -1,9 +1,8 @@
 import type {
-	ClientReceived,
-	ClientSent,
 	RouteDeclaration,
 	WebSocketRouteDeclaration,
-} from "../contract/route.ts";
+} from "../contract/contract.ts";
+import type { ClientReceived, ClientSent } from "../contract/request.ts";
 import { validateStandardSchemaSync } from "../standard-schema/index.ts";
 import { constructBaseRequest, takesRequestInput } from "./request.ts";
 import type { ClientSocket, OpenConnectionArgs } from "./types.ts";

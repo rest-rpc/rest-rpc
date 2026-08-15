@@ -1,15 +1,13 @@
 import type {
 	RequestBodySchema,
 	RequestSchemaRecord,
-	ResponseBodySchema,
-} from "../contract/route.ts";
+} from "../contract/request.ts";
 import {
-	isCustomBody,
-	isNoBody,
 	isRequestSchemaRecord,
 	isStandardSchema,
-	isStream,
-} from "../contract/route.ts";
+} from "../contract/request.ts";
+import type { ResponseBodySchema } from "../contract/response.ts";
+import { isCustomBody, isNoBody, isStream } from "../contract/response.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import {
 	convertSchema,

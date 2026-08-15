@@ -1,5 +1,5 @@
-import type { Contract, RouteDeclaration } from "./route.ts";
-import { isRouteDeclaration } from "./route.ts";
+import type { Contract, RouteDeclaration } from "./contract.ts";
+import { isRouteDeclaration } from "./contract.ts";
 
 type Tree<T> = Record<string, unknown> | T;
 export type ContractRouteEntry = {

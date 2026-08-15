@@ -1,6 +1,6 @@
 import z from "zod";
-import { router } from "../../src/contract/define.ts";
-import { customBody, noBody, stream } from "../../src/contract/route.ts";
+import { router } from "../../src/contract/contract.ts";
+import { customBody, noBody, stream } from "../../src/contract/response.ts";
 
 export const createClientTestContract = () =>
 	router({

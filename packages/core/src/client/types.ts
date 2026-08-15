@@ -1,14 +1,18 @@
 import type {
-	ClientReceived,
-	ClientRequest,
-	ClientResponse,
-	ClientSent,
-	ClientSuccessBody,
 	Contract,
-	IsWebSocketRoute,
 	RouteDeclaration,
 	WebSocketRouteDeclaration,
-} from "../contract/route.ts";
+} from "../contract/contract.ts";
+import type {
+	ClientReceived,
+	ClientRequest,
+	ClientSent,
+	IsWebSocketRoute,
+} from "../contract/request.ts";
+import type {
+	ClientResponse,
+	ClientSuccessBody,
+} from "../contract/response.ts";
 
 export type FetchOptions = Omit<RequestInit, "method" | "body" | "headers">;
 export type ApiClientFetchOptions = Omit<FetchOptions, "signal">;

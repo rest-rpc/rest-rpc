@@ -6,8 +6,8 @@ import {
 	createClientTestContract,
 	jsonResponse,
 } from "../../test/factories/client.ts";
-import { router } from "../contract/define.ts";
-import { noBody } from "../contract/route.ts";
+import { router } from "../contract/contract.ts";
+import { noBody } from "../contract/response.ts";
 import { initClient } from "./index.ts";
 import { constructBaseRequest, createRequestSignal } from "./request.ts";
 

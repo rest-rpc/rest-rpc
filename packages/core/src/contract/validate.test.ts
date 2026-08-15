@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import z from "zod";
 import { testContract } from "../../test/factories/contract.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import { customBody } from "./route.ts";
+import { customBody } from "./response.ts";
 import {
 	groupRequestInput,
 	validateContractSync,

@@ -1,6 +1,6 @@
+import type { RouteDeclaration } from "../contract/contract.ts";
 import { replacePathParams } from "../contract/path.ts";
-import type { RouteDeclaration } from "../contract/route.ts";
-import { isCustomBody, isNoBody } from "../contract/route.ts";
+import { isCustomBody, isNoBody } from "../contract/response.ts";
 import type { FlatRequestInput } from "../contract/validate.ts";
 import { groupRequestInput } from "../contract/validate.ts";
 import { getNextFetchTags } from "./nextFetchTags.ts";

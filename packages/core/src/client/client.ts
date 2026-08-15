@@ -2,7 +2,7 @@ import type {
 	Contract,
 	RouteDeclaration,
 	WebSocketRouteDeclaration,
-} from "../contract/route.ts";
+} from "../contract/contract.ts";
 import { buildApiClient } from "./build.ts";
 import { executeRequest } from "./request.ts";
 import {

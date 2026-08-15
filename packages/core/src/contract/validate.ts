@@ -1,23 +1,18 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import { validateStandardSchema } from "../standard-schema/index.ts";
+import type { Contract, RouteDeclaration } from "./contract.ts";
 import { getPathParamNames } from "./path.ts";
+import type { RequestKeys, RequestSegment } from "./request.ts";
+import {
+	isRequestSchemaRecord,
+	isStandardSchema,
+	REQUEST_CONTEXT_KEY,
+} from "./request.ts";
 import {
 	type RequestKeyResolverOptions,
 	resolveSchemaKeys,
 } from "./requestKeys.ts";
-import type {
-	Contract,
-	RequestKeys,
-	RequestSegment,
-	RouteDeclaration,
-} from "./route.ts";
-import {
-	isCustomBody,
-	isNoBody,
-	isRequestSchemaRecord,
-	isStandardSchema,
-	REQUEST_CONTEXT_KEY,
-} from "./route.ts";
+import { isCustomBody, isNoBody } from "./response.ts";
 import { contractRoutes } from "./traversal.ts";
 
 export type ValidateContractOptions = RequestKeyResolverOptions;

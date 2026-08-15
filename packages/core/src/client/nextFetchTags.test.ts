@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { router } from "../contract/define.ts";
-import { noBody } from "../contract/route.ts";
+import { router } from "../contract/contract.ts";
+import { noBody } from "../contract/response.ts";
 import { type } from "../standard-schema/type.ts";
 import { getNextFetchTags } from "./nextFetchTags.ts";
 

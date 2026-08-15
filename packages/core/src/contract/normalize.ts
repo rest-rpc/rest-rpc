@@ -4,8 +4,8 @@ import type {
 	Contract,
 	OpenApiRouteOptions,
 	RouteMetadata,
-	RouteResponses,
-} from "./route.ts";
+} from "./contract.ts";
+import type { RouteResponses } from "./response.ts";
 import { contractRouteEntries } from "./traversal.ts";
 
 export type NormalizeContractOptions = {
