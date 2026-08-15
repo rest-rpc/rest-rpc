@@ -110,6 +110,7 @@ export type ContractOptions = {
 export type BaseRouteDeclaration = {
 	path: string;
 	method: HttpMethod;
+	cacheKey?: readonly string[];
 	request?: RequestSchema;
 	metadata?: RouteMetadata;
 	openApi?: OpenApiRouteOptions;

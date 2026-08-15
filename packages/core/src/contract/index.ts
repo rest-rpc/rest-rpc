@@ -64,7 +64,13 @@ export {
 	REQUEST_CONTEXT_KEY,
 	stream,
 } from "./route.ts";
-export { flattenContractRoutes, mapContractRoutes } from "./traversal.ts";
+export type { ContractRouteEntry } from "./traversal.ts";
+export {
+	contractRouteEntries,
+	contractRoutes,
+	flattenContractRoutes,
+	mapContractRoutes,
+} from "./traversal.ts";
 export {
 	groupRequestInput,
 	validateFlatRequestInput,

@@ -6,7 +6,7 @@ import type {
 } from "../contract/route.ts";
 import { validateStandardSchemaSync } from "../standard-schema/index.ts";
 import { constructBaseRequest, takesRequestInput } from "./request.ts";
-import type { ClientSocket, OpenConnectionArgs, RuntimeArgs } from "./types.ts";
+import type { ClientSocket, OpenConnectionArgs } from "./types.ts";
 
 export const buildWebSocketUrl = (url: string) => {
 	if (url.startsWith("http:")) return url.replace("http:", "ws:");
@@ -32,7 +32,7 @@ export const openConnection = <E extends WebSocketRouteDeclaration>(
 	const { url } = constructBaseRequest(
 		options.origin,
 		route,
-		requestArgs as RuntimeArgs | undefined,
+		requestArgs,
 		options.unknownRequestKeys,
 	);
 	const rawSocket = new WebSocket(buildWebSocketUrl(url));

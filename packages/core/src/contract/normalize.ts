@@ -6,7 +6,7 @@ import type {
 	RouteMetadata,
 	RouteResponses,
 } from "./route.ts";
-import { contractRoutes } from "./traversal.ts";
+import { contractRouteEntries } from "./traversal.ts";
 
 export type NormalizeContractOptions = {
 	pathPrefix?: string;
@@ -65,7 +65,7 @@ export const normalizeContract = <TContract extends Contract>(
 	contract: TContract,
 	options?: NormalizeContractOptions,
 ): TContract => {
-	for (const route of contractRoutes(contract)) {
+	for (const { route, path } of contractRouteEntries(contract)) {
 		const pathPrefix = options?.pathPrefix;
 		if (pathPrefix) {
 			route.path = joinPathPrefix(pathPrefix, route.path);
@@ -79,6 +79,7 @@ export const normalizeContract = <TContract extends Contract>(
 		route.openApi = mergeOpenApi(options?.commonOpenApi, route.openApi);
 
 		if (route.responses !== undefined) {
+			route.cacheKey ??= path;
 			route.responses = {
 				...options?.commonResponses,
 				...route.responses,

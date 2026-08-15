@@ -400,6 +400,39 @@ describe("ApiClient requests", () => {
 		});
 	});
 
+	it("adds Next fetch tags to GET requests when enabled", async () => {
+		const calls = captureFetch((url) =>
+			String(url).includes("/todos?search=milk")
+				? jsonResponse([])
+				: jsonResponse({ id: "todo-1", title: "Buy milk" }, 201),
+		);
+		const client = initClient(createClientTestContract(), {
+			origin: "https://api.test",
+			fetchOptions: {
+				next: {
+					revalidate: 60,
+					tags: ["manual"],
+				},
+			} as RequestInit,
+			nextFetchTags: {
+				enabled: true,
+				tagPrefix: "api",
+			},
+		});
+
+		await client.todos.list.fetch({ search: "milk" });
+		await client.todos.create.fetch({ title: "Buy milk" });
+
+		assert.deepEqual(calls[0]?.init?.next, {
+			revalidate: 60,
+			tags: ["manual", "api:todos.list:search:milk", "api:todos.list"],
+		});
+		assert.deepEqual(calls[1]?.init?.next, {
+			revalidate: 60,
+			tags: ["manual"],
+		});
+	});
+
 	it("lets custom fetch inspect and replace the final request init", async () => {
 		const calls: Array<{ url: string; init?: RequestInit }> = [];
 		const client = initClient(createClientTestContract(), {

@@ -108,14 +108,18 @@ export type GetHeadersFn = () =>
 	| Record<string, string>
 	| Promise<Record<string, string>>;
 
+export type NextFetchTagsOptions = {
+	enabled: boolean;
+	tagPrefix?: string;
+};
+
 export type ApiClientOptions = {
 	origin: string;
 	fetch?: FetchLike;
 	fetchOptions?: ApiClientFetchOptions;
 	getGlobalHeaders?: GetHeadersFn;
+	nextFetchTags?: NextFetchTagsOptions;
 	timeoutMs?: number;
 	unknownRequestKeys?: "throw" | "strip";
 	validateResponses?: boolean;
 };
-
-export type RuntimeArgs = Record<string, unknown>;
