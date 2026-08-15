@@ -49,7 +49,12 @@ export const registerExpressHttpRoutes = (
 
 		const serviceHandler = async (req: Request, res: ExpressResponse) => {
 			const result = await handleHttpRoute(route, handler, {
-				request: req,
+				request: {
+					body: req.body,
+					query: req.query,
+					pathParams: req.params,
+					headers: req.headers,
+				},
 				context: { req },
 				errorContext: { kind: "http", req },
 				errorHandlers: errorHandlers as

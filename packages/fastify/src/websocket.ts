@@ -69,7 +69,7 @@ export const registerFastifyWebSocketRoutes = (
 				async preValidation(req: FastifyRequest, reply: FastifyReply) {
 					const request = {
 						query: req.query,
-						params: req.params,
+						pathParams: req.params,
 						headers: req.headers,
 					};
 					const upgrade = await prepareWebSocketUpgrade({

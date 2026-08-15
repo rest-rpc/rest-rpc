@@ -169,9 +169,7 @@ describe("ApiClient websockets", () => {
 				join: {
 					method: "GET",
 					path: "/rooms/:roomId",
-					request: {
-						params: z.object({ roomId: z.string() }),
-					},
+					pathParams: z.object({ roomId: z.string() }),
 					options: { mode: "websocket" },
 					messages: {
 						client: z.object({ text: z.string() }),
@@ -212,9 +210,7 @@ describe("ApiClient websockets", () => {
 				join: {
 					method: "GET",
 					path: "/rooms/:roomId",
-					request: {
-						params: z.object({ roomId: z.string() }),
-					},
+					pathParams: z.object({ roomId: z.string() }),
 					options: { mode: "websocket" },
 					messages: {
 						client: z.object({ text: z.string() }),
@@ -256,9 +252,7 @@ describe("ApiClient websockets", () => {
 				join: {
 					method: "GET",
 					path: "/rooms/:roomId",
-					request: {
-						params: z.object({ roomId: z.string() }),
-					},
+					pathParams: z.object({ roomId: z.string() }),
 					options: { mode: "websocket" },
 					messages: {
 						client: z.object({ text: z.string() }),
@@ -297,9 +291,7 @@ describe("ApiClient websockets", () => {
 				join: {
 					method: "GET",
 					path: "/rooms/:roomId",
-					request: {
-						params: z.object({ roomId: z.string() }),
-					},
+					pathParams: z.object({ roomId: z.string() }),
 					options: { mode: "websocket" },
 					messages: {
 						client: z.object({ text: z.string() }),

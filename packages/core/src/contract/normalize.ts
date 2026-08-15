@@ -87,12 +87,9 @@ export const normalizeContract = <TContract extends Contract>(
 		}
 
 		if (options?.commonHeaders) {
-			route.request = {
-				...route.request,
-				headers: {
-					...options.commonHeaders,
-					...route.request?.headers,
-				},
+			route.headers = {
+				...options.commonHeaders,
+				...route.headers,
 			};
 		}
 	}

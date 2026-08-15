@@ -41,19 +41,17 @@ describe("ApiClient requests", () => {
 				update: {
 					method: "POST",
 					path: "/todos/:id",
-					request: {
-						params: {
-							id: z.string(),
-						},
-						query: {
-							page: z.number(),
-						},
-						body: {
-							title: z.string(),
-						},
-						headers: {
-							"x-request-id": z.number(),
-						},
+					pathParams: {
+						id: z.string(),
+					},
+					query: {
+						page: z.number(),
+					},
+					body: {
+						title: z.string(),
+					},
+					headers: {
+						"x-request-id": z.number(),
 					},
 					responses: {
 						200: z.object({ id: z.string(), title: z.string() }),
@@ -89,19 +87,17 @@ describe("ApiClient requests", () => {
 				get: {
 					method: "GET",
 					path: "/items/:id/:visible",
-					request: {
-						params: {
-							id: z.number(),
-							visible: z.boolean(),
-						},
-						query: {
-							page: z.number(),
-							includeArchived: z.boolean(),
-						},
-						headers: {
-							"x-page": z.number(),
-							"x-visible": z.boolean(),
-						},
+					pathParams: {
+						id: z.number(),
+						visible: z.boolean(),
+					},
+					query: {
+						page: z.number(),
+						includeArchived: z.boolean(),
+					},
+					headers: {
+						"x-page": z.number(),
+						"x-visible": z.boolean(),
 					},
 					responses: {
 						204: noBody(),
@@ -139,11 +135,9 @@ describe("ApiClient requests", () => {
 				get: {
 					method: "GET",
 					path: "/items/:id/:id2",
-					request: {
-						params: {
-							id: z.string(),
-							id2: z.string(),
-						},
+					pathParams: {
+						id: z.string(),
+						id2: z.string(),
 					},
 					responses: {
 						204: noBody(),
@@ -170,13 +164,11 @@ describe("ApiClient requests", () => {
 				list: {
 					method: "GET",
 					path: "/items",
-					request: {
-						query: {
-							search: z.string().optional(),
-						},
-						headers: {
-							"x-request-id": z.string().optional(),
-						},
+					query: {
+						search: z.string().optional(),
+					},
+					headers: {
+						"x-request-id": z.string().optional(),
 					},
 					responses: {
 						204: noBody(),
@@ -209,7 +201,7 @@ describe("ApiClient requests", () => {
 					{} as never,
 					"throw",
 				),
-			/Invalid params key "id" for GET \/todos\/:id/,
+			/Invalid pathParams key "id" for GET \/todos\/:id/,
 		);
 		assert.throws(
 			() =>
@@ -219,7 +211,7 @@ describe("ApiClient requests", () => {
 					{ id: undefined } as never,
 					"throw",
 				),
-			/Invalid params key "id" for GET \/todos\/:id/,
+			/Invalid pathParams key "id" for GET \/todos\/:id/,
 		);
 	});
 
@@ -229,13 +221,11 @@ describe("ApiClient requests", () => {
 				list: {
 					method: "GET",
 					path: "/items",
-					request: {
-						query: {
-							search: z.string().optional(),
-						},
-						headers: {
-							"x-request-id": z.string().optional(),
-						},
+					query: {
+						search: z.string().optional(),
+					},
+					headers: {
+						"x-request-id": z.string().optional(),
 					},
 					responses: {
 						204: noBody(),
@@ -282,10 +272,8 @@ describe("ApiClient requests", () => {
 				list: {
 					method: "GET",
 					path: "/items",
-					request: {
-						query: {
-							page: z.number(),
-						},
+					query: {
+						page: z.number(),
 					},
 					responses: {
 						204: noBody(),
@@ -358,9 +346,7 @@ describe("ApiClient requests", () => {
 			ping: {
 				method: "POST",
 				path: "/ping",
-				request: {
-					body: noBody(),
-				},
+				body: noBody(),
 				responses: {
 					204: noBody(),
 				},
@@ -468,12 +454,10 @@ describe("ApiClient requests", () => {
 					list: {
 						method: "GET",
 						path: "/todos",
-						request: {
-							query: z.object({ search: z.string() }),
-							headers: {
-								"X-Route": z.string(),
-								"x-shared": z.string(),
-							},
+						query: z.object({ search: z.string() }),
+						headers: {
+							"X-Route": z.string(),
+							"x-shared": z.string(),
 						},
 						responses: {
 							200: z.array(z.object({ id: z.string(), title: z.string() })),
@@ -564,9 +548,7 @@ describe("ApiClient requests", () => {
 				list: {
 					method: "GET",
 					path: "/todos",
-					request: {
-						query: z.object({ search: z.string() }),
-					},
+					query: z.object({ search: z.string() }),
 					responses: {
 						204: noBody(),
 					},

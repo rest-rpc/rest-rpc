@@ -14,7 +14,7 @@ const routeWithRequest = {
 	method: "GET",
 	path: "/items/:id",
 	cacheKey: ["items", "byId"],
-	request: { params: {} },
+	pathParams: {},
 	responses: { 200: {} },
 } as any;
 

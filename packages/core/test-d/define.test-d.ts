@@ -30,10 +30,8 @@ const api = router({
 		get: {
 			method: "GET",
 			path: "/todos/:id",
-			request: {
-				params: z.object({ id: z.string() }),
-				query: z.object({ includeDone: z.boolean().optional() }),
-			},
+			pathParams: z.object({ id: z.string() }),
+			query: z.object({ includeDone: z.boolean().optional() }),
 			metadata: { auth: "optional" },
 			responses: {
 				200: todoSchema,
@@ -43,9 +41,7 @@ const api = router({
 		create: {
 			method: "POST",
 			path: "/todos",
-			request: {
-				body: z.object({ title: z.string() }),
-			},
+			body: z.object({ title: z.string() }),
 			responses: {
 				201: todoSchema,
 			},
@@ -170,13 +166,11 @@ const headerMerged = router(
 			list: {
 				method: "GET",
 				path: "/todos",
-				request: {
-					query: z.object({ search: z.string() }),
-					headers: {
-						"x-optional": z.string().optional(),
-						"x-route": z.literal("route"),
-						"x-shared": z.literal("route"),
-					},
+				query: z.object({ search: z.string() }),
+				headers: {
+					"x-optional": z.string().optional(),
+					"x-route": z.literal("route"),
+					"x-shared": z.literal("route"),
 				},
 				responses: {
 					200: z.array(todoSchema),
@@ -209,12 +203,7 @@ expectAssignable<HeaderMergedRequest>({
 const objectUnionRequest = route({
 	method: "GET",
 	path: "/object-union",
-	request: {
-		query: z.union([
-			z.object({ q: z.string() }),
-			z.object({ page: z.number() }),
-		]),
-	},
+	query: z.union([z.object({ q: z.string() }), z.object({ page: z.number() })]),
 	responses: {
 		200: todoSchema,
 	},
@@ -227,21 +216,19 @@ expectAssignable<ObjectUnionRequest>({ page: 1 });
 const schemaRecordRequest = route({
 	method: "POST",
 	path: "/todos/:id",
-	request: {
-		params: {
-			id: schemaType<string>(),
-		},
-		query: {
-			includeDone: schemaType<boolean | undefined>(),
-			search: z.string().optional(),
-		},
-		body: {
-			title: schemaType<string>(),
-			priority: schemaType<number | undefined>(),
-		},
-		headers: {
-			"x-request-id": schemaType<string>(),
-		},
+	pathParams: {
+		id: schemaType<string>(),
+	},
+	query: {
+		includeDone: schemaType<boolean | undefined>(),
+		search: z.string().optional(),
+	},
+	body: {
+		title: schemaType<string>(),
+		priority: schemaType<number | undefined>(),
+	},
+	headers: {
+		"x-request-id": schemaType<string>(),
 	},
 	responses: {
 		200: todoSchema,
@@ -265,15 +252,13 @@ expectAssignable<SchemaRecordRequest>({
 const transformed = route({
 	method: "POST",
 	path: "/transformed/:id",
-	request: {
-		params: z.object({ id: z.string() }).transform(({ id }) => ({
-			id: Number(id),
-		})),
-		body: z.object({ title: z.string() }).transform(({ title }) => ({
-			title: title.trim(),
-			slug: title.toLowerCase(),
-		})),
-	},
+	pathParams: z.object({ id: z.string() }).transform(({ id }) => ({
+		id: Number(id),
+	})),
+	body: z.object({ title: z.string() }).transform(({ title }) => ({
+		title: title.trim(),
+		slug: title.toLowerCase(),
+	})),
 	responses: {
 		200: z.object({ id: z.number() }).transform(({ id }) => ({
 			id: String(id),
@@ -313,9 +298,7 @@ expectError(
 	route({
 		method: "GET",
 		path: "/scalar-body",
-		request: {
-			body: z.string(),
-		},
+		body: z.string(),
 		responses: {
 			200: todoSchema,
 		},
@@ -326,9 +309,7 @@ expectError(
 	route({
 		method: "GET",
 		path: "/scalar-query",
-		request: {
-			query: z.string(),
-		},
+		query: z.string(),
 		responses: {
 			200: todoSchema,
 		},
@@ -339,9 +320,7 @@ expectError(
 	route({
 		method: "GET",
 		path: "/mixed-query-union",
-		request: {
-			query: z.union([z.object({ q: z.string() }), z.string()]),
-		},
+		query: z.union([z.object({ q: z.string() }), z.string()]),
 		responses: {
 			200: todoSchema,
 		},
@@ -352,9 +331,7 @@ expectError(
 	route({
 		method: "GET",
 		path: "/scalar-params/:id",
-		request: {
-			params: z.string(),
-		},
+		pathParams: z.string(),
 		responses: {
 			200: todoSchema,
 		},
@@ -365,10 +342,8 @@ expectError(
 	route({
 		method: "GET",
 		path: "/invalid-header",
-		request: {
-			headers: {
-				"x-object": z.object({ id: z.string() }),
-			},
+		headers: {
+			"x-object": z.object({ id: z.string() }),
 		},
 		responses: {
 			200: todoSchema,
@@ -380,10 +355,8 @@ expectError(
 	route({
 		method: "GET",
 		path: "/invalid-query",
-		request: {
-			query: {
-				filter: z.object({ status: z.string() }),
-			},
+		query: {
+			filter: z.object({ status: z.string() }),
 		},
 		responses: {
 			200: todoSchema,
@@ -395,10 +368,8 @@ expectError(
 	route({
 		method: "GET",
 		path: "/invalid-params/:id",
-		request: {
-			params: {
-				id: z.string().optional(),
-			},
+		pathParams: {
+			id: z.string().optional(),
 		},
 		responses: {
 			200: todoSchema,

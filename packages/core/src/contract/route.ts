@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-export type RequestSegment = "body" | "query" | "params" | "headers";
+export type RequestSegment = "body" | "query" | "pathParams" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
 export const REQUEST_CONTEXT_KEY = "context";
 type RequestPrimitive = string | number | boolean;
@@ -19,14 +19,6 @@ export type RequestBodySchema =
 	| CustomBody
 	| NoBody
 	| undefined;
-
-export type RequestSchema = {
-	body?: RequestBodySchema;
-	query?: StandardSchemaV1 | RequestSchemaRecord;
-	params?: StandardSchemaV1 | RequestSchemaRecord;
-	headers?: RequestSchemaRecord;
-	requestKeys?: RequestKeys;
-};
 
 export type ResponseSchema = StandardSchemaV1;
 
@@ -111,7 +103,11 @@ export type BaseRouteDeclaration = {
 	path: string;
 	method: HttpMethod;
 	cacheKey?: readonly string[];
-	request?: RequestSchema;
+	body?: RequestBodySchema;
+	query?: StandardSchemaV1 | RequestSchemaRecord;
+	pathParams?: StandardSchemaV1 | RequestSchemaRecord;
+	headers?: RequestSchemaRecord;
+	requestKeys?: RequestKeys;
 	metadata?: RouteMetadata;
 	openApi?: OpenApiRouteOptions;
 };
@@ -424,8 +420,8 @@ type QuerySchemaValueError = {
 	readonly __route_error__: "Query schema values must input string, number, boolean, or undefined.";
 };
 
-type ParamsSchemaValueError = {
-	readonly __route_error__: "Params schema values must input string, number, or boolean.";
+type PathParamsSchemaValueError = {
+	readonly __route_error__: "Path params schema values must input string, number, or boolean.";
 };
 
 type RequestSchemaObjectError<TSegment extends RequestSegment> = {
@@ -471,9 +467,6 @@ type ValidateQueryRecord<TQuery extends RequestSchemaRecord> =
 		QuerySchemaValueError
 	>;
 
-type ValidateParamsRecord<TParams extends RequestSchemaRecord> =
-	ValidateRequestRecord<TParams, RequestPrimitive, ParamsSchemaValueError>;
-
 type ValidateRequestObjectSchema<
 	TSchema,
 	TSegment extends RequestSegment,
@@ -488,8 +481,8 @@ type InferRequestSegments<R, TIO extends "input" | "output"> = {
 	query: R extends { query: infer TQuery }
 		? InferRequestObjectSegment<TQuery, TIO>
 		: never;
-	params: R extends { params: infer TParams }
-		? InferRequestObjectSegment<TParams, TIO>
+	pathParams: R extends { pathParams: infer TPathParams }
+		? InferRequestObjectSegment<TPathParams, TIO>
 		: never;
 	headers: R extends { headers: infer THeaders }
 		? THeaders extends RequestSchemaRecord
@@ -501,11 +494,7 @@ type InferRequestSegments<R, TIO extends "input" | "output"> = {
 type RouteRequest<
 	E extends RouteDeclaration,
 	TIO extends "input" | "output",
-> = E extends {
-	request: infer R;
-}
-	? InferRequestSegments<R, TIO>
-	: never;
+> = InferRequestSegments<E, TIO>;
 
 type Merge<T> = T extends unknown ? { [K in keyof T]: T[K] } : never;
 type MergeSegment<T> = [T] extends [never] ? unknown : T;
@@ -513,10 +502,10 @@ type HasRequestInput<TRequest> = [
 	TRequest extends {
 		body: infer TBody;
 		query: infer TQuery;
-		params: infer TParams;
+		pathParams: infer TPathParams;
 		headers: infer THeaders;
 	}
-		? TBody | TQuery | TParams | THeaders
+		? TBody | TQuery | TPathParams | THeaders
 		: never,
 ] extends [never]
 	? false
@@ -530,7 +519,7 @@ type InferRequestFor<
 		? R extends {
 				body: infer B;
 				query: infer Q;
-				params: infer P;
+				pathParams: infer P;
 				headers: infer H;
 			}
 			? HasRequestInput<R> extends true
@@ -572,9 +561,7 @@ export type ValidateResponseStatuses<T> = T extends RouteDeclaration
 
 export type ValidateHeaderSchemas<T> = T extends RouteDeclaration
 	? T extends {
-			request: {
-				headers: infer THeaders extends RequestSchemaRecord;
-			};
+			headers: infer THeaders extends RequestSchemaRecord;
 		}
 		? ValidateHeaderRecord<THeaders>
 		: unknown
@@ -585,16 +572,16 @@ export type ValidateHeaderSchemas<T> = T extends RouteDeclaration
 		: unknown;
 
 export type ValidateRequestValueSchemas<T> = T extends RouteDeclaration
-	? T extends {
-			request: infer TRequest;
-		}
-		? (TRequest extends { query: infer TQuery extends RequestSchemaRecord }
-				? ValidateQueryRecord<TQuery>
-				: unknown) &
-				(TRequest extends { params: infer TParams extends RequestSchemaRecord }
-					? ValidateParamsRecord<TParams>
-					: unknown)
-		: unknown
+	? (T extends { query: infer TQuery extends RequestSchemaRecord }
+			? ValidateQueryRecord<TQuery>
+			: unknown) &
+			(T extends { pathParams: infer TPathParams extends RequestSchemaRecord }
+				? ValidateRequestRecord<
+						TPathParams,
+						RequestPrimitive,
+						PathParamsSchemaValueError
+					>
+				: unknown)
 	: T extends object
 		? {
 				[K in keyof T]: ValidateRequestValueSchemas<T[K]>;
@@ -602,19 +589,15 @@ export type ValidateRequestValueSchemas<T> = T extends RouteDeclaration
 		: unknown;
 
 export type ValidateRequestObjectSchemas<T> = T extends RouteDeclaration
-	? T extends {
-			request: infer TRequest;
-		}
-		? (TRequest extends { body: infer TBody }
-				? ValidateRequestObjectSchema<TBody, "body">
+	? (T extends { body: infer TBody }
+			? ValidateRequestObjectSchema<TBody, "body">
+			: unknown) &
+			(T extends { pathParams: infer TPathParams }
+				? ValidateRequestObjectSchema<TPathParams, "pathParams">
 				: unknown) &
-				(TRequest extends { params: infer TParams }
-					? ValidateRequestObjectSchema<TParams, "params">
-					: unknown) &
-				(TRequest extends { query: infer TQuery }
-					? ValidateRequestObjectSchema<TQuery, "query">
-					: unknown)
-		: unknown
+			(T extends { query: infer TQuery }
+				? ValidateRequestObjectSchema<TQuery, "query">
+				: unknown)
 	: T extends object
 		? {
 				[K in keyof T]: ValidateRequestObjectSchemas<T[K]>;

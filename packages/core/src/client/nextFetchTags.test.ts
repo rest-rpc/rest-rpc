@@ -12,25 +12,23 @@ describe("Next fetch tags", () => {
 				list: {
 					method: "GET",
 					path: "/items/:id",
-					request: {
-						body: {
-							ignoredBody: type<string>(),
-						},
-						headers: {
-							authorization: type<string>(),
-						},
-						params: { id: type<string>() },
-						query: {
-							filter: type<string>(),
-							page: type<number>(),
-						},
-						requestKeys: {
-							id: "params",
-							filter: "query",
-							page: "query",
-							authorization: "headers",
-							ignoredBody: "body",
-						},
+					body: {
+						ignoredBody: type<string>(),
+					},
+					headers: {
+						authorization: type<string>(),
+					},
+					pathParams: { id: type<string>() },
+					query: {
+						filter: type<string>(),
+						page: type<number>(),
+					},
+					requestKeys: {
+						id: "pathParams",
+						filter: "query",
+						page: "query",
+						authorization: "headers",
+						ignoredBody: "body",
 					},
 					responses: {
 						204: noBody(),
@@ -63,11 +61,9 @@ describe("Next fetch tags", () => {
 				get: {
 					method: "GET",
 					path: "/items/:id",
-					request: {
-						params: { id: type<string>() },
-						requestKeys: {
-							id: "params",
-						},
+					pathParams: { id: type<string>() },
+					requestKeys: {
+						id: "pathParams",
 					},
 					responses: {
 						204: noBody(),

@@ -89,7 +89,7 @@ export const registerHonoWebSocketRoutes = <TEnv extends Env = Env>(
 		app.get(toColonPath(implementation.route.path), async (c) => {
 			const request = {
 				query: c.req.query(),
-				params: c.req.param(),
+				pathParams: c.req.param(),
 				headers: c.req.header(),
 			};
 			const upgrade = await prepareWebSocketUpgrade({

@@ -239,11 +239,9 @@ describe("OpenAPI operations", () => {
 		const route: OpenApiRouteDeclaration = {
 			path: "/todos/:id",
 			method: "POST",
-			request: {
-				params: { id: z.string() },
-				headers: { "x-api-key": z.string() },
-				body: { title: z.string() },
-			},
+			pathParams: { id: z.string() },
+			headers: { "x-api-key": z.string() },
+			body: { title: z.string() },
 			responses: {
 				201: z.object({ id: z.string() }),
 			},

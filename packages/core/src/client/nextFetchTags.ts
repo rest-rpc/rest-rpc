@@ -39,7 +39,7 @@ const getNextFetchTagRequest = (
 	});
 
 	return {
-		...grouped.params,
+		...grouped.pathParams,
 		...grouped.query,
 	};
 };

@@ -31,12 +31,11 @@ export const createRequestSignal = (
 };
 
 export const takesRequestInput = (route: RouteDeclaration) => {
-	if (!route.request) return false;
-	if (route.request.query || route.request.params || route.request.headers) {
+	if (route.query || route.pathParams || route.headers) {
 		return true;
 	}
-	if (isCustomBody(route.request.body)) return true;
-	return Boolean(route.request.body && !isNoBody(route.request.body));
+	if (isCustomBody(route.body)) return true;
+	return Boolean(route.body && !isNoBody(route.body));
 };
 
 const findHeader = (headers: Record<string, string>, name: string) =>
@@ -76,7 +75,7 @@ const isSerializablePrimitive = (value: unknown) =>
 
 const stringifyRequestValue = (
 	route: RouteDeclaration,
-	segment: "params" | "query" | "headers",
+	segment: "pathParams" | "query" | "headers",
 	key: string,
 	value: unknown,
 	optional = false,
@@ -108,13 +107,18 @@ const stringifyHeaders = (
 
 const serializeParams = (
 	route: RouteDeclaration,
-	params: Record<string, unknown> | undefined,
+	pathParams: Record<string, unknown> | undefined,
 ) => {
 	return replacePathParams(route.path, (key) => {
-		const value = stringifyRequestValue(route, "params", key, params?.[key]);
+		const value = stringifyRequestValue(
+			route,
+			"pathParams",
+			key,
+			pathParams?.[key],
+		);
 		if (value === undefined) {
 			throw new Error(
-				`Invalid params key "${key}" for ${route.method} ${route.path}. Expected string, number, or boolean.`,
+				`Invalid pathParams key "${key}" for ${route.method} ${route.path}. Expected string, number, or boolean.`,
 			);
 		}
 		return encodeURIComponent(value);
@@ -149,12 +153,12 @@ export const constructBaseRequest = (
 	if (!args) return { url: urlBase };
 
 	const request = groupRequestInput(route, args, { unknownRequestKeys });
-	const { body, query, params, headers } = request;
+	const { body, query, pathParams, headers } = request;
 
-	urlBase = `${origin}${serializeParams(route, params)}${serializeQuery(route, query)}`;
+	urlBase = `${origin}${serializeParams(route, pathParams)}${serializeQuery(route, query)}`;
 
-	if (isCustomBody(route.request?.body)) {
-		const contentType = route.request.body.contentType;
+	if (isCustomBody(route.body)) {
+		const contentType = route.body.contentType;
 		return {
 			url: urlBase,
 			body: serializeCustomBody(body, contentType),

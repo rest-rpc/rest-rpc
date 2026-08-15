@@ -5,7 +5,6 @@ import type {
 	CommonOpenApiRouteOptions,
 	Contract,
 	OpenApiRouteOptions,
-	RequestSchema,
 	RouteDeclaration,
 	RouteMetadata,
 	RouteResponses,
@@ -99,7 +98,7 @@ type CommonHeaders<TOptions> = TOptions extends {
 	? THeaders
 	: EmptyObject;
 
-type RouteHeadersFor<TRequest> = TRequest extends {
+type RouteHeadersFor<TRoute> = TRoute extends {
 	headers: infer THeaders extends Record<string, StandardSchemaV1>;
 }
 	? THeaders
@@ -124,16 +123,14 @@ type ApplyCommonOpenApiToRoute<TRoute, TOptions> =
 				}
 			>;
 
-type ApplyCommonHeadersToRequest<TRequest, TOptions> =
+type ApplyCommonHeadersToRouteFields<TRoute, TOptions> =
 	keyof CommonHeaders<TOptions> extends never
-		? TRequest
+		? TRoute
 		: Merge<
-				(TRequest extends RequestSchema
-					? Omit<TRequest, "headers">
-					: EmptyObject) & {
+				Omit<TRoute, "headers"> & {
 					headers: MergeHeaders<
 						CommonHeaders<TOptions>,
-						RouteHeadersFor<TRequest>
+						RouteHeadersFor<TRoute>
 					>;
 				}
 			>;
@@ -142,12 +139,8 @@ type ApplyCommonHeadersToRoute<TRoute, TOptions> =
 	keyof CommonHeaders<TOptions> extends never
 		? TRoute
 		: Merge<
-				Omit<TRoute, "request"> & {
-					request: ApplyCommonHeadersToRequest<
-						TRoute extends { request: infer TRequest } ? TRequest : EmptyObject,
-						TOptions
-					>;
-				}
+				Omit<TRoute, "headers"> &
+					ApplyCommonHeadersToRouteFields<TRoute, TOptions>
 			>;
 
 type ApplyRouterOptionsToRoute<TRoute extends RouteDeclaration, TOptions> =
