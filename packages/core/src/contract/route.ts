@@ -4,8 +4,6 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 export type RequestSegment = "body" | "query" | "pathParams" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
 export const REQUEST_CONTEXT_KEY = "context";
-type RequestPrimitive = string | number | boolean;
-type OptionalRequestPrimitive = RequestPrimitive | undefined;
 
 export type NoBody = {
 	kind: "noBody";
@@ -410,72 +408,6 @@ type InferRequestObjectSegment<
 		? InferRequestSchemaRecord<TSegment, TIO>
 		: never;
 
-type RequestObjectValue = Record<string, unknown>;
-
-type HeaderSchemaValueError = {
-	readonly __route_error__: "Header schema must input string, number, boolean, or undefined.";
-};
-
-type QuerySchemaValueError = {
-	readonly __route_error__: "Query schema values must input string, number, boolean, or undefined.";
-};
-
-type PathParamsSchemaValueError = {
-	readonly __route_error__: "Path params schema values must input string, number, or boolean.";
-};
-
-type RequestSchemaObjectError<TSegment extends RequestSegment> = {
-	readonly __route_error__: `${TSegment} schema must output an object, or a union where every branch outputs an object. Use customBody() for non-object request bodies.`;
-};
-
-type SchemaInputsOnly<TSchema, TValue> = [
-	Exclude<
-		TSchema extends StandardSchemaV1
-			? StandardSchemaV1.InferInput<TSchema>
-			: never,
-		TValue
-	>,
-] extends [never]
-	? true
-	: false;
-
-type InvalidRequestRecordKeys<TRecord extends RequestSchemaRecord, TValue> = {
-	[K in keyof TRecord]: SchemaInputsOnly<TRecord[K], TValue> extends true
-		? never
-		: K;
-}[keyof TRecord];
-
-type ValidateRequestRecord<
-	TRecord extends RequestSchemaRecord,
-	TValue,
-	TError,
-> = [InvalidRequestRecordKeys<TRecord, TValue>] extends [never]
-	? unknown
-	: TError;
-
-type ValidateHeaderRecord<THeaders extends RequestSchemaRecord> =
-	ValidateRequestRecord<
-		THeaders,
-		OptionalRequestPrimitive,
-		HeaderSchemaValueError
-	>;
-
-type ValidateQueryRecord<TQuery extends RequestSchemaRecord> =
-	ValidateRequestRecord<
-		TQuery,
-		OptionalRequestPrimitive,
-		QuerySchemaValueError
-	>;
-
-type ValidateRequestObjectSchema<
-	TSchema,
-	TSegment extends RequestSegment,
-> = TSchema extends StandardSchemaV1
-	? SchemaInputsOnly<TSchema, RequestObjectValue> extends true
-		? unknown
-		: RequestSchemaObjectError<TSegment>
-	: unknown;
-
 type InferRequestSegments<R, TIO extends "input" | "output"> = {
 	body: R extends { body: infer TBody } ? InferRequestBody<TBody, TIO> : never;
 	query: R extends { query: infer TQuery }
@@ -542,64 +474,3 @@ export type ServerRequest<E extends RouteDeclaration> = InferRequestFor<
 	E,
 	"output"
 >;
-
-type MissingSuccessfulResponseError = {
-	readonly __route_error__: "Route must declare at least one successful response.";
-};
-
-export type ValidateResponseStatuses<T> = T extends RouteDeclaration
-	? T extends { responses: infer TResponses }
-		? HasSuccessfulResponse<TResponses> extends false
-			? MissingSuccessfulResponseError
-			: unknown
-		: unknown
-	: T extends object
-		? {
-				[K in keyof T]: ValidateResponseStatuses<T[K]>;
-			}
-		: unknown;
-
-export type ValidateHeaderSchemas<T> = T extends RouteDeclaration
-	? T extends {
-			headers: infer THeaders extends RequestSchemaRecord;
-		}
-		? ValidateHeaderRecord<THeaders>
-		: unknown
-	: T extends object
-		? {
-				[K in keyof T]: ValidateHeaderSchemas<T[K]>;
-			}
-		: unknown;
-
-export type ValidateRequestValueSchemas<T> = T extends RouteDeclaration
-	? (T extends { query: infer TQuery extends RequestSchemaRecord }
-			? ValidateQueryRecord<TQuery>
-			: unknown) &
-			(T extends { pathParams: infer TPathParams extends RequestSchemaRecord }
-				? ValidateRequestRecord<
-						TPathParams,
-						RequestPrimitive,
-						PathParamsSchemaValueError
-					>
-				: unknown)
-	: T extends object
-		? {
-				[K in keyof T]: ValidateRequestValueSchemas<T[K]>;
-			}
-		: unknown;
-
-export type ValidateRequestObjectSchemas<T> = T extends RouteDeclaration
-	? (T extends { body: infer TBody }
-			? ValidateRequestObjectSchema<TBody, "body">
-			: unknown) &
-			(T extends { pathParams: infer TPathParams }
-				? ValidateRequestObjectSchema<TPathParams, "pathParams">
-				: unknown) &
-			(T extends { query: infer TQuery }
-				? ValidateRequestObjectSchema<TQuery, "query">
-				: unknown)
-	: T extends object
-		? {
-				[K in keyof T]: ValidateRequestObjectSchemas<T[K]>;
-			}
-		: unknown;

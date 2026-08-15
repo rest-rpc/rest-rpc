@@ -8,10 +8,6 @@ import type {
 	RouteDeclaration,
 	RouteMetadata,
 	RouteResponses,
-	ValidateHeaderSchemas,
-	ValidateRequestObjectSchemas,
-	ValidateRequestValueSchemas,
-	ValidateResponseStatuses,
 } from "./route.ts";
 import { validateContractSync } from "./validate.ts";
 
@@ -32,55 +28,6 @@ type Merge<T> = {
 	[K in keyof T]: T[K];
 };
 type EmptyObject = Record<never, never>;
-
-type TrimTrailingSlashes<T extends string> = T extends `${infer TRest}/`
-	? TrimTrailingSlashes<TRest>
-	: T;
-
-type TrimLeadingSlashes<T extends string> = T extends `/${infer TRest}`
-	? TrimLeadingSlashes<TRest>
-	: T;
-
-type JoinPathPrefix<
-	TPrefix extends string,
-	TPath extends string,
-> = string extends TPrefix | TPath
-	? string
-	: TrimTrailingSlashes<TPrefix> extends infer TNormalizedPrefix extends string
-		? TrimLeadingSlashes<TPath> extends infer TNormalizedPath extends string
-			? TNormalizedPrefix extends ""
-				? TNormalizedPath extends ""
-					? "/"
-					: `/${TNormalizedPath}`
-				: TNormalizedPath extends ""
-					? TNormalizedPrefix
-					: `${TNormalizedPrefix}/${TNormalizedPath}`
-			: never
-		: never;
-
-type ApplyPathPrefix<TPath, TOptions> = TPath extends string
-	? TOptions extends { pathPrefix: infer TPrefix extends string }
-		? TPrefix extends ""
-			? TPath
-			: JoinPathPrefix<TPrefix, TPath>
-		: TPath
-	: TPath;
-
-type CommonMetadata<TOptions> = TOptions extends {
-	metadata: infer TMetadata extends RouteMetadata;
-}
-	? TMetadata
-	: EmptyObject;
-
-type RouteMetadataFor<TRoute> = TRoute extends {
-	metadata: infer TMetadata extends RouteMetadata;
-}
-	? TMetadata
-	: EmptyObject;
-
-type MergeMetadata<TCommon, TRoute> = Merge<
-	Omit<TCommon, keyof TRoute> & TRoute
->;
 
 type CommonResponses<TOptions> = TOptions extends {
 	commonResponses: infer TResponses extends RouteResponses;
@@ -108,21 +55,6 @@ type MergeHeaders<TCommon, TRoute> = Merge<
 	Omit<TCommon, keyof TRoute> & TRoute
 >;
 
-type CommonOpenApi<TOptions> = TOptions extends {
-	commonOpenApi: CommonOpenApiRouteOptions;
-}
-	? OpenApiRouteOptions
-	: EmptyObject;
-
-type ApplyCommonOpenApiToRoute<TRoute, TOptions> =
-	keyof CommonOpenApi<TOptions> extends never
-		? TRoute
-		: Merge<
-				Omit<TRoute, "openApi"> & {
-					openApi: OpenApiRouteOptions;
-				}
-			>;
-
 type ApplyCommonHeadersToRouteFields<TRoute, TOptions> =
 	keyof CommonHeaders<TOptions> extends never
 		? TRoute
@@ -144,31 +76,27 @@ type ApplyCommonHeadersToRoute<TRoute, TOptions> =
 			>;
 
 type ApplyRouterOptionsToRoute<TRoute extends RouteDeclaration, TOptions> =
-	ApplyCommonOpenApiToRoute<
-		ApplyCommonHeadersToRoute<TRoute, TOptions>,
-		TOptions
-	> extends infer TRouteWithHeaders
+	ApplyCommonHeadersToRoute<TRoute, TOptions> extends infer TRouteWithHeaders
 		? TRouteWithHeaders extends RouteDeclaration
 			? TRouteWithHeaders extends {
 					responses: infer TResponses extends RouteResponses;
 				}
 				? Merge<
-						Omit<TRouteWithHeaders, "path" | "metadata" | "responses"> & {
-							path: ApplyPathPrefix<TRoute["path"], TOptions>;
-							metadata: MergeMetadata<
-								CommonMetadata<TOptions>,
-								RouteMetadataFor<TRoute>
-							>;
+						Omit<
+							TRouteWithHeaders,
+							"path" | "metadata" | "openApi" | "responses"
+						> & {
+							path: string;
+							metadata: RouteMetadata;
+							openApi?: OpenApiRouteOptions;
 							responses: MergeResponses<CommonResponses<TOptions>, TResponses>;
 						}
 					>
 				: Merge<
-						Omit<TRouteWithHeaders, "path" | "metadata"> & {
-							path: ApplyPathPrefix<TRoute["path"], TOptions>;
-							metadata: MergeMetadata<
-								CommonMetadata<TOptions>,
-								RouteMetadataFor<TRoute>
-							>;
+						Omit<TRouteWithHeaders, "path" | "metadata" | "openApi"> & {
+							path: string;
+							metadata: RouteMetadata;
+							openApi?: OpenApiRouteOptions;
 						}
 					>
 			: never
@@ -186,11 +114,7 @@ export type ApplyRouterOptions<
 		};
 
 export const route = <const TRoute extends RouteDeclaration>(
-	route: TRoute &
-		ValidateResponseStatuses<NoInfer<TRoute>> &
-		ValidateHeaderSchemas<NoInfer<TRoute>> &
-		ValidateRequestValueSchemas<NoInfer<TRoute>> &
-		ValidateRequestObjectSchemas<NoInfer<TRoute>>,
+	route: TRoute,
 	options?: RouteContractOptions,
 ): TRoute => {
 	normalizeContract(route);
@@ -204,15 +128,7 @@ export const router = <
 	const TContract extends Contract,
 	const TOptions extends RouterContractOptions | undefined = undefined,
 >(
-	contract: TContract &
-		ValidateResponseStatuses<NoInfer<ApplyRouterOptions<TContract, TOptions>>> &
-		ValidateHeaderSchemas<NoInfer<ApplyRouterOptions<TContract, TOptions>>> &
-		ValidateRequestValueSchemas<
-			NoInfer<ApplyRouterOptions<TContract, TOptions>>
-		> &
-		ValidateRequestObjectSchemas<
-			NoInfer<ApplyRouterOptions<TContract, TOptions>>
-		>,
+	contract: TContract,
 	commonOptions?: TOptions,
 ): ApplyRouterOptions<TContract, TOptions> => {
 	normalizeContract(contract, commonOptions);
