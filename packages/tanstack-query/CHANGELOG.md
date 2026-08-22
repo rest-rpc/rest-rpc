@@ -1,5 +1,11 @@
 # @rest-rpc/tanstack-query
 
+## 0.1.0-beta.13
+
+### Minor Changes
+
+- dd6b7c3: rename tanstack infiniteQueryOptions args to be more describing
+
 ## 0.1.0-beta.12
 
 ## 0.1.0-beta.11
