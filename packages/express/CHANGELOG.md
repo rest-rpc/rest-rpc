@@ -1,5 +1,13 @@
 # @rest-rpc/express
 
+## 0.1.0-beta.13
+
+### Patch Changes
+
+- 5676c02: improve generated API reference by changing exported arrow functions to regular functions and dropping unnecssary noisy exports
+- 5676c02: Add tsdoc comments for every package root export
+- 5c520dd: rename RawWebSocket type to WebSocketLike
+
 ## 0.1.0-beta.12
 
 ### Minor Changes
