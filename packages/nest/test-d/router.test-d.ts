@@ -1,4 +1,4 @@
-import { Controller } from "@nestjs/common";
+import { Controller, type ExecutionContext } from "@nestjs/common";
 import {
 	route as defineRoute,
 	router as defineRouter,
@@ -6,7 +6,6 @@ import {
 	type as schemaType,
 } from "@rest-rpc/core/contract";
 import {
-	initNest,
 	RestRpcModule,
 	Route,
 	type RouteHandler,
@@ -20,11 +19,13 @@ import type { Request, Response } from "express";
 import { expectAssignable, expectError, expectType } from "tsd";
 
 type AppContext = {
+	request: Request;
 	userId: string;
 };
 
-const nest = initNest<AppContext>();
-const expressNest = initNest<AppContext, Request, Response>();
+declare module "@rest-rpc/nest" {
+	interface DefaultNestContext extends AppContext {}
+}
 
 const todoSchema = schemaType<{ id: string; title: string; userId: string }>();
 
@@ -63,20 +64,20 @@ const api = defineRouter({
 	},
 });
 
-type GetTodoRequest = RouteRequest<typeof api.todos.get, AppContext>;
+type GetTodoRequest = RouteRequest<typeof api.todos.get>;
 declare const getTodoRequest: GetTodoRequest;
 expectType<string>(getTodoRequest.id);
 expectType<string>(getTodoRequest.context.userId);
+expectType<Request>(getTodoRequest.context.request);
 expectAssignable<AbortSignal>(getTodoRequest.context.signal);
-expectType<unknown>(getTodoRequest.context.req);
-expectType<unknown>(getTodoRequest.context.res);
 
-const getTodoHandler: RouteHandler<typeof api.todos.get, AppContext> = ({
+const getTodoHandler: RouteHandler<typeof api.todos.get> = ({
 	id,
 	context,
 }) => {
 	expectType<string>(id);
 	expectType<string>(context.userId);
+	expectType<Request>(context.request);
 	expectAssignable<AbortSignal>(context.signal);
 
 	return {
@@ -86,15 +87,13 @@ const getTodoHandler: RouteHandler<typeof api.todos.get, AppContext> = ({
 	};
 };
 
-const getTodoImplementation = nest.route(api.todos.get, getTodoHandler);
+const getTodoImplementation = route(api.todos.get, getTodoHandler);
 expectType<typeof api.todos.get>(getTodoImplementation.route);
 
-expressNest.route(api.todos.get, ({ id, context }) => {
+route(api.todos.get, ({ id, context }) => {
 	expectType<string>(id);
-	expectType<Request>(context.req);
-	expectType<Response>(context.res);
-	expectType<string>(context.req.path);
-	expectType<number>(context.res.statusCode);
+	expectType<Request>(context.request);
+	expectType<string>(context.request.path);
 
 	return {
 		id,
@@ -104,7 +103,7 @@ expressNest.route(api.todos.get, ({ id, context }) => {
 });
 
 expectError(
-	nest.route(api.todos.get, ({ id, context }) => ({
+	route(api.todos.get, ({ id, context }) => ({
 		id,
 		title: context.userId,
 	})),
@@ -114,9 +113,9 @@ const createTodoImplementation = route(
 	api.todos.create,
 	({ title, context }) => {
 		expectType<string>(title);
-		expectType<
-			Record<never, never> & { req: unknown; res: unknown; signal: AbortSignal }
-		>(context);
+		expectType<Request>(context.request);
+		expectType<string>(context.userId);
+		expectAssignable<AbortSignal>(context.signal);
 
 		return {
 			status: 201 as const,
@@ -131,7 +130,7 @@ const createTodoImplementation = route(
 expectType<typeof api.todos.create>(createTodoImplementation.route);
 
 class TodoRoutes implements RouteHandlers<typeof api.todos> {
-	get({ id, context }: RouteRequest<typeof api.todos.get, AppContext>) {
+	get({ id, context }: RouteRequest<typeof api.todos.get>) {
 		return {
 			id,
 			title: "From class",
@@ -139,10 +138,7 @@ class TodoRoutes implements RouteHandlers<typeof api.todos> {
 		};
 	}
 
-	create({
-		title,
-		context,
-	}: RouteRequest<typeof api.todos.create, AppContext>) {
+	create({ title, context }: RouteRequest<typeof api.todos.create>) {
 		return {
 			status: 201 as const,
 			body: {
@@ -153,14 +149,14 @@ class TodoRoutes implements RouteHandlers<typeof api.todos> {
 		};
 	}
 
-	remove({ id }: RouteRequest<typeof api.todos.remove, AppContext>) {
+	remove({ id }: RouteRequest<typeof api.todos.remove>) {
 		expectType<string>(id);
 		return undefined;
 	}
 }
 
 const todoRoutes = new TodoRoutes();
-const todoImplementations = nest.router(api.todos, todoRoutes);
+const todoImplementations = router(api.todos, todoRoutes);
 expectType<typeof api.todos.get>(todoImplementations.get.route);
 expectType<typeof api.todos.create>(todoImplementations.create.route);
 expectType<typeof api.todos.remove>(todoImplementations.remove.route);
@@ -199,35 +195,35 @@ expectAssignable<MethodDecorator>(Router(api.todos));
 class TodoController {
 	@Route(api.todos.get)
 	get() {
-		return nest.route(api.todos.get, getTodoHandler);
+		return route(api.todos.get, getTodoHandler);
 	}
 
 	@Router(api.todos)
 	todos() {
-		return nest.router(api.todos, todoRoutes);
+		return router(api.todos, todoRoutes);
 	}
 }
 
-RestRpcModule.forRoot<AppContext>({
-	createContext: ({ req, res, signal }) => {
-		expectType<unknown>(req);
-		expectType<unknown>(res);
-		expectAssignable<AbortSignal>(signal);
+RestRpcModule.forRoot({
+	createContext: (context) => {
+		expectType<ExecutionContext>(context);
+		const req = context.switchToHttp().getRequest<Request>();
 
 		return {
+			request: req,
 			userId: "user-1",
 		};
 	},
 });
 
-RestRpcModule.forRoot<AppContext, Request, Response>({
-	createContext: ({ req, res, signal }) => {
-		expectType<Request>(req);
-		expectType<Response>(res);
-		expectAssignable<AbortSignal>(signal);
+RestRpcModule.forRoot<{
+	response: Response;
+}>({
+	createContext: (context) => {
+		const res = context.switchToHttp().getResponse<Response>();
 
 		return {
-			userId: req.header("x-user-id") ?? String(res.statusCode),
+			response: res,
 		};
 	},
 });

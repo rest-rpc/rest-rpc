@@ -7,36 +7,35 @@ import { RestRpcRouteInterceptor } from "./routeInterceptor.ts";
 export const REST_RPC_MODULE_OPTIONS = Symbol.for("rest-rpc:nest-options");
 
 /**
- * The context object passed to Nest adapter route handlers.
+ * Default application context passed to Nest route handlers.
+ *
+ * @remarks Augment this interface to set the route handler context across a
+ * project.
  */
-export type NestRouteContext<TRequest = unknown, TResponse = unknown> = {
-	req: TRequest;
-	res: TResponse;
+export interface DefaultNestContext extends Record<string, unknown> {}
+
+/**
+ * Context supplied by the Nest adapter to every route handler.
+ */
+export type NestRouteContext = {
 	signal: AbortSignal;
 };
 
 /**
- * Input provided to the `createContext` function when creating a Nest route context.
+ * The context object passed to Nest adapter route handlers.
  */
-export type CreateContextInput<
-	TRequest = unknown,
-	TResponse = unknown,
-> = NestRouteContext<TRequest, TResponse> & {
-	executionContext: ExecutionContext;
-};
+export type NestHandlerContext<
+	TContext extends Record<string, unknown> = DefaultNestContext,
+> = TContext & NestRouteContext;
 
 /**
  * Options for configuring the rest-rpc Nest adapter.
  */
 export type RestRpcModuleOptions<
-	TContext extends Record<string, unknown>,
-	TRequest = unknown,
-	TResponse = unknown,
+	TContext extends Record<string, unknown> = DefaultNestContext,
 > = {
-	createContext?: (
-		input: CreateContextInput<TRequest, TResponse>,
-	) => TContext | Promise<TContext>;
-	errorHandlers?: ServerErrorHandlers<TContext>;
+	createContext?: (context: ExecutionContext) => TContext | Promise<TContext>;
+	errorHandlers?: ServerErrorHandlers<NestHandlerContext<TContext>>;
 };
 
 /**
@@ -47,12 +46,8 @@ export class RestRpcModule {
 	/**
 	 * Registers the global interceptor used by rest-rpc Nest route decorators.
 	 */
-	static forRoot<
-		TContext extends Record<string, unknown> = NestRouteContext,
-		TRequest = unknown,
-		TResponse = unknown,
-	>(
-		options: RestRpcModuleOptions<TContext, TRequest, TResponse> = {},
+	static forRoot<TContext extends Record<string, unknown> = DefaultNestContext>(
+		options: RestRpcModuleOptions<TContext> = {},
 	): DynamicModule {
 		return {
 			module: RestRpcModule,

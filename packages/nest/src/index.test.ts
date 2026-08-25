@@ -10,7 +10,6 @@ import {
 import "reflect-metadata";
 import request from "supertest";
 import {
-	initNest,
 	RestRpcModule,
 	Route,
 	type RouteHandlers,
@@ -67,7 +66,6 @@ describe("Nest route decorator", () => {
 
 	it("executes a returned route implementation through Nest routing", async () => {
 		type AppContext = { userId?: string };
-		const nest = initNest<AppContext>();
 
 		class TodoRoutes {
 			private readonly userPrefix: string;
@@ -77,10 +75,13 @@ describe("Nest route decorator", () => {
 			}
 
 			getTodo() {
-				return nest.route(api.todos.get, async ({ id, context }) => ({
-					id: `${this.userPrefix}${id}`,
-					userId: context.userId,
-				}));
+				return route<typeof api.todos.get, AppContext>(
+					api.todos.get,
+					async ({ id, context }) => ({
+						id: `${this.userPrefix}${id}`,
+						userId: context.userId,
+					}),
+				);
 			}
 		}
 
@@ -101,19 +102,15 @@ describe("Nest route decorator", () => {
 
 		@Module({
 			imports: [
-				RestRpcModule.forRoot<AppContext>({
-					createContext: ({ req }) => ({
-						userId:
-							typeof req === "object" &&
-							req !== null &&
-							"headers" in req &&
-							typeof req.headers === "object" &&
-							req.headers !== null
-								? String(
-										(req.headers as Record<string, unknown>)["x-user-id"] ?? "",
-									) || undefined
-								: undefined,
-					}),
+				RestRpcModule.forRoot({
+					createContext: (context) => {
+						const req = context
+							.switchToHttp()
+							.getRequest<{ headers: Record<string, unknown> }>();
+						return {
+							userId: String(req.headers["x-user-id"] ?? "") || undefined,
+						};
+					},
 				}),
 			],
 			controllers: [TodosController],
@@ -154,7 +151,6 @@ describe("Nest route decorator", () => {
 
 	it("supports a class handler model through a one-route router subtree", async () => {
 		type AppContext = { owner?: string };
-		const nest = initNest<AppContext>();
 
 		@Injectable()
 		class ClassTodoService {
@@ -164,7 +160,9 @@ describe("Nest route decorator", () => {
 		}
 
 		@Injectable()
-		class ClassTodoRoutes implements RouteHandlers<typeof api.classTodos> {
+		class ClassTodoRoutes
+			implements RouteHandlers<typeof api.classTodos, AppContext>
+		{
 			private readonly todos: ClassTodoService;
 
 			constructor(@Inject(ClassTodoService) todos: ClassTodoService) {
@@ -192,25 +190,24 @@ describe("Nest route decorator", () => {
 
 			@Route(api.classTodos.get)
 			getTodo() {
-				return nest.router(api.classTodos, this.routes).get;
+				return router<typeof api.classTodos, AppContext>(
+					api.classTodos,
+					this.routes,
+				).get;
 			}
 		}
 
 		@Module({
 			imports: [
-				RestRpcModule.forRoot<AppContext>({
-					createContext: ({ req }) => ({
-						owner:
-							typeof req === "object" &&
-							req !== null &&
-							"headers" in req &&
-							typeof req.headers === "object" &&
-							req.headers !== null
-								? String(
-										(req.headers as Record<string, unknown>)["x-owner"] ?? "",
-									) || undefined
-								: undefined,
-					}),
+				RestRpcModule.forRoot({
+					createContext: (context) => {
+						const req = context
+							.switchToHttp()
+							.getRequest<{ headers: Record<string, unknown> }>();
+						return {
+							owner: String(req.headers["x-owner"] ?? "") || undefined,
+						};
+					},
 				}),
 			],
 			controllers: [ClassTodosController],

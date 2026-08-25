@@ -15,11 +15,7 @@ import {
 import type { Observable } from "rxjs";
 import { from, lastValueFrom } from "rxjs";
 import { REST_RPC_ROUTE_METADATA, type RouteMetadata } from "./constants.ts";
-import type {
-	CreateContextInput,
-	NestRouteContext,
-	RestRpcModuleOptions,
-} from "./module.ts";
+import type { RestRpcModuleOptions } from "./module.ts";
 
 type HeaderWriter = {
 	setHeader(name: string, value: unknown): void;
@@ -85,19 +81,6 @@ const createRequestSignal = (req: ExpressLikeRequest, res: unknown) => {
 	return controller.signal;
 };
 
-const defaultCreateContext = ({
-	req,
-	res,
-	signal,
-}: CreateContextInput<ExpressLikeRequest, unknown>): NestRouteContext<
-	ExpressLikeRequest,
-	unknown
-> => ({
-	req,
-	res,
-	signal,
-});
-
 const writeStreamResponse = async (
 	result: AsyncIterable<unknown>,
 	res: ExpressLikeResponse,
@@ -140,17 +123,10 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 		const req = http.getRequest<ExpressLikeRequest>();
 		const res = http.getResponse<unknown>();
 		const signal = createRequestSignal(req, res);
-		const baseContext = {
-			executionContext: context,
-			req,
-			res,
-			signal,
-		};
+		const userContext = await this.options?.createContext?.(context);
 		const routeContext = {
-			...defaultCreateContext(baseContext),
-			...(await (this.options?.createContext
-				? this.options.createContext(baseContext)
-				: {})),
+			...userContext,
+			signal,
 		};
 		const implementation = assertRouteImplementation(
 			await lastValueFrom(next.handle()),

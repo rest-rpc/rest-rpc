@@ -8,12 +8,12 @@ import {
 	type as schemaType,
 } from "@rest-rpc/core/contract";
 import {
-	initNest,
 	RestRpcModule,
 	Route,
 	type RouteHandlers,
 	type RouteRequest,
 	Router,
+	route,
 	router,
 } from "@rest-rpc/nest";
 import "reflect-metadata";
@@ -34,13 +34,11 @@ it("serves a contract route through a Nest controller", async () => {
 		source: string;
 	};
 
-	const nest = initNest<AppContext>();
-
 	@Controller()
 	class ItemsController {
 		@Route(integrationContract.items.get)
 		getItem() {
-			return nest.route(
+			return route<typeof integrationContract.items.get, AppContext>(
 				integrationContract.items.get,
 				async ({ id, context }) => {
 					return {
@@ -54,20 +52,15 @@ it("serves a contract route through a Nest controller", async () => {
 
 	@Module({
 		imports: [
-			RestRpcModule.forRoot<AppContext>({
-				createContext: ({ req }) => ({
-					source:
-						typeof req === "object" &&
-						req !== null &&
-						"headers" in req &&
-						typeof req.headers === "object" &&
-						req.headers !== null
-							? String(
-									(req.headers as Record<string, unknown>)["x-test-source"] ??
-										"nest",
-								)
-							: "nest",
-				}),
+			RestRpcModule.forRoot({
+				createContext: (context) => {
+					const req = context
+						.switchToHttp()
+						.getRequest<{ headers: Record<string, unknown> }>();
+					return {
+						source: String(req.headers["x-test-source"] ?? "nest"),
+					};
+				},
 			}),
 		],
 		controllers: [ItemsController],
@@ -98,8 +91,6 @@ it("serves a contract route implemented by a Nest provider class", async () => {
 		source: string;
 	};
 
-	const nest = initNest<AppContext>();
-
 	@Injectable()
 	class ItemService {
 		formatTitle(source: string, id: string) {
@@ -108,7 +99,9 @@ it("serves a contract route implemented by a Nest provider class", async () => {
 	}
 
 	@Injectable()
-	class ItemRoutes implements RouteHandlers<typeof classContract.items> {
+	class ItemRoutes
+		implements RouteHandlers<typeof classContract.items, AppContext>
+	{
 		private readonly items: ItemService;
 
 		constructor(@Inject(ItemService) items: ItemService) {
@@ -136,26 +129,24 @@ it("serves a contract route implemented by a Nest provider class", async () => {
 
 		@Route(classContract.items.get)
 		getItem() {
-			return nest.router(classContract.items, this.routes).get;
+			return router<typeof classContract.items, AppContext>(
+				classContract.items,
+				this.routes,
+			).get;
 		}
 	}
 
 	@Module({
 		imports: [
-			RestRpcModule.forRoot<AppContext>({
-				createContext: ({ req }) => ({
-					source:
-						typeof req === "object" &&
-						req !== null &&
-						"headers" in req &&
-						typeof req.headers === "object" &&
-						req.headers !== null
-							? String(
-									(req.headers as Record<string, unknown>)["x-test-source"] ??
-										"nest",
-								)
-							: "nest",
-				}),
+			RestRpcModule.forRoot({
+				createContext: (context) => {
+					const req = context
+						.switchToHttp()
+						.getRequest<{ headers: Record<string, unknown> }>();
+					return {
+						source: String(req.headers["x-test-source"] ?? "nest"),
+					};
+				},
 			}),
 		],
 		controllers: [ItemsController],

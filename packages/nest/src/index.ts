@@ -19,18 +19,19 @@ export type {
 } from "@rest-rpc/server";
 export { clearCookie, RouteResponseError, setCookie } from "@rest-rpc/server";
 export type {
-	CreateContextInput,
+	DefaultNestContext,
+	NestHandlerContext,
+	NestRouteContext,
 	RestRpcModuleOptions,
 } from "./module.ts";
 export { RestRpcModule } from "./module.ts";
 export type {
 	NestContract,
-	NestHandlerContext,
 	RouteHandler,
 	RouteHandlers,
 	RouteRequest,
 } from "./routeImplementation.ts";
-export { initNest, route, router } from "./routeImplementation.ts";
+export { route, router } from "./routeImplementation.ts";
 
 const methodMap: Record<HttpMethod, RequestMethod> = {
 	DELETE: RequestMethod.DELETE,

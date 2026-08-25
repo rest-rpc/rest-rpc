@@ -19,20 +19,14 @@ the contract.
 import { Controller, Injectable, Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import {
-	initNest,
 	RestRpcModule,
 	RouteRequest,
 	RouteHandlers,
 	Router,
+	router,
 } from "@rest-rpc/nest";
-import type { Request, Response } from "express";
+import type { Request } from "express";
 import { api } from "./contract";
-
-type AppContext = {
-	userId: string;
-};
-
-const nest = initNest<AppContext>();
 
 @Injectable()
 class TodoRepository {
@@ -46,14 +40,14 @@ class TodoRepository {
 }
 
 @Injectable()
-class TodoService implements RouteHandlers<typeof api.todos, AppContext> {
+class TodoService implements RouteHandlers<typeof api.todos> {
 	constructor(private readonly todos: TodoRepository) {}
 
-	get({ id, context }: RouteRequest<typeof api.todos.get, AppContext>) {
+	get({ id, context }: RouteRequest<typeof api.todos.get>) {
 		return this.todos.findForUser(id, context.userId);
 	}
 
-	create({ title, context }: RouteRequest<typeof api.todos.create, AppContext>) {
+	create({ title, context }: RouteRequest<typeof api.todos.create>) {
 		return {
 			status: 201 as const,
 			body: this.todos.createForUser({ title, userId: context.userId }),
@@ -67,21 +61,33 @@ class TodoController {
 
 	@Router(api.todos)
 	todosRouter() {
-		return nest.router(api.todos, this.todos);
+		return router(api.todos, this.todos);
+	}
+}
+
+declare module "@rest-rpc/nest" {
+	interface DefaultNestContext {
+		userId: string;
+		request: Request;
 	}
 }
 
 @Module({
 	imports: [
-		RestRpcModule.forRoot<AppContext, Request, Response>({
-			createContext: ({ req }) => ({
-				userId: String(req.headers["x-user-id"] ?? ""),
-			}),
+		RestRpcModule.forRoot({
+			createContext: (context) => {
+				const req = context.switchToHttp().getRequest<Request>();
+				return {
+					userId: req.header("x-user-id") ?? "",
+					request: req,
+				};
+			},
 		}),
 	],
 	controllers: [TodoController],
 	providers: [TodoRepository, TodoService],
 })
+
 class AppModule {}
 
 const app = await NestFactory.create(AppModule);
@@ -103,14 +109,8 @@ do not match the contract shape.
 
 ```ts
 import { Controller } from "@nestjs/common";
-import { Route, initNest } from "@rest-rpc/nest";
+import { Route, route } from "@rest-rpc/nest";
 import { api } from "./contract";
-
-type AppContext = {
-	userId: string;
-};
-
-const nest = initNest<AppContext>();
 
 @Controller()
 class TodoController {
@@ -118,7 +118,7 @@ class TodoController {
 
 	@Route(api.todos.get)
 	getTodo() {
-		return nest.route(api.todos.get, ({ id, context }) => {
+		return route(api.todos.get, ({ id, context }) => {
 			return this.todos.findForUser(id, context.userId);
 		});
 	}
@@ -136,7 +136,7 @@ better fit for production Nest modules.
 class TodoController {
 	@Router(api.todos)
 	todosRouter() {
-		return nest.router(api.todos, {
+		return router(api.todos, {
 			get: ({ id }) => ({ id, title: "Write docs" }),
 			create: ({ title }) => ({
 				status: 201 as const,
@@ -149,49 +149,48 @@ class TodoController {
 
 ## Framework Context
 
-Nest route handlers receive the context returned by `createContext`, plus the
-raw request, response, and abort signal.
+Nest route handlers receive the context returned by `createContext`, plus an
+adapter-supplied abort signal.
 
 ```ts
-type NestHandlerContext<TContext, TRequest = unknown, TResponse = unknown> =
+type NestHandlerContext<TContext> =
 	TContext & {
-		req: TRequest;
-		res: TResponse;
 		signal: AbortSignal;
 	};
 ```
 
-You can pass request and response types to `initNest` or the module options when
-you want framework-specific access.
+Augment `DefaultNestContext` to set the app context used by `RouteRequest`,
+`RouteHandler`, `RouteHandlers`, `route()`, and `router()`.
 
 ```ts
-import type { Request, Response } from "express";
-import { initNest, RestRpcModule } from "@rest-rpc/nest";
+import type { Request } from "express";
+import { RestRpcModule } from "@rest-rpc/nest";
 
-type AppContext = {
-	userId: string;
-};
+declare module "@rest-rpc/nest" {
+	interface DefaultNestContext {
+		request: Request;
+		userId: string;
+	}
+}
 
-const nest = initNest<AppContext, Request, Response>();
+RestRpcModule.forRoot({
+	createContext: (context) => {
+		const request = context.switchToHttp().getRequest<Request>();
 
-RestRpcModule.forRoot<AppContext, Request, Response>({
-	createContext: ({ req }) => ({
-		userId: req.header("x-user-id") ?? "",
-	}),
+		return {
+			request,
+			userId: request.header("x-user-id") ?? "",
+		};
+	},
 });
 ```
 
 ## Options
 
 ```ts
-type RestRpcModuleOptions<TContext, TRequest = unknown, TResponse = unknown> = {
-	createContext?: (input: {
-		req: TRequest;
-		res: TResponse;
-		signal: AbortSignal;
-		executionContext: ExecutionContext;
-	}) => TContext | Promise<TContext>;
-	errorHandlers?: ServerErrorHandlers<TContext>;
+type RestRpcModuleOptions<TContext = DefaultNestContext> = {
+	createContext?: (context: ExecutionContext) => TContext | Promise<TContext>;
+	errorHandlers?: ServerErrorHandlers<TContext & { signal: AbortSignal }>;
 };
 ```
 
@@ -203,7 +202,7 @@ response. Other unhandled route errors use `onUnhandledError`, or are re-thrown
 when that hook is omitted or returns `undefined`.
 
 ```ts
-RestRpcModule.forRoot<AppContext>({
+RestRpcModule.forRoot({
 	errorHandlers: {
 		onRequestValidationError: ({ issues }) => ({
 			status: 422,
@@ -220,8 +219,3 @@ RestRpcModule.forRoot<AppContext>({
 	},
 });
 ```
-
-:::note
-The current Nest adapter is an HTTP adapter. It reuses Nest controller routing
-and a global interceptor to execute rest-rpc route implementations.
-:::
