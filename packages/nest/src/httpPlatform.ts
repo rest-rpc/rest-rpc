@@ -27,7 +27,7 @@ export type NestHttpReply = {
 
 export type NestHttpPlatform = {
 	signal: AbortSignal;
-	reply?: NestHttpReply;
+	reply: NestHttpReply;
 };
 
 export const hasFunction = <TName extends string>(
@@ -45,5 +45,11 @@ export const createNestHttpPlatform = (
 	const platform =
 		createExpressHttpPlatform(req, res) ?? createFastifyHttpPlatform(req, res);
 
-	return platform ?? { signal: new AbortController().signal };
+	if (!platform) {
+		throw new Error(
+			"Unsupported Nest HTTP platform. @rest-rpc/nest supports the Nest Express and Fastify adapters.",
+		);
+	}
+
+	return platform;
 };

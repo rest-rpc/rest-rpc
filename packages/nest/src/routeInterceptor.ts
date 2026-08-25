@@ -91,10 +91,6 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 			},
 		);
 
-		if (!reply) {
-			return result.kind === "json" ? result.body : undefined;
-		}
-
 		return handleHttpRouteResult(result, {
 			setHeader: (name, value) => {
 				if (value !== undefined) reply.setHeader(name, value);
