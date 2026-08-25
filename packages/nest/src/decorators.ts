@@ -79,11 +79,6 @@ const copyPropertyMetadata = (
 	}
 };
 
-const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
-	(typeof value === "object" || typeof value === "function") &&
-	value !== null &&
-	typeof (value as { then?: unknown }).then === "function";
-
 let routerRouteMethodId = 0;
 
 const createRouterRouteMethod = (
@@ -97,11 +92,8 @@ const createRouterRouteMethod = (
 	if (typeof original !== "function") return;
 
 	const routeMethodName = `__restRpcRouter_${String(propertyKey)}_${routerRouteMethodId++}`;
-	const routeMethod = function (this: unknown, ...args: unknown[]) {
-		const tree = original.apply(this, args);
-		if (isPromiseLike(tree)) {
-			return tree.then((resolved) => getImplementationAtPath(resolved, path));
-		}
+	const routeMethod = async function (this: unknown, ...args: unknown[]) {
+		const tree = await original.apply(this, args);
 		return getImplementationAtPath(tree, path);
 	};
 
