@@ -93,7 +93,8 @@ const createExpressReply = (res: ExpressLikeResponse): NestHttpReply => ({
 	},
 	sendCustom: (status, body) => {
 		res.status(status);
-		return body;
+		res.send(body);
+		return undefined;
 	},
 	sendStream: (input) => writeExpressStreamResponse(res, input),
 });

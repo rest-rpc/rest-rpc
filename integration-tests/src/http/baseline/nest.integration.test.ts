@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, it } from "node:test";
 import { Controller, Inject, Injectable, Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { initClient } from "@rest-rpc/core";
 import {
 	route as contractRoute,
 	router as contractRouter,
@@ -23,6 +24,58 @@ import { runClientHttpSuite } from "./suite.ts";
 runClientHttpSuite(
 	createNestAdapter(integrationContract, createIntegrationHandlers()),
 );
+
+it("combines Nest controller prefixes with contract route paths", async () => {
+	const server = await createNestAdapter(
+		integrationContract,
+		createIntegrationHandlers(),
+		{ controllerPrefix: "api/v1" },
+	).start();
+
+	try {
+		const client = initClient(integrationContract, {
+			baseUrl: `${server.origin}/api/v1`,
+		});
+
+		assert.equal(await client.health.fetch(), undefined);
+		assert.equal((await fetch(`${server.origin}/api/v1/health`)).status, 204);
+		assert.equal((await fetch(`${server.origin}/health`)).status, 404);
+	} finally {
+		await server.close();
+	}
+});
+
+it("registers router routes whose contract key paths would produce the same flattened name", async () => {
+	const collisionContract = contractRouter({
+		a_b: contractRoute({
+			method: "GET",
+			path: "/flat",
+			response: schemaType<{ source: string }>(),
+		}),
+		a: {
+			b: contractRoute({
+				method: "GET",
+				path: "/nested",
+				response: schemaType<{ source: string }>(),
+			}),
+		},
+	});
+	const server = await createNestAdapter(collisionContract, {
+		a_b: () => ({ source: "flat" }),
+		a: {
+			b: () => ({ source: "nested" }),
+		},
+	}).start();
+
+	try {
+		const client = initClient(collisionContract, { baseUrl: server.origin });
+
+		assert.deepEqual(await client.a_b.fetch(), { source: "flat" });
+		assert.deepEqual(await client.a.b.fetch(), { source: "nested" });
+	} finally {
+		await server.close();
+	}
+});
 
 const classContract = contractRouter({
 	items: {

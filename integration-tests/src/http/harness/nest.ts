@@ -17,6 +17,7 @@ export type NestAdapterOptions = {
 		app: Awaited<ReturnType<typeof NestFactory.create>>,
 	) => void | Promise<void>;
 	configureFastify?: (app: FastifyInstance) => void | Promise<void>;
+	controllerPrefix?: string;
 	moduleOptions?: RestRpcModuleOptions<Record<string, unknown>>;
 	platform?: "express" | "fastify";
 };
@@ -28,7 +29,7 @@ export const createNestAdapter = <TContract extends Contract>(
 ) => ({
 	name: options.platform === "fastify" ? "nest-fastify" : "nest",
 	start: async (): Promise<StartedServer> => {
-		@Controller()
+		@Controller(options.controllerPrefix ?? "")
 		class RestRpcController {
 			@Router(contract)
 			api() {

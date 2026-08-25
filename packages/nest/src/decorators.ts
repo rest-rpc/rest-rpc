@@ -64,6 +64,8 @@ const copyMetadata = (from: object, to: object) => {
 	}
 };
 
+let routerRouteMethodId = 0;
+
 const createRouterRouteMethod = (
 	target: object,
 	propertyKey: string | symbol,
@@ -74,7 +76,7 @@ const createRouterRouteMethod = (
 	const original = descriptor.value;
 	if (typeof original !== "function") return;
 
-	const routeMethodName = `__restRpcRouter_${String(propertyKey)}_${path.join("_")}`;
+	const routeMethodName = `__restRpcRouter_${String(propertyKey)}_${routerRouteMethodId++}`;
 	const routeMethod = function (this: unknown, ...args: unknown[]) {
 		const tree = original.apply(this, args);
 		return getImplementationAtPath(tree, path);
