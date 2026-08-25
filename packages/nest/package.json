@@ -38,8 +38,7 @@
 		"build": "tsc -p tsconfig.build.json",
 		"prepack": "pnpm run build",
 		"prepublishOnly": "node ../../scripts/ensure-pnpm-publish.cjs",
-		"typecheck": "pnpm run build && tsc -p tsconfig.json && tsd",
-		"test": "pnpm --filter @rest-rpc/server build && pnpm run build && node --test dist/**/*.test.js"
+		"typecheck": "pnpm run build && tsc -p tsconfig.json && tsd"
 	},
 	"tsd": {
 		"directory": "test-d"
@@ -52,7 +51,9 @@
 		"@nestjs/common": "^11.0.0",
 		"@nestjs/core": "^11.0.0",
 		"@nestjs/platform-express": "^11.0.0",
+		"@nestjs/platform-fastify": "^11.2.3",
 		"@types/express": "^5.0.1",
+		"@types/node": "^26.3.0",
 		"@types/supertest": "^6.0.0",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.0",
@@ -61,7 +62,17 @@
 	"peerDependencies": {
 		"@nestjs/common": "^11.0.0",
 		"@nestjs/core": "^11.0.0",
+		"@nestjs/platform-express": "^11.0.0",
+		"@nestjs/platform-fastify": "^11.0.0",
 		"reflect-metadata": "^0.2.0",
 		"rxjs": "^7.8.0"
+	},
+	"peerDependenciesMeta": {
+		"@nestjs/platform-express": {
+			"optional": true
+		},
+		"@nestjs/platform-fastify": {
+			"optional": true
+		}
 	}
 }

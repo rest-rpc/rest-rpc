@@ -10,40 +10,15 @@ import {
 	handleHttpRouteResult,
 	isHttpRouteImplementation,
 	type RouteImplementation,
-	type ServerErrorHandlers,
 } from "@rest-rpc/server";
 import type { Observable } from "rxjs";
 import { from, lastValueFrom } from "rxjs";
-import { REST_RPC_ROUTE_METADATA, type RouteMetadata } from "./constants.ts";
+import { REST_RPC_ROUTE_METADATA, type RouteMetadata } from "./decorators.ts";
+import {
+	createNestHttpPlatform,
+	type NestHttpRequest,
+} from "./httpPlatform.ts";
 import type { RestRpcModuleOptions } from "./module.ts";
-
-type HeaderWriter = {
-	setHeader(name: string, value: unknown): void;
-};
-
-type ExpressLikeResponse = HeaderWriter & {
-	status(code: number): ExpressLikeResponse;
-	json(body: unknown): unknown;
-	send(body?: unknown): unknown;
-	write?(body: unknown): unknown;
-	end(): unknown;
-};
-
-type ExpressLikeRequest = {
-	body?: unknown;
-	query?: unknown;
-	params?: unknown;
-	headers?: unknown;
-	once?(event: string, listener: () => void): unknown;
-};
-
-const isExpressLikeResponse = (value: unknown): value is ExpressLikeResponse =>
-	typeof value === "object" &&
-	value !== null &&
-	"status" in value &&
-	"json" in value &&
-	"send" in value &&
-	"setHeader" in value;
 
 const assertRouteImplementation = (
 	value: unknown,
@@ -68,38 +43,6 @@ const assertRouteImplementation = (
 	return implementation;
 };
 
-const createRequestSignal = (req: ExpressLikeRequest, res: unknown) => {
-	const controller = new AbortController();
-	const abort = () => controller.abort();
-	req.once?.("aborted", abort);
-	if (res && typeof res === "object" && "once" in res) {
-		const once = res.once;
-		if (typeof once === "function") {
-			once.call(res, "close", abort);
-		}
-	}
-	return controller.signal;
-};
-
-const writeStreamResponse = async (
-	result: AsyncIterable<unknown>,
-	res: ExpressLikeResponse,
-	statusCode: number,
-	contentType = "application/x-ndjson",
-	mode: "ndjson" | "raw" = "ndjson",
-) => {
-	res.status(statusCode);
-	res.setHeader("content-type", contentType);
-	for await (const chunk of result) {
-		if (res.write) {
-			res.write(mode === "ndjson" ? `${JSON.stringify(chunk)}\n` : chunk);
-			continue;
-		}
-		res.send(mode === "ndjson" ? `${JSON.stringify(chunk)}\n` : chunk);
-	}
-	return res.end();
-};
-
 @Injectable()
 export class RestRpcRouteInterceptor implements NestInterceptor {
 	constructor(options?: RestRpcModuleOptions<Record<string, unknown>>) {
@@ -120,9 +63,9 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 		if (!metadata) return lastValueFrom(next.handle());
 
 		const http = context.switchToHttp();
-		const req = http.getRequest<ExpressLikeRequest>();
+		const req = http.getRequest<NestHttpRequest>();
 		const res = http.getResponse<unknown>();
-		const signal = createRequestSignal(req, res);
+		const { signal, reply } = createNestHttpPlatform(req, res);
 		const userContext = await this.options?.createContext?.(context);
 		const routeContext = {
 			...userContext,
@@ -144,34 +87,23 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 					headers: req.headers,
 				},
 				context: routeContext,
-				errorHandlers: this.options?.errorHandlers as
-					| ServerErrorHandlers<Record<string, unknown>>
-					| undefined,
+				errorHandlers: this.options?.errorHandlers,
 			},
 		);
 
-		if (!isExpressLikeResponse(res)) {
+		if (!reply) {
 			return result.kind === "json" ? result.body : undefined;
 		}
 
 		return handleHttpRouteResult(result, {
 			setHeader: (name, value) => {
-				if (value !== undefined) res.setHeader(name, value);
+				if (value !== undefined) reply.setHeader(name, value);
 			},
-			sendEmpty: (status) => {
-				res.status(status);
-				return undefined;
-			},
-			sendJson: (status, body) => {
-				res.status(status);
-				return body;
-			},
-			sendCustom: (status, body) => {
-				res.status(status);
-				return body;
-			},
+			sendEmpty: (status) => reply.sendEmpty(status),
+			sendJson: (status, body) => reply.sendJson(status, body),
+			sendCustom: (status, body) => reply.sendCustom(status, body),
 			sendStream: ({ body, status, contentType, mode }) =>
-				writeStreamResponse(body, res, status, contentType, mode),
+				reply.sendStream({ body, status, contentType, mode, signal }),
 		});
 	}
 }

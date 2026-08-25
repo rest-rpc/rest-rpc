@@ -4,8 +4,6 @@ import { APP_INTERCEPTOR } from "@nestjs/core";
 import type { ServerErrorHandlers } from "@rest-rpc/server";
 import { RestRpcRouteInterceptor } from "./routeInterceptor.ts";
 
-export const REST_RPC_MODULE_OPTIONS = Symbol.for("rest-rpc:nest-options");
-
 /**
  * Default application context passed to Nest route handlers.
  *
@@ -15,18 +13,13 @@ export const REST_RPC_MODULE_OPTIONS = Symbol.for("rest-rpc:nest-options");
 export interface DefaultNestContext extends Record<string, unknown> {}
 
 /**
- * Context supplied by the Nest adapter to every route handler.
- */
-export type NestRouteContext = {
-	signal: AbortSignal;
-};
-
-/**
  * The context object passed to Nest adapter route handlers.
  */
 export type NestHandlerContext<
 	TContext extends Record<string, unknown> = DefaultNestContext,
-> = TContext & NestRouteContext;
+> = TContext & {
+	signal: AbortSignal;
+};
 
 /**
  * Options for configuring the rest-rpc Nest adapter.
@@ -49,16 +42,18 @@ export class RestRpcModule {
 	static forRoot<TContext extends Record<string, unknown> = DefaultNestContext>(
 		options: RestRpcModuleOptions<TContext> = {},
 	): DynamicModule {
+		const restRpcModuleOptions = Symbol.for("rest-rpc:nest-options");
+
 		return {
 			module: RestRpcModule,
 			providers: [
 				{
-					provide: REST_RPC_MODULE_OPTIONS,
+					provide: restRpcModuleOptions,
 					useValue: options,
 				},
 				{
 					provide: RestRpcRouteInterceptor,
-					inject: [REST_RPC_MODULE_OPTIONS],
+					inject: [restRpcModuleOptions],
 					useFactory: (
 						moduleOptions: RestRpcModuleOptions<Record<string, unknown>>,
 					) => new RestRpcRouteInterceptor(moduleOptions),
