@@ -64,6 +64,26 @@ const copyMetadata = (from: object, to: object) => {
 	}
 };
 
+const copyPropertyMetadata = (
+	target: object,
+	from: string | symbol,
+	to: string | symbol,
+) => {
+	for (const key of Reflect.getMetadataKeys(target.constructor, from)) {
+		Reflect.defineMetadata(
+			key,
+			Reflect.getMetadata(key, target.constructor, from),
+			target.constructor,
+			to,
+		);
+	}
+};
+
+const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
+	(typeof value === "object" || typeof value === "function") &&
+	value !== null &&
+	typeof (value as { then?: unknown }).then === "function";
+
 let routerRouteMethodId = 0;
 
 const createRouterRouteMethod = (
@@ -79,10 +99,14 @@ const createRouterRouteMethod = (
 	const routeMethodName = `__restRpcRouter_${String(propertyKey)}_${routerRouteMethodId++}`;
 	const routeMethod = function (this: unknown, ...args: unknown[]) {
 		const tree = original.apply(this, args);
+		if (isPromiseLike(tree)) {
+			return tree.then((resolved) => getImplementationAtPath(resolved, path));
+		}
 		return getImplementationAtPath(tree, path);
 	};
 
 	copyMetadata(original, routeMethod);
+	copyPropertyMetadata(target, propertyKey, routeMethodName);
 
 	Object.defineProperty(target, routeMethodName, {
 		configurable: true,

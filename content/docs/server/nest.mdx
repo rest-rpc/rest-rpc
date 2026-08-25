@@ -127,20 +127,36 @@ class TodoController {
 
 ## Inline Routers
 
-`@Router()` can also return an inline handler object. This is useful for small
-examples, tests, and prototypes, but provider-backed routers are usually a
-better fit for production Nest modules.
+You can also define the handlers directly in the controller. This is
+useful when your providers expose their own application API instead of
+implementing `RouteHandlers`. The controller maps the typed contract request
+and values from Nest decorators into calls to those providers.
 
 ```ts
+import { Controller, Headers, Injectable } from "@nestjs/common";
+
+@Injectable()
+class TodoService {
+	findForUser(id: string, userId: string) {
+		return { id, title: "Write docs", userId };
+	}
+
+	createForUser(title: string, userId: string) {
+		return { id: "todo-1", title, userId };
+	}
+}
+
 @Controller()
 class TodoController {
+	constructor(private readonly todos: TodoService) {}
+
 	@Router(api.todos)
-	todosRouter() {
+	todosRouter(@Headers("x-user-id") userId: string) {
 		return router(api.todos, {
-			get: ({ id }) => ({ id, title: "Write docs" }),
+			get: ({ id }) => this.todos.findForUser(id, userId),
 			create: ({ title }) => ({
 				status: 201 as const,
-				body: { id: "todo-1", title },
+				body: this.todos.createForUser(title, userId),
 			}),
 		});
 	}

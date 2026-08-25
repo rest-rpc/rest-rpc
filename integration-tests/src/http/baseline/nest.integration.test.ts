@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { after, it } from "node:test";
-import { Controller, Inject, Injectable, Module, Sse } from "@nestjs/common";
+import {
+	Controller,
+	Headers,
+	Inject,
+	Injectable,
+	Module,
+	Sse,
+} from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { initClient } from "@rest-rpc/core";
 import {
@@ -13,6 +20,7 @@ import {
 	Route,
 	type RouteHandlers,
 	type RouteRequest,
+	Router,
 	router,
 } from "@rest-rpc/nest";
 import { of } from "rxjs";
@@ -75,6 +83,63 @@ it("registers router routes whose contract key paths would produce the same flat
 		assert.deepEqual(await client.a.b.fetch(), { source: "nested" });
 	} finally {
 		await server.close();
+	}
+});
+
+it("supports async routers that close over values from Nest parameter decorators", async () => {
+	const asyncContract = contractRouter({
+		get: contractRoute({
+			method: "GET",
+			path: "/async-items/:id",
+			pathParams: { id: schemaType<string>() },
+			headers: { "x-test-source": schemaType<string>() },
+			response: schemaType<{ id: string; title: string }>(),
+		}),
+	});
+	@Injectable()
+	class AsyncItemService {
+		get(source: string, { id }: RouteRequest<typeof asyncContract.get>) {
+			return { id, title: `${source}:async:${id}` };
+		}
+	}
+
+	@Controller()
+	class AsyncItemsController {
+		constructor(
+			@Inject(AsyncItemService) private readonly items: AsyncItemService,
+		) {}
+
+		@Router(asyncContract)
+		async api(@Headers("x-test-source") source: string) {
+			await Promise.resolve();
+			return router(asyncContract, {
+				get: (request) => this.items.get(source, request),
+			});
+		}
+	}
+
+	@Module({
+		imports: [RestRpcModule.forRoot()],
+		controllers: [AsyncItemsController],
+		providers: [AsyncItemService],
+	})
+	class AppModule {}
+
+	const app = await NestFactory.create(AppModule, { logger: false });
+
+	try {
+		await app.listen(0, "127.0.0.1");
+		const client = initClient(asyncContract, { baseUrl: await app.getUrl() });
+
+		assert.deepEqual(
+			await client.get.fetch({
+				id: "item-1",
+				"x-test-source": "decorated",
+			}),
+			{ id: "item-1", title: "decorated:async:item-1" },
+		);
+	} finally {
+		await app.close();
 	}
 });
 
