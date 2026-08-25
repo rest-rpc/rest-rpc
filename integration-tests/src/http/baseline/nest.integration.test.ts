@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, it } from "node:test";
-import { Controller, Inject, Injectable, Module } from "@nestjs/common";
+import { Controller, Inject, Injectable, Module, Sse } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { initClient } from "@rest-rpc/core";
 import {
@@ -15,6 +15,7 @@ import {
 	type RouteRequest,
 	router,
 } from "@rest-rpc/nest";
+import { of } from "rxjs";
 import "reflect-metadata";
 import { createNestAdapter } from "../harness/nest.ts";
 import { integrationContract } from "./contract.ts";
@@ -74,6 +75,41 @@ it("registers router routes whose contract key paths would produce the same flat
 		assert.deepEqual(await client.a.b.fetch(), { source: "nested" });
 	} finally {
 		await server.close();
+	}
+});
+
+it("passes non-rest-rpc Observable handlers through the global interceptor", async () => {
+	@Controller()
+	class EventsController {
+		@Sse("events")
+		events() {
+			return of({ data: { index: 1 } }, { data: { index: 2 } });
+		}
+	}
+
+	@Module({
+		imports: [RestRpcModule.forRoot()],
+		controllers: [EventsController],
+	})
+	class AppModule {}
+
+	const app = await NestFactory.create(AppModule, { logger: false });
+
+	try {
+		await app.listen(0, "127.0.0.1");
+		const response = await fetch(`${await app.getUrl()}/events`);
+
+		assert.equal(response.status, 200);
+		assert.match(
+			response.headers.get("content-type") ?? "",
+			/^text\/event-stream/,
+		);
+		assert.deepEqual((await response.text()).match(/^data: .*$/gm), [
+			'data: {"index":1}',
+			'data: {"index":2}',
+		]);
+	} finally {
+		await app.close();
 	}
 });
 

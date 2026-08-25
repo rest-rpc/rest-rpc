@@ -52,16 +52,20 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 	private readonly options?: RestRpcModuleOptions<Record<string, unknown>>;
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-		return from(this.handle(context, next));
-	}
-
-	private async handle(context: ExecutionContext, next: CallHandler) {
 		const metadata = Reflect.getMetadata(
 			REST_RPC_ROUTE_METADATA,
 			context.getHandler(),
 		) as RouteMetadata | undefined;
-		if (!metadata) return lastValueFrom(next.handle());
+		if (!metadata) return next.handle();
 
+		return from(this.handle(context, next, metadata));
+	}
+
+	private async handle(
+		context: ExecutionContext,
+		next: CallHandler,
+		metadata: RouteMetadata,
+	) {
 		const http = context.switchToHttp();
 		const req = http.getRequest<NestHttpRequest>();
 		const res = http.getResponse<unknown>();
