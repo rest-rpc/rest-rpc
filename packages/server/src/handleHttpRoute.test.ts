@@ -549,20 +549,12 @@ describe("handleHttpRoute SSE responses", () => {
 		const signal = new AbortController().signal;
 		const result = await handleHttpRoute(
 			normalizedSseRoute(z.object({ id: z.coerce.string() })),
-			(request) => {
+			async function* (request) {
 				assert.equal(request.context.requestId, "request-1");
 				assert.equal(request.context.signal, signal);
 				assert.equal(request.context.lastEventId, "event-1");
 
-				return {
-					status: 200,
-					headers: {
-						"cache-control": "private",
-					},
-					body: (async function* () {
-						yield sseEvent({ id: 123 }, { id: "event-2", retry: 5_000 });
-					})(),
-				};
+				yield sseEvent({ id: 123 }, { id: "event-2", retry: 5_000 });
 			},
 			{
 				request: {
@@ -579,7 +571,7 @@ describe("handleHttpRoute SSE responses", () => {
 		assert.equal(result.contentType, "text/event-stream");
 		assert.equal(result.mode, "sse");
 		assert.deepEqual(result.headers, {
-			"cache-control": "private",
+			"cache-control": "no-cache",
 			"x-accel-buffering": "no",
 		});
 

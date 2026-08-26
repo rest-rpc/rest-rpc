@@ -205,6 +205,41 @@ expectError(
 	}),
 );
 
+// it should not allow response envelope for an sse handler
+expectError(
+	route(sseApi.events.notifications, () => ({
+		status: 200,
+		body: (async function* () {
+			yield sseEvent({
+				id: "event-1",
+				createdAt: "2026-08-27T00:00:00.000Z",
+			});
+		})(),
+		headers: {
+			"cache-control": "private",
+		},
+	})),
+);
+
+expectError(
+	router(sseApi, {
+		events: {
+			notifications: () => ({
+				status: 200,
+				body: (async function* () {
+					yield sseEvent({
+						id: "event-1",
+						createdAt: "2026-08-27T00:00:00.000Z",
+					});
+				})(),
+				headers: {
+					"cache-control": "private",
+				},
+			}),
+		},
+	}),
+);
+
 // route handler input and output coverage
 
 // should use server-side transformed schema output as handler input

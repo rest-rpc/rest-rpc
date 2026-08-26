@@ -268,6 +268,33 @@ const normalizeResponseResult = async (
 	};
 };
 
+const normalizeSseResponseResult = (
+	route: HttpRouteDeclaration,
+	body: unknown,
+): HttpRouteResult => {
+	const status = getSingleSuccessfulStatus(route);
+	if (status === undefined) {
+		throw new Error(
+			`Service for "${route.method} ${route.path}" must return a declared response object.`,
+		);
+	}
+
+	const schema = getResponseSchema(route, status);
+	const bodySchema = schema ? getResponseBody(schema) : undefined;
+
+	return {
+		kind: "stream",
+		status,
+		headers: {
+			"cache-control": "no-cache",
+			"x-accel-buffering": "no",
+		},
+		contentType: "text/event-stream",
+		mode: "sse",
+		body: validateSseEvents(body as AsyncIterable<unknown>, bodySchema),
+	};
+};
+
 const normalizeServerErrorResponse = (
 	response: ServerErrorResponse,
 ): HttpRouteResult => {
@@ -322,6 +349,8 @@ const normalizeHandlerResult = async <TContext extends HttpRouteHandlerContext>(
 	errorContext: TContext,
 ): Promise<HttpRouteResult> => {
 	try {
+		if (route.mode === "sse") return normalizeSseResponseResult(route, result);
+
 		return await normalizeResponseResult(
 			route,
 			normalizeHandlerResultEnvelope(route, result),
