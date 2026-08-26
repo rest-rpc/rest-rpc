@@ -24,6 +24,25 @@ describe("formatSseEvent", () => {
 			/SSE event data must be JSON serializable/,
 		);
 	});
+
+	it("rejects invalid SSE control-field values", () => {
+		assert.equal(
+			formatSseEvent(sseEvent({ ok: true }, { id: "abc", retry: 0 })),
+			'id: abc\nretry: 0\ndata: {"ok":true}\n\n',
+		);
+
+		assert.throws(
+			() => formatSseEvent(sseEvent({ ok: true }, { id: "a\u0000b" })),
+			/SSE event id must not contain U\+0000, CR, or LF/,
+		);
+
+		for (const retry of [-1, 1.5, Number.NaN]) {
+			assert.throws(
+				() => formatSseEvent(sseEvent({ retry }, { retry })),
+				/SSE event retry must be a non-negative safe integer/,
+			);
+		}
+	});
 });
 
 describe("validateSseEvents", () => {

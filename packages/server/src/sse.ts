@@ -67,9 +67,15 @@ export async function* validateSseEvents(
 export function formatSseEvent(event: SseEvent<unknown>): string {
 	const lines: string[] = [];
 	if (event.id !== undefined) {
-		lines.push(`id: ${event.id.replaceAll(/[\r\n]/g, "")}`);
+		if (event.id.includes("\0") || /[\r\n]/.test(event.id)) {
+			throw new Error("SSE event id must not contain U+0000, CR, or LF.");
+		}
+		lines.push(`id: ${event.id}`);
 	}
 	if (event.retry !== undefined) {
+		if (!Number.isSafeInteger(event.retry) || event.retry < 0) {
+			throw new Error("SSE event retry must be a non-negative safe integer.");
+		}
 		lines.push(`retry: ${event.retry}`);
 	}
 
