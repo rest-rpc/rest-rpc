@@ -40,7 +40,6 @@ export type WebSocketRouteHandlerContext = Record<string, unknown>;
  * @see {@link https://rest-rpc.dev/docs/type-helpers#server}
  */
 export type SseRouteHandlerContext = {
-	signal: AbortSignal;
 	lastEventId?: string;
 };
 

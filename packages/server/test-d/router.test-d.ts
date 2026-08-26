@@ -28,6 +28,10 @@ type TestRouteHandlerContext = {
 	userId: string;
 };
 
+type RequestSignalRouteHandlerContext = TestRouteHandlerContext & {
+	signal: AbortSignal;
+};
+
 const todoSchema = z.object({
 	id: z.string(),
 	title: z.string(),
@@ -172,8 +176,16 @@ declare const sseRequest: SseRequest;
 expectType<string>(sseRequest.projectId);
 expectType<boolean | undefined>(sseRequest.includeDone);
 expectType<string>(sseRequest.context.userId);
-expectType<AbortSignal>(sseRequest.context.signal);
+expectError(sseRequest.context.signal);
 expectType<string | undefined>(sseRequest.context.lastEventId);
+
+type SseRequestWithSignal = RouteRequest<
+	typeof sseApi.events.notifications,
+	RequestSignalRouteHandlerContext
+>;
+declare const sseRequestWithSignal: SseRequestWithSignal;
+expectType<AbortSignal>(sseRequestWithSignal.context.signal);
+expectType<string | undefined>(sseRequestWithSignal.context.lastEventId);
 
 expectType<RouteSseSent<typeof sseApi.events.notifications>>({
 	id: "event-1",
@@ -187,7 +199,7 @@ expectType<SseEvent<RouteSseSent<typeof sseApi.events.notifications>>>(
 );
 
 route(sseApi.events.notifications, async function* ({ context }) {
-	expectType<AbortSignal>(context.signal);
+	expectType<unknown>(context.signal);
 	expectType<string | undefined>(context.lastEventId);
 
 	yield sseEvent({
