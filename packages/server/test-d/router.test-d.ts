@@ -15,8 +15,11 @@ import {
 	type RouteResponse,
 	type RouteSent,
 	type RouteSocket,
+	type RouteSseSent,
+	type SseEvent,
 	route,
 	router,
+	sseEvent,
 } from "@rest-rpc/server";
 import { expectError, expectType } from "tsd";
 import { z } from "zod";
@@ -141,6 +144,66 @@ socketRequest.context.socket.send({
 socketRequest.context.socket.onMessage((message) => {
 	expectType<RouteReceived<typeof socketApi.socket.room>>(message);
 });
+
+// sse handler request inference
+
+// should expose path params, context, and typed outbound events to sse handlers
+const sseApi = defineRouter({
+	events: {
+		notifications: {
+			method: "GET",
+			path: "/events/:projectId",
+			mode: "sse",
+			pathParams: z.object({ projectId: z.string() }),
+			query: z.object({ includeDone: z.boolean().optional() }),
+			response: z.object({
+				id: z.string(),
+				createdAt: z.string().transform((value) => new Date(value)),
+			}),
+		},
+	},
+});
+
+type SseRequest = RouteRequest<
+	typeof sseApi.events.notifications,
+	TestRouteHandlerContext
+>;
+declare const sseRequest: SseRequest;
+expectType<string>(sseRequest.projectId);
+expectType<boolean | undefined>(sseRequest.includeDone);
+expectType<string>(sseRequest.context.userId);
+expectType<AbortSignal>(sseRequest.context.signal);
+expectType<string | undefined>(sseRequest.context.lastEventId);
+
+expectType<RouteSseSent<typeof sseApi.events.notifications>>({
+	id: "event-1",
+	createdAt: "2026-08-27T00:00:00.000Z",
+});
+expectType<SseEvent<RouteSseSent<typeof sseApi.events.notifications>>>(
+	sseEvent({
+		id: "event-1",
+		createdAt: "2026-08-27T00:00:00.000Z",
+	}),
+);
+
+route(sseApi.events.notifications, async function* ({ context }) {
+	expectType<AbortSignal>(context.signal);
+	expectType<string | undefined>(context.lastEventId);
+
+	yield sseEvent({
+		id: "event-1",
+		createdAt: "2026-08-27T00:00:00.000Z",
+	});
+});
+
+expectError(
+	route(sseApi.events.notifications, async function* () {
+		yield {
+			id: "event-1",
+			createdAt: "2026-08-27T00:00:00.000Z",
+		};
+	}),
+);
 
 // route handler input and output coverage
 
