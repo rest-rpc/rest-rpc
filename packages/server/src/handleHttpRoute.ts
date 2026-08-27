@@ -197,24 +197,6 @@ const normalizeResponseResult = async (
 		};
 	}
 
-	if (route.mode === "sse") {
-		return {
-			kind: "stream",
-			status: result.status,
-			headers: {
-				...headers,
-				"cache-control": headers?.["cache-control"] ?? "no-cache",
-				"x-accel-buffering": headers?.["x-accel-buffering"] ?? "no",
-			},
-			contentType: "text/event-stream",
-			mode: "sse",
-			body: validateSseEvents(
-				result.body as AsyncIterable<unknown>,
-				bodySchema,
-			),
-		};
-	}
-
 	if (bodySchema && isStream(bodySchema)) {
 		if (isCustomBody(bodySchema.schema)) {
 			const streamResult = resolveCustomResponseBody(
