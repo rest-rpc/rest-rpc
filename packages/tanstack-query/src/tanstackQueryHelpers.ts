@@ -251,7 +251,14 @@ type streamedQueryOptionsFor<
 	TSelectedData,
 > = WithFetchOptions<
 	[TData] extends [RouteStreamedQueryData<E>]
-		? StreamedQuerySimpleOptions<E, TStrictStatusCodes, TSelectedData>
+		?
+				| StreamedQuerySimpleOptions<E, TStrictStatusCodes, TSelectedData>
+				| StreamedQueryReducedOptions<
+						E,
+						TStrictStatusCodes,
+						TData,
+						TSelectedData
+				  >
 		: StreamedQueryReducedOptions<E, TStrictStatusCodes, TData, TSelectedData>
 >;
 
