@@ -235,6 +235,19 @@ expectAssignable<Array<{ id: string; message: string }> | undefined>(
 	queryClient.getQueryData(materializedStreamOptions.queryKey),
 );
 
+const selectedStreamOptions = streamTq.events.list.streamedQueryOptions({
+	select(events) {
+		expectType<Array<{ id: string; message: string }>>(events);
+		return events.length;
+	},
+});
+expectAssignable<Promise<Array<{ id: string; message: string }>>>(
+	queryClient.fetchQuery(selectedStreamOptions),
+);
+expectAssignable<Array<{ id: string; message: string }> | undefined>(
+	queryClient.getQueryData(selectedStreamOptions.queryKey),
+);
+
 const reducedStreamOptions = streamTq.events.list.streamedQueryOptions({
 	initialValue: "",
 	reducer: (text, chunk) => {

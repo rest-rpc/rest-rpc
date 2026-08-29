@@ -208,6 +208,7 @@ type StreamedQueryBaseOptions = {
 type StreamedQuerySimpleOptions<
 	E extends RouteDeclaration,
 	TStrictStatusCodes extends boolean,
+	TSelectedData,
 > = StreamedQueryBaseOptions & {
 	reducer?: never;
 	initialValue?: never;
@@ -217,6 +218,7 @@ type StreamedQuerySimpleOptions<
 		QueryObserverOptions<
 			RouteStreamedQueryData<E>,
 			RouteQueryError<E, TStrictStatusCodes>,
+			TSelectedData,
 			RouteStreamedQueryData<E>
 		>,
 		"queryFn" | "queryKey"
@@ -249,7 +251,7 @@ type streamedQueryOptionsFor<
 	TSelectedData,
 > = WithFetchOptions<
 	[TData] extends [RouteStreamedQueryData<E>]
-		? StreamedQuerySimpleOptions<E, TStrictStatusCodes>
+		? StreamedQuerySimpleOptions<E, TStrictStatusCodes, TSelectedData>
 		: StreamedQueryReducedOptions<E, TStrictStatusCodes, TData, TSelectedData>
 >;
 
