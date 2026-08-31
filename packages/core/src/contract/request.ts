@@ -258,7 +258,7 @@ type InferRequestFor<
 				headers: infer H;
 			}
 			? HasRequestInput<R> extends true
-				? E extends { flattenRequestKeys: false }
+				? E extends { request: { flattenKeys: false } }
 					? Merge<
 							([B] extends [never] ? EmptyObject : { body: B }) &
 								([Q] extends [never] ? EmptyObject : { query: Q }) &

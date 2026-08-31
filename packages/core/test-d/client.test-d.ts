@@ -6,12 +6,9 @@ import {
 	type StrictClientResponse,
 	type ClientResponseBody,
 	type ClientSseReceived,
-	customBody,
 	initClient,
-	noBody,
 	route,
 	type as schemaType,
-	stream,
 	webSocketMessages,
 } from "@rest-rpc/core";
 import { expectError, expectType } from "tsd";
@@ -81,6 +78,71 @@ expectType<Promise<Array<{ id: string; title: string }>>>(
 		includeDone: false,
 		page: 1,
 		search: "milk",
+	}),
+);
+
+const groupedRequestApi = {
+	todos: {
+		create: route
+			.post("/todos/:accountId")
+			.flattenRequestKeys(false)
+			.pathParams(z.object({ accountId: z.string() }))
+			.query(z.object({ notify: z.boolean() }))
+			.body(z.object({ title: z.string() }))
+			.headers({ authorization: z.string() })
+			.response(201, todoSchema),
+	},
+};
+
+const groupedRequestClient = initClient(groupedRequestApi, {
+	baseUrl: "https://example.test",
+});
+
+expectType<Promise<{ id: string; title: string }>>(
+	groupedRequestClient.todos.create.fetch({
+		body: { title: "Write type tests" },
+		headers: { authorization: "Bearer token" },
+		pathParams: { accountId: "account-1" },
+		query: { notify: true },
+	}),
+);
+expectError(
+	groupedRequestClient.todos.create.fetch({
+		accountId: "account-1",
+		authorization: "Bearer token",
+		notify: true,
+		title: "Write type tests",
+	}),
+);
+
+const groupedRequestFactory = route.with({ flattenRequestKeys: false });
+const groupedRequestWithApi = {
+	todos: {
+		create: groupedRequestFactory
+			.post("/todos/:accountId")
+			.pathParams(z.object({ accountId: z.string() }))
+			.query(z.object({ notify: z.boolean() }))
+			.body(z.object({ title: z.string() }))
+			.response(201, todoSchema),
+	},
+};
+
+const groupedRequestWithClient = initClient(groupedRequestWithApi, {
+	baseUrl: "https://example.test",
+});
+
+expectType<Promise<{ id: string; title: string }>>(
+	groupedRequestWithClient.todos.create.fetch({
+		body: { title: "Write type tests" },
+		pathParams: { accountId: "account-1" },
+		query: { notify: true },
+	}),
+);
+expectError(
+	groupedRequestWithClient.todos.create.fetch({
+		accountId: "account-1",
+		notify: true,
+		title: "Write type tests",
 	}),
 );
 
