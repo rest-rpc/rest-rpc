@@ -70,12 +70,19 @@ Selecting a method or protocol must happen first. After that, compatible setters
 
 ```ts
 .body(schema)
+.formBody(schemaOrOptions)
+.multipartBody(schemaOrOptions)
+.customBody(schemaOrOptions)
 .query(schema)
+.jsonQuery(schema)
 .pathParams(schema)
 .headers(schemas)
 .requestKeys(map)
 .flattenRequestKeys(boolean)
 .response(status, schema?)
+.customResponse(status, { contentType, schema })
+.streamResponse(status, schema)
+.customStreamResponse(status, { contentType, schema })
 .metadata(value)
 .openApi(value)
 ```
@@ -84,6 +91,7 @@ Selecting a method or protocol must happen first. After that, compatible setters
 
 ```ts
 .query(schema)
+.jsonQuery(schema)
 .pathParams(schema)
 .requestKeys(map)
 .flattenRequestKeys(boolean)
@@ -98,6 +106,7 @@ SSE does not expose `.body()` or `.headers()`.
 
 ```ts
 .query(schema)
+.jsonQuery(schema)
 .pathParams(schema)
 .requestKeys(map)
 .flattenRequestKeys(boolean)
@@ -120,8 +129,8 @@ type BaseRouteDeclaration = {
 	mode?: "http" | "sse" | "webSocket";
 	request?: {
 		body?: RequestBodySchema;
-		query?: QuerySchema;
-		pathParams?: PathParamsSchema;
+		query?: StandardSchemaV1 | JsonQuery;
+		pathParams?: StandardSchemaV1;
 		headers?: RequestSchemaRecord;
 		keys?: RequestKeys;
 		flattenKeys?: boolean;
@@ -146,11 +155,22 @@ HTTP routes additionally expose a canonical response map:
 ```ts
 type HttpRouteDeclaration = BaseRouteDeclaration & {
 	mode?: "http";
-	responses?: RouteResponses;
+	responses: RouteResponses;
 };
 ```
 
-HTTP routes must declare at least one response locally or inherit a common response from their configured factory. Calling `.response(status)` declares an empty response body; supplying the schema argument declares the existing response schema or schema-plus-headers forms. Local statuses override duplicate common statuses.
+HTTP routes must declare at least one response locally or inherit a common response from their configured factory. Calling `.response(status)` declares an empty response body; supplying the schema argument declares a regular Standard Schema response or the regular schema-plus-headers form. Specialized response helpers are not accepted by `.response()`. Local statuses override duplicate common statuses.
+
+Each specialized request or response representation has one builder method. `.formBody()`, `.multipartBody()`, `.customBody()`, and `.jsonQuery()` construct the existing canonical helper representation internally. `.customResponse()`, `.streamResponse()`, and `.customStreamResponse()` do the same for responses. Custom response methods use an object argument consistent with custom request bodies:
+
+```ts
+route.get("/report").customResponse(200, {
+	contentType: "text/csv",
+	schema: Csv,
+});
+```
+
+Regular `.body()` accepts only a Standard Schema. Regular `.query()` and `.pathParams()` likewise accept only Standard Schemas. Schema records remain available only for headers because common and local headers must merge by header name. Users of opaque Standard Schema implementations provide explicit key ownership through `.requestKeys()`.
 
 SSE routes expose their required event schema in one canonical field selected during implementation. The public `.response(schema)` setter is single-write and must produce the representation expected by SSE client and server inference.
 
@@ -224,21 +244,20 @@ Most setters are single-write:
 route.post("/todos").body(A).body(B); // type error; runtime error if bypassed
 ```
 
-Single-write setters:
+Single-write slots:
 
-- `body`
-- `query`
+- request body: `body`, `formBody`, `multipartBody`, or `customBody`
+- query: `query` or `jsonQuery`
 - `pathParams`
 - `headers`
 - `requestKeys`
 - `flattenRequestKeys`
-- `responses`
 - `metadata`
 - `openApi`
 - SSE `response`
 - WebSocket message direction setters
 
-Only `.response(status, schema)` is naturally additive. Distinct statuses may be stacked:
+HTTP response methods are naturally additive across distinct statuses. All response methods share one local-status registry:
 
 ```ts
 route
@@ -252,7 +271,11 @@ Repeating the same literal status is a type error and a runtime error when types
 
 Every HTTP response status is explicit. `.response(status)` uses the existing `noBody()` representation, while `.response(status, schema)` records the supplied response declaration. Either form may be followed by additional distinct statuses.
 
-Response maps remain part of the canonical inline declaration format, but the builder exposes only `.response(...)`. This keeps one builder declaration style while preserving additive status declarations.
+The builder never accepts the `noBody()` sentinel: absence of a request body means no body, and `.response(status)` means an empty response body. The sentinel remains only in the produced canonical declaration where a response-map value is required.
+
+Regular builder methods do not accept specialized helper values. Use `.formBody()`, `.multipartBody()`, `.customBody()`, `.jsonQuery()`, `.customResponse()`, `.streamResponse()`, or `.customStreamResponse()` directly. Standalone helpers remain available for canonical inline declarations.
+
+Response maps remain part of the canonical inline declaration format. Every builder response method writes exactly one `status -> declaration` entry. The numeric status remains the sole response discriminator for client types and runtime handling. Two route-local declarations may not use the same status, regardless of response kind. A route-local declaration may replace a common response at the same status because common statuses do not consume the local used-status typestate.
 
 Advanced composition belongs in the supplied values:
 
@@ -292,6 +315,8 @@ Each request setter stores its schema and attempts to resolve its own segment:
 .pathParams(PathSchema)     // resolves path parameter keys when supported
 .headers(HeaderSchemas)     // header keys are already explicit
 ```
+
+The built-in Zod, ArkType, and Valibot resolvers infer property keys from Standard Schemas. There is no alternative record-of-field-schemas form for body, query, or path parameters. `.requestKeys()` supplies explicit mappings for opaque schemas.
 
 The effective mapping is stored under `request.keys`:
 
@@ -438,6 +463,7 @@ Expected state: the workspace does not compile.
 
 - Add `route.get/post/put/patch/delete`.
 - Add the HTTP setters.
+- Add dedicated form, multipart, custom, JSON-query, and streaming declaration setters.
 - Add `route.with(options)` as a single-level configured factory.
 - Eagerly apply compatible defaults at method/path construction.
 - Implement local-over-common merge rules.
@@ -453,8 +479,9 @@ Expected state: core builder runtime tests pass; workspace may still not compile
 
 - Preserve method, prefixed path, status, metadata, and schema literals.
 - Track remaining setters without ordered phases.
+- Model all request body methods as one single-write slot and both query methods as one single-write slot.
 - Remove single-write setters after use.
-- Track distinct response statuses.
+- Track distinct response statuses across every response method while permitting local overrides of common statuses.
 - Make completed HTTP builders assignable to `HttpRouteDeclaration`.
 - Add `tsd` coverage and hover fixtures for representative routes.
 - Avoid any recursive transformation over the containing contract tree.
@@ -464,11 +491,12 @@ Expected state: HTTP builder type tests pass; downstream packages may still fail
 ### Commit 4: Add SSE and WebSocket builders
 
 - Implement protocol-specific runtime setters.
+- Expose both `.query()` and `.jsonQuery()` as one protocol query slot.
 - Exclude incompatible setters from each builder surface.
 - Model incomplete and complete protocol typestates.
 - Require the canonical `.clientMessages()` then `.serverMessages()` declaration style, in either order.
 - Add runtime completeness validation.
-- Add protocol-specific unit and type tests.
+- Add protocol-specific runtime cases to the route unit suite and type cases to the consolidated route-builder `tsd` suite.
 
 Expected state: all core builder variants work in isolation.
 
@@ -510,7 +538,8 @@ Expected state: all packages compile; integration fixtures may still use the old
 
 - Rewrite integration contracts using the builder-first DSL.
 - Keep a focused set of inline declaration tests for the advanced escape hatch.
-- Rewrite core `tsd` contract cases around local builder errors and hover quality.
+- Keep one consolidated route-builder `tsd` suite for HTTP, SSE, and WebSocket local errors and hover quality.
+- Keep client inference in the separate client `tsd` suite; remove legacy tests for the old contract declaration and recursive flattening APIs.
 - Remove tests that exist only for old core `router()` normalization behavior.
 - Run unit and integration suites and fix behavioral regressions.
 

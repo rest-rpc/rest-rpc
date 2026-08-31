@@ -49,7 +49,6 @@ export function isJsonQuery(schema: unknown): schema is JsonQuery {
 
 export type RequestBodySchema =
 	| StandardSchemaV1
-	| RequestSchemaRecord
 	| CustomBody
 	| FormBody
 	| MultipartBody
@@ -93,9 +92,7 @@ type InferRequestBody<
 					? TIO extends "input"
 						? StandardSchemaV1.InferInput<TBody>
 						: StandardSchemaV1.InferOutput<TBody>
-					: TBody extends RequestSchemaRecord
-						? InferRequestSchemaRecord<TBody, TIO>
-						: never;
+					: never;
 
 type InferGroupedRequestBody<
 	TBody,
@@ -116,9 +113,7 @@ type InferGroupedRequestBody<
 					? TIO extends "input"
 						? StandardSchemaV1.InferInput<TBody>
 						: StandardSchemaV1.InferOutput<TBody>
-					: TBody extends RequestSchemaRecord
-						? InferRequestSchemaRecord<TBody, TIO>
-						: never;
+					: never;
 
 type InferJsonQuery<TQuery, TIO extends "input" | "output"> =
 	TQuery extends JsonQuery<infer TSchema>
@@ -185,9 +180,7 @@ type InferRequestObjectSegment<
 		? TIO extends "input"
 			? StandardSchemaV1.InferInput<TSegment>
 			: StandardSchemaV1.InferOutput<TSegment>
-		: TSegment extends RequestSchemaRecord
-			? InferRequestSchemaRecord<TSegment, TIO>
-			: never;
+		: never;
 
 type InferGroupedRequestObjectSegment<
 	TSegment,

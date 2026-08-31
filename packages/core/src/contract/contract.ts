@@ -50,8 +50,8 @@ export type RouteMode = "http" | "sse" | "webSocket";
 /** Canonical request declaration nested on a route. */
 export type RouteRequestDeclaration = {
 	body?: RequestBodySchema;
-	query?: StandardSchemaV1 | RequestSchemaRecord | JsonQuery;
-	pathParams?: StandardSchemaV1 | RequestSchemaRecord;
+	query?: StandardSchemaV1 | JsonQuery;
+	pathParams?: StandardSchemaV1;
 	headers?: RequestSchemaRecord;
 	keys?: RequestKeys;
 	flattenKeys?: boolean;
@@ -75,7 +75,10 @@ export type HttpRouteDeclaration = BaseRouteDeclaration & {
 };
 
 /** A canonical server-sent event route declaration. */
-export type SseRouteDeclaration = Omit<BaseRouteDeclaration, "method" | "mode"> & {
+export type SseRouteDeclaration = Omit<
+	BaseRouteDeclaration,
+	"method" | "mode"
+> & {
 	method: "GET";
 	mode: "sse";
 	request?: Omit<RouteRequestDeclaration, "body" | "headers"> & {

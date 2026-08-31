@@ -28,8 +28,8 @@ describe("HTTP route builder runtime", () => {
 			.response(201, schema)
 			.headers({ authorization: type<string>() })
 			.body(schema)
-			.query({ search: type<string>() })
-			.pathParams({ id: type<string>() })
+			.query(type<{ search: string }>())
+			.pathParams(type<{ id: string }>())
 			.requestKeys({ value: "body", search: "query", id: "pathParams" })
 			.flattenRequestKeys(false)
 			.metadata({ scope: "write" })
@@ -54,12 +54,23 @@ describe("HTTP route builder runtime", () => {
 			.get("/items")
 			.headers({ authorization: type<"override">(), trace: type<string>() })
 			.response(200, type<string>())
+			.customResponse(401, {
+				contentType: "application/problem+json",
+				schema: type<{ message: string }>(),
+			})
 			.metadata({ auth: false })
-			.openApi({ tags: ["Items"], responses: { 401: { description: "Local" } } });
+			.openApi({
+				tags: ["Items"],
+				responses: { 401: { description: "Local" } },
+			});
 		const second = factory.get("/other");
 		assert.equal(first.path, "/api/items");
-		assert.equal(first.request?.headers?.authorization["~standard"].vendor, "rest-rpc");
+		assert.equal(
+			first.request?.headers?.authorization["~standard"].vendor,
+			"rest-rpc",
+		);
 		assert.deepEqual(Object.keys(first.responses ?? {}), ["200", "401"]);
+		assert.equal((first.responses[401] as { kind: string }).kind, "customBody");
 		assert.deepEqual(first.metadata, { auth: false, nested: { role: "user" } });
 		assert.deepEqual(first.openApi?.tags, ["Common", "Items"]);
 		assert.equal(first.openApi?.responses?.[401]?.description, "Local");
@@ -69,15 +80,104 @@ describe("HTTP route builder runtime", () => {
 
 	it("rejects duplicate and conflicting response declarations", () => {
 		const schema = type<string>();
-		assert.throws(() => route.get("/items").body(schema).body(schema), /more than once/);
-		assert.throws(() => route.get("/items").response(200, schema).response(200, schema), /already declares/);
-		assert.deepEqual(route.delete("/items").response(204).responses?.[204], noBody());
+		assert.throws(
+			() => route.get("/items").body(schema).body(schema),
+			/more than once/,
+		);
+		assert.throws(
+			() => route.get("/items").response(200, schema).response(200, schema),
+			/already declares/,
+		);
+		const response = route.get("/items").response(200, schema);
+		assert.throws(
+			() =>
+				(
+					response as unknown as {
+						customResponse(
+							status: number,
+							input: { contentType: string; schema: typeof schema },
+						): unknown;
+					}
+				).customResponse(200, { contentType: "text/plain", schema }),
+			/already declares/,
+		);
+		assert.deepEqual(
+			route.delete("/items").response(204).responses?.[204],
+			noBody(),
+		);
+	});
+
+	it("builds specialized request and response declarations", () => {
+		const formSchema = type<{ title: string; tags: string[] }>();
+		const bytes = type<Uint8Array>();
+		const form = route
+			.post("/forms")
+			.formBody({ schema: formSchema, arrayKeys: ["tags"] })
+			.customResponse(201, { contentType: "text/csv", schema: type<string>() });
+		assert.deepEqual(form.request?.body, {
+			kind: "formBody",
+			schema: formSchema,
+			arrayKeys: ["tags"],
+		});
+		assert.equal((form.responses[201] as { kind: string }).kind, "customBody");
+
+		const streamed = route.get("/files").customStreamResponse(200, {
+			contentType: "application/octet-stream",
+			schema: bytes,
+		});
+		assert.equal((streamed.responses[200] as { kind: string }).kind, "stream");
+
+		const multipart = route
+			.post("/uploads")
+			.multipartBody(formSchema)
+			.streamResponse(201, type<{ progress: number }>());
+		assert.equal(
+			(multipart.request!.body as { kind: string }).kind,
+			"multipartBody",
+		);
+		assert.equal((multipart.responses[201] as { kind: string }).kind, "stream");
+
+		const custom = route
+			.post("/raw")
+			.customBody(bytes)
+			.jsonQuery(type<{ options: string[] }>())
+			.response(204);
+		assert.equal((custom.request!.body as { kind: string }).kind, "customBody");
+		assert.equal((custom.request!.query as { kind: string }).kind, "jsonQuery");
+	});
+
+	it("shares typestate slots across specialized request setters", () => {
+		const schema = type<{ value: string }>();
+		assert.throws(
+			() =>
+				(
+					route.post("/items").formBody(schema) as unknown as {
+						customBody(schema: typeof schema): unknown;
+					}
+				).customBody(schema),
+			/more than once/,
+		);
+		assert.throws(
+			() =>
+				(
+					route.get("/items").query(schema) as unknown as {
+						jsonQuery(schema: typeof schema): unknown;
+					}
+				).jsonQuery(schema),
+			/more than once/,
+		);
 	});
 
 	it("does not expose with() on configured factories", () => {
 		assert.equal("with" in route.with({ pathPrefix: "/api" }), false);
-		assert.throws(() => route.with({ pathPrefix: "/:tenant" }), /cannot include path params/);
-		assert.equal(route.with({ pathPrefix: "/api/" }).get("/items").path, "/api//items");
+		assert.throws(
+			() => route.with({ pathPrefix: "/:tenant" }),
+			/cannot include path params/,
+		);
+		assert.equal(
+			route.with({ pathPrefix: "/api/" }).get("/items").path,
+			"/api//items",
+		);
 	});
 });
 
@@ -86,8 +186,8 @@ describe("protocol route builder runtime", () => {
 		const event = type<{ id: string }>();
 		const declaration = route
 			.sse("/events/:id")
-			.query({ cursor: type<string>() })
-			.pathParams({ id: type<string>() })
+			.query(type<{ cursor: string }>())
+			.pathParams(type<{ id: string }>())
 			.response(event);
 		assert.equal(declaration.mode, "sse");
 		assert.equal(declaration.response, event);
@@ -115,9 +215,7 @@ describe("protocol route builder runtime", () => {
 		);
 		assert.throws(
 			() =>
-				assertProtocolRouteComplete(
-					route.ws("/socket").clientMessages(schema),
-				),
+				assertProtocolRouteComplete(route.ws("/socket").clientMessages(schema)),
 			/client and server messages/,
 		);
 		assert.throws(() =>

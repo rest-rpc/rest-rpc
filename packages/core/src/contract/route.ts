@@ -2,6 +2,20 @@ import {
 	isStandardSchema,
 	type StandardSchemaV1,
 } from "../standard-schema/index.ts";
+import {
+	customBody as declareCustomBody,
+	formBody as declareFormBody,
+	multipartBody as declareMultipartBody,
+	noBody,
+	stream as declareStream,
+	type CustomBody,
+	type CustomBodyContentType,
+	type CustomResponseBody,
+	type FormBody,
+	type MultipartBody,
+	type NoBody,
+	type Stream,
+} from "./body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	HttpMethod,
@@ -13,21 +27,46 @@ import type {
 	RouteRequestDeclaration,
 	RouteDeclaration,
 } from "./contract.ts";
-import { noBody, type NoBody } from "./body.ts";
 import { getPathParamNames } from "./path.ts";
+import type { JsonQuery, RequestKeys, RequestSchemaRecord } from "./request.ts";
+import { jsonQuery as declareJsonQuery } from "./request.ts";
 import type {
-	JsonQuery,
-	RequestBodySchema,
-	RequestKeys,
-	RequestSchemaRecord,
-} from "./request.ts";
-import type { ResponseDeclaration, RouteResponses } from "./response.ts";
+	ResponseDeclaration,
+	ResponseHeaders,
+	RouteResponses,
+} from "./response.ts";
 import type { WebSocketMessageDeclaration } from "./websocketMessages.ts";
 
-type QuerySchema =
+type RegularResponseDeclaration =
 	| StandardSchemaV1
-	| RequestSchemaRecord
-	| JsonQuery;
+	| {
+			body: StandardSchemaV1;
+			headers: ResponseHeaders;
+	  };
+
+type BodyWithArrayKeysInput =
+	| StandardSchemaV1
+	| {
+			schema: StandardSchemaV1;
+			arrayKeys: readonly string[];
+	  };
+
+type CustomBodyInput =
+	| StandardSchemaV1
+	| {
+			schema: StandardSchemaV1;
+			contentType: CustomBodyContentType;
+	  };
+
+type CustomResponseInput = {
+	schema: StandardSchemaV1;
+	contentType: CustomBodyContentType;
+};
+
+type CustomResponseBodyFor<
+	TSchema extends StandardSchemaV1,
+	TContentType extends CustomBodyContentType,
+> = CustomBody<TSchema, TContentType> & CustomResponseBody;
 
 type BuilderState = {
 	writes: Set<string>;
@@ -52,7 +91,7 @@ const cloneMetadata = <T>(value: T): T => {
 const cloneResponses = (responses: RouteResponses | undefined) =>
 	responses === undefined
 		? undefined
-		: Object.fromEntries(
+		: (Object.fromEntries(
 				Object.entries(responses).map(([status, response]) => [
 					status,
 					typeof response === "object" &&
@@ -64,7 +103,7 @@ const cloneResponses = (responses: RouteResponses | undefined) =>
 							}
 						: response,
 				]),
-			) as RouteResponses;
+			) as RouteResponses);
 
 const mergeUnique = (common: string[] = [], local: string[] = []) => [
 	...new Set([...common, ...local]),
@@ -120,7 +159,8 @@ const mergeOpenApi = (
 	};
 };
 
-export const joinPathPrefix = (prefix: string, path: string) => `${prefix}${path}`;
+export const joinPathPrefix = (prefix: string, path: string) =>
+	`${prefix}${path}`;
 
 const assertStaticPathPrefix = (pathPrefix: string | undefined) => {
 	if (pathPrefix && getPathParamNames(pathPrefix).length > 0) {
@@ -137,7 +177,11 @@ class HttpRouteBuilder {
 	declare private _commonMetadata?: RouteMetadata;
 	declare private _commonOpenApi?: CommonOpenApiRouteOptions;
 
-	constructor(method: HttpMethod, path: string, options: RouteFactoryOptions = {}) {
+	constructor(
+		method: HttpMethod,
+		path: string,
+		options: RouteFactoryOptions = {},
+	) {
 		this.method = method;
 		this.path = options.pathPrefix
 			? joinPathPrefix(options.pathPrefix, path)
@@ -177,9 +221,7 @@ class HttpRouteBuilder {
 		if (!value) return;
 		const callable = Object.assign(
 			(
-				this[setter] as (
-					value: RouteMetadata | OpenApiRouteOptions,
-				) => this
+				this[setter] as (value: RouteMetadata | OpenApiRouteOptions) => this
 			).bind(this),
 			value,
 		);
@@ -204,19 +246,49 @@ class HttpRouteBuilder {
 		return (this.request ??= {});
 	}
 
-	body(schema: RequestBodySchema) {
+	body(schema: StandardSchemaV1) {
 		this.assertSingleWrite("body");
 		this.requestForWrite().body = schema;
 		return this;
 	}
 
-	query(schema: QuerySchema) {
+	formBody(input: BodyWithArrayKeysInput) {
+		this.assertSingleWrite("body");
+		this.requestForWrite().body = isStandardSchema(input)
+			? declareFormBody(input)
+			: declareFormBody(input);
+		return this;
+	}
+
+	multipartBody(input: BodyWithArrayKeysInput) {
+		this.assertSingleWrite("body");
+		this.requestForWrite().body = isStandardSchema(input)
+			? declareMultipartBody(input)
+			: declareMultipartBody(input);
+		return this;
+	}
+
+	customBody(input: CustomBodyInput) {
+		this.assertSingleWrite("body");
+		this.requestForWrite().body = isStandardSchema(input)
+			? declareCustomBody(input)
+			: declareCustomBody(input);
+		return this;
+	}
+
+	query(schema: StandardSchemaV1) {
 		this.assertSingleWrite("query");
 		this.requestForWrite().query = schema;
 		return this;
 	}
 
-	pathParams(schema: RequestSchemaRecord | StandardSchemaV1) {
+	jsonQuery(schema: StandardSchemaV1) {
+		this.assertSingleWrite("query");
+		this.requestForWrite().query = declareJsonQuery(schema);
+		return this;
+	}
+
+	pathParams(schema: StandardSchemaV1) {
 		this.assertSingleWrite("pathParams");
 		this.requestForWrite().pathParams = schema;
 		return this;
@@ -243,7 +315,7 @@ class HttpRouteBuilder {
 		return this;
 	}
 
-	response(status: number, schema: ResponseDeclaration = noBody()) {
+	private addResponse(status: number, schema: ResponseDeclaration) {
 		if (typeof status !== "number") {
 			throw new Error("response() requires an explicit numeric status.");
 		}
@@ -256,13 +328,29 @@ class HttpRouteBuilder {
 		Object.assign(this, {
 			responses: {
 				...this._commonResponses,
-				...((Object.hasOwn(this, "responses")
+				...(Object.hasOwn(this, "responses")
 					? (this as unknown as HttpRouteDeclaration).responses
-					: undefined) ?? {}),
+					: undefined),
 				[status]: schema,
 			},
 		});
 		return this;
+	}
+
+	response(status: number, schema?: RegularResponseDeclaration) {
+		return this.addResponse(status, schema ?? noBody());
+	}
+
+	customResponse(status: number, input: CustomResponseInput) {
+		return this.addResponse(status, declareCustomBody(input));
+	}
+
+	streamResponse(status: number, schema: StandardSchemaV1) {
+		return this.addResponse(status, declareStream(schema));
+	}
+
+	customStreamResponse(status: number, input: CustomResponseInput) {
+		return this.addResponse(status, declareStream(declareCustomBody(input)));
 	}
 
 	metadata(metadata: RouteMetadata) {
@@ -278,7 +366,9 @@ class HttpRouteBuilder {
 
 	openApi(openApi: OpenApiRouteOptions) {
 		this.assertSingleWrite("openApi");
-		Object.assign(this, { openApi: mergeOpenApi(this._commonOpenApi, openApi) });
+		Object.assign(this, {
+			openApi: mergeOpenApi(this._commonOpenApi, openApi),
+		});
 		return this;
 	}
 }
@@ -328,9 +418,7 @@ class ProtocolRouteBuilder {
 		if (!value) return;
 		const callable = Object.assign(
 			(
-				this[setter] as (
-					value: RouteMetadata | OpenApiRouteOptions,
-				) => this
+				this[setter] as (value: RouteMetadata | OpenApiRouteOptions) => this
 			).bind(this),
 			value,
 		);
@@ -355,13 +443,19 @@ class ProtocolRouteBuilder {
 		return (this.request ??= {});
 	}
 
-	query(schema: QuerySchema) {
+	query(schema: StandardSchemaV1) {
 		this.assertSingleWrite("query");
 		this.requestForWrite().query = schema;
 		return this;
 	}
 
-	pathParams(schema: RequestSchemaRecord | StandardSchemaV1) {
+	jsonQuery(schema: StandardSchemaV1) {
+		this.assertSingleWrite("query");
+		this.requestForWrite().query = declareJsonQuery(schema);
+		return this;
+	}
+
+	pathParams(schema: StandardSchemaV1) {
 		this.assertSingleWrite("pathParams");
 		this.requestForWrite().pathParams = schema;
 		return this;
@@ -392,7 +486,9 @@ class ProtocolRouteBuilder {
 
 	openApi(openApi: OpenApiRouteOptions) {
 		this.assertSingleWrite("openApi");
-		Object.assign(this, { openApi: mergeOpenApi(this._commonOpenApi, openApi) });
+		Object.assign(this, {
+			openApi: mergeOpenApi(this._commonOpenApi, openApi),
+		});
 		return this;
 	}
 }
@@ -414,7 +510,10 @@ class WebSocketRouteBuilder extends ProtocolRouteBuilder {
 		super("webSocket", path, options);
 	}
 
-	private setMessage(direction: "client" | "server", schema: WebSocketMessageDeclaration) {
+	private setMessage(
+		direction: "client" | "server",
+		schema: WebSocketMessageDeclaration,
+	) {
 		Object.assign(this, {
 			messages: {
 				...((Object.hasOwn(this, "messages")
@@ -435,7 +534,6 @@ class WebSocketRouteBuilder extends ProtocolRouteBuilder {
 		this.assertSingleWrite("serverMessages");
 		return this.setMessage("server", schema);
 	}
-
 }
 
 export const assertProtocolRouteComplete = (route: {
@@ -469,11 +567,11 @@ const createHttpRoute = (
 
 type Simplify<T> = { [K in keyof T]: T[K] };
 type EmptyObject = Record<never, never>;
-type Merge<TCommon, TLocal> = Simplify<
-	Omit<TCommon, keyof TLocal> & TLocal
->;
-type JoinPath<TPrefix extends string, TPath extends string> =
-	`${TPrefix}${TPath}`;
+type Merge<TCommon, TLocal> = Simplify<Omit<TCommon, keyof TLocal> & TLocal>;
+type JoinPath<
+	TPrefix extends string,
+	TPath extends string,
+> = `${TPrefix}${TPath}`;
 type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
 	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
 type PathFor<TOptions, TPath extends string> = TOptions extends {
@@ -494,8 +592,10 @@ type WithRequest<
 	TKey extends keyof RouteRequestDeclaration,
 	TValue,
 > = Simplify<Omit<TRequest, TKey> & Record<TKey, TValue>>;
-type LocalResponseStatus<TStatus extends number, TUsed extends number> =
-	TStatus extends TUsed ? never : TStatus;
+type LocalResponseStatus<
+	TStatus extends number,
+	TUsed extends number,
+> = TStatus extends TUsed ? never : TStatus;
 
 type HttpBuilder<
 	TMethod extends HttpMethod,
@@ -510,76 +610,296 @@ type HttpBuilder<
 	{
 		readonly method: TMethod;
 		readonly path: TPath;
-		request?: keyof TRequest extends never ? never : TRequest;
-	} &
+	} & (keyof TRequest extends never
+		? { request?: never }
+		: { request: TRequest }) &
 		(keyof TResponses extends never
 			? { responses?: never }
-			: { responses: TResponses }) &
-		{
+			: { responses: TResponses }) & {
+			response<const TStatus extends number>(
+				status: LocalResponseStatus<TStatus, TLocalStatuses>,
+			): HttpBuilder<
+				TMethod,
+				TPath,
+				TRequest,
+				Merge<TResponses, Record<TStatus, NoBody>>,
+				TMetadata,
+				TOpenApi,
+				TUsed,
+				TLocalStatuses | TStatus
+			>;
 			response<
 				const TStatus extends number,
-				const TSchema extends ResponseDeclaration | undefined = undefined,
+				const TSchema extends RegularResponseDeclaration,
 			>(
 				status: LocalResponseStatus<TStatus, TLocalStatuses>,
-				schema?: TSchema,
+				schema: TSchema,
+			): HttpBuilder<
+				TMethod,
+				TPath,
+				TRequest,
+				Merge<TResponses, Record<TStatus, TSchema>>,
+				TMetadata,
+				TOpenApi,
+				TUsed,
+				TLocalStatuses | TStatus
+			>;
+			customResponse<
+				const TStatus extends number,
+				const TSchema extends StandardSchemaV1,
+				const TContentType extends CustomBodyContentType,
+			>(
+				status: LocalResponseStatus<TStatus, TLocalStatuses>,
+				input: { schema: TSchema; contentType: TContentType },
 			): HttpBuilder<
 				TMethod,
 				TPath,
 				TRequest,
 				Merge<
 					TResponses,
-					Record<
-						TStatus,
-						TSchema extends ResponseDeclaration ? TSchema : NoBody
-					>
+					Record<TStatus, CustomResponseBodyFor<TSchema, TContentType>>
 				>,
 				TMetadata,
 				TOpenApi,
 				TUsed,
 				TLocalStatuses | TStatus
 			>;
-		} &
-		("body" extends TUsed
+			streamResponse<
+				const TStatus extends number,
+				const TSchema extends StandardSchemaV1,
+			>(
+				status: LocalResponseStatus<TStatus, TLocalStatuses>,
+				schema: TSchema,
+			): HttpBuilder<
+				TMethod,
+				TPath,
+				TRequest,
+				Merge<TResponses, Record<TStatus, Stream<TSchema>>>,
+				TMetadata,
+				TOpenApi,
+				TUsed,
+				TLocalStatuses | TStatus
+			>;
+			customStreamResponse<
+				const TStatus extends number,
+				const TSchema extends StandardSchemaV1,
+				const TContentType extends CustomBodyContentType,
+			>(
+				status: LocalResponseStatus<TStatus, TLocalStatuses>,
+				input: { schema: TSchema; contentType: TContentType },
+			): HttpBuilder<
+				TMethod,
+				TPath,
+				TRequest,
+				Merge<
+					TResponses,
+					Record<TStatus, Stream<CustomResponseBodyFor<TSchema, TContentType>>>
+				>,
+				TMetadata,
+				TOpenApi,
+				TUsed,
+				TLocalStatuses | TStatus
+			>;
+		} & ("body" extends TUsed
 			? EmptyObject
 			: {
-					body<const TSchema extends RequestBodySchema>(
+					body<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
-					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "body", TSchema>, TResponses, TMetadata, TOpenApi, TUsed | "body", TLocalStatuses>;
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", TSchema>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
+					formBody<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", FormBody<TSchema>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
+					formBody<
+						const TSchema extends StandardSchemaV1,
+						const TArrayKeys extends readonly string[],
+					>(input: {
+						schema: TSchema;
+						arrayKeys: TArrayKeys;
+					}): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", FormBody<TSchema, TArrayKeys>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
+					multipartBody<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", MultipartBody<TSchema>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
+					multipartBody<
+						const TSchema extends StandardSchemaV1,
+						const TArrayKeys extends readonly string[],
+					>(input: {
+						schema: TSchema;
+						arrayKeys: TArrayKeys;
+					}): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", MultipartBody<TSchema, TArrayKeys>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
+					customBody<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", CustomBody<TSchema, undefined>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
+					customBody<
+						const TSchema extends StandardSchemaV1,
+						const TContentType extends CustomBodyContentType,
+					>(input: {
+						schema: TSchema;
+						contentType: TContentType;
+					}): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "body", CustomBody<TSchema, TContentType>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "body",
+						TLocalStatuses
+					>;
 				}) &
 		("query" extends TUsed
 			? EmptyObject
 			: {
-					query<const TSchema extends QuerySchema>(
+					query<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
-					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "query", TSchema>, TResponses, TMetadata, TOpenApi, TUsed | "query", TLocalStatuses>;
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "query", TSchema>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "query",
+						TLocalStatuses
+					>;
+					jsonQuery<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "query", JsonQuery<TSchema>>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "query",
+						TLocalStatuses
+					>;
 				}) &
 		("pathParams" extends TUsed
 			? EmptyObject
 			: {
-					pathParams<const TSchema extends StandardSchemaV1 | RequestSchemaRecord>(
+					pathParams<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
-					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "pathParams", TSchema>, TResponses, TMetadata, TOpenApi, TUsed | "pathParams", TLocalStatuses>;
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "pathParams", TSchema>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "pathParams",
+						TLocalStatuses
+					>;
 				}) &
 		("headers" extends TUsed
 			? EmptyObject
 			: {
 					headers<const THeaders extends RequestSchemaRecord>(
 						headers: THeaders,
-					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "headers", Merge<TRequest extends { headers: infer TCommon } ? TCommon : EmptyObject, THeaders>>, TResponses, TMetadata, TOpenApi, TUsed | "headers", TLocalStatuses>;
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<
+							TRequest,
+							"headers",
+							Merge<
+								TRequest extends { headers: infer TCommon }
+									? TCommon
+									: EmptyObject,
+								THeaders
+							>
+						>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "headers",
+						TLocalStatuses
+					>;
 				}) &
 		("requestKeys" extends TUsed
 			? EmptyObject
 			: {
 					requestKeys<const TKeys extends RequestKeys>(
 						keys: TKeys,
-					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "keys", TKeys>, TResponses, TMetadata, TOpenApi, TUsed | "requestKeys", TLocalStatuses>;
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "keys", TKeys>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "requestKeys",
+						TLocalStatuses
+					>;
 				}) &
 		("flattenRequestKeys" extends TUsed
 			? EmptyObject
 			: {
 					flattenRequestKeys<const TFlatten extends boolean>(
 						value: TFlatten,
-					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "flattenKeys", TFlatten>, TResponses, TMetadata, TOpenApi, TUsed | "flattenRequestKeys", TLocalStatuses>;
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						WithRequest<TRequest, "flattenKeys", TFlatten>,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TUsed | "flattenRequestKeys",
+						TLocalStatuses
+					>;
 				}) &
 		("metadata" extends TUsed
 			? { metadata: TMetadata }
@@ -588,7 +908,16 @@ type HttpBuilder<
 						RouteMetadata &
 						(<const TLocal extends RouteMetadata>(
 							metadata: TLocal,
-						) => HttpBuilder<TMethod, TPath, TRequest, TResponses, Merge<TMetadata, TLocal>, TOpenApi, TUsed | "metadata", TLocalStatuses>);
+						) => HttpBuilder<
+							TMethod,
+							TPath,
+							TRequest,
+							TResponses,
+							Merge<TMetadata, TLocal>,
+							TOpenApi,
+							TUsed | "metadata",
+							TLocalStatuses
+						>);
 				}) &
 		("openApi" extends TUsed
 			? { openApi: TOpenApi }
@@ -597,7 +926,16 @@ type HttpBuilder<
 						OpenApiRouteOptions &
 						(<const TLocal extends OpenApiRouteOptions>(
 							openApi: TLocal,
-						) => HttpBuilder<TMethod, TPath, TRequest, TResponses, TMetadata, Merge<TOpenApi, TLocal>, TUsed | "openApi", TLocalStatuses>);
+						) => HttpBuilder<
+							TMethod,
+							TPath,
+							TRequest,
+							TResponses,
+							TMetadata,
+							Merge<TOpenApi, TLocal>,
+							TUsed | "openApi",
+							TLocalStatuses
+						>);
 				})
 >;
 
@@ -609,36 +947,110 @@ type ProtocolRequestSetters<
 	TOpenApi,
 	TUsed extends string,
 	TComplete,
-> =
-	("query" extends TUsed
-		? EmptyObject
-		: {
-				query<const TSchema extends QuerySchema>(schema: TSchema): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "query", TSchema>, TMetadata, TOpenApi, TUsed | "query", TComplete>;
-			}) &
+> = ("query" extends TUsed
+	? EmptyObject
+	: {
+			query<const TSchema extends StandardSchemaV1>(
+				schema: TSchema,
+			): ProtocolBuilder<
+				TKind,
+				TPath,
+				WithRequest<TRequest, "query", TSchema>,
+				TMetadata,
+				TOpenApi,
+				TUsed | "query",
+				TComplete
+			>;
+			jsonQuery<const TSchema extends StandardSchemaV1>(
+				schema: TSchema,
+			): ProtocolBuilder<
+				TKind,
+				TPath,
+				WithRequest<TRequest, "query", JsonQuery<TSchema>>,
+				TMetadata,
+				TOpenApi,
+				TUsed | "query",
+				TComplete
+			>;
+		}) &
 	("pathParams" extends TUsed
 		? EmptyObject
 		: {
-				pathParams<const TSchema extends StandardSchemaV1 | RequestSchemaRecord>(schema: TSchema): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "pathParams", TSchema>, TMetadata, TOpenApi, TUsed | "pathParams", TComplete>;
+				pathParams<const TSchema extends StandardSchemaV1>(
+					schema: TSchema,
+				): ProtocolBuilder<
+					TKind,
+					TPath,
+					WithRequest<TRequest, "pathParams", TSchema>,
+					TMetadata,
+					TOpenApi,
+					TUsed | "pathParams",
+					TComplete
+				>;
 			}) &
 	("requestKeys" extends TUsed
 		? EmptyObject
 		: {
-				requestKeys<const TKeys extends RequestKeys>(keys: TKeys): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "keys", TKeys>, TMetadata, TOpenApi, TUsed | "requestKeys", TComplete>;
+				requestKeys<const TKeys extends RequestKeys>(
+					keys: TKeys,
+				): ProtocolBuilder<
+					TKind,
+					TPath,
+					WithRequest<TRequest, "keys", TKeys>,
+					TMetadata,
+					TOpenApi,
+					TUsed | "requestKeys",
+					TComplete
+				>;
 			}) &
 	("flattenRequestKeys" extends TUsed
 		? EmptyObject
 		: {
-				flattenRequestKeys<const TFlatten extends boolean>(value: TFlatten): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "flattenKeys", TFlatten>, TMetadata, TOpenApi, TUsed | "flattenRequestKeys", TComplete>;
+				flattenRequestKeys<const TFlatten extends boolean>(
+					value: TFlatten,
+				): ProtocolBuilder<
+					TKind,
+					TPath,
+					WithRequest<TRequest, "flattenKeys", TFlatten>,
+					TMetadata,
+					TOpenApi,
+					TUsed | "flattenRequestKeys",
+					TComplete
+				>;
 			}) &
 	("metadata" extends TUsed
 		? { metadata: TMetadata }
 		: {
-				metadata: TMetadata & RouteMetadata & (<const TLocal extends RouteMetadata>(metadata: TLocal) => ProtocolBuilder<TKind, TPath, TRequest, Merge<TMetadata, TLocal>, TOpenApi, TUsed | "metadata", TComplete>);
+				metadata: TMetadata &
+					RouteMetadata &
+					(<const TLocal extends RouteMetadata>(
+						metadata: TLocal,
+					) => ProtocolBuilder<
+						TKind,
+						TPath,
+						TRequest,
+						Merge<TMetadata, TLocal>,
+						TOpenApi,
+						TUsed | "metadata",
+						TComplete
+					>);
 			}) &
 	("openApi" extends TUsed
 		? { openApi: TOpenApi }
 		: {
-				openApi: TOpenApi & OpenApiRouteOptions & (<const TLocal extends OpenApiRouteOptions>(openApi: TLocal) => ProtocolBuilder<TKind, TPath, TRequest, TMetadata, Merge<TOpenApi, TLocal>, TUsed | "openApi", TComplete>);
+				openApi: TOpenApi &
+					OpenApiRouteOptions &
+					(<const TLocal extends OpenApiRouteOptions>(
+						openApi: TLocal,
+					) => ProtocolBuilder<
+						TKind,
+						TPath,
+						TRequest,
+						TMetadata,
+						Merge<TOpenApi, TLocal>,
+						TUsed | "openApi",
+						TComplete
+					>);
 			});
 
 type SseBuilder<
@@ -653,8 +1065,9 @@ type SseBuilder<
 		readonly method: "GET";
 		readonly path: TPath;
 		readonly mode: "sse";
-		request?: keyof TRequest extends never ? never : TRequest;
-	} &
+	} & (keyof TRequest extends never
+		? { request?: never }
+		: { request: TRequest }) &
 		([TResponse] extends [never]
 			? {
 					response<const TSchema extends StandardSchemaV1>(
@@ -662,7 +1075,15 @@ type SseBuilder<
 					): SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TSchema>;
 				}
 			: { response: TResponse }) &
-		ProtocolRequestSetters<"sse", TPath, TRequest, TMetadata, TOpenApi, TUsed, TResponse>
+		ProtocolRequestSetters<
+			"sse",
+			TPath,
+			TRequest,
+			TMetadata,
+			TOpenApi,
+			TUsed,
+			TResponse
+		>
 >;
 
 type WebSocketCompletion = {
@@ -682,26 +1103,49 @@ type WebSocketBuilder<
 		readonly method: "GET";
 		readonly path: TPath;
 		readonly mode: "webSocket";
-		request?: keyof TRequest extends never ? never : TRequest;
-	} &
+	} & (keyof TRequest extends never
+		? { request?: never }
+		: { request: TRequest }) &
 		(keyof TMessages extends never
 			? { messages?: never }
 			: { messages: TMessages }) &
 		(TMessages extends { client: WebSocketMessageDeclaration }
-				? EmptyObject
-				: {
-						clientMessages<const TSchema extends WebSocketMessageDeclaration>(
-							schema: TSchema,
-						): WebSocketBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, Merge<TMessages, { client: TSchema }>>;
-					}) &
+			? EmptyObject
+			: {
+					clientMessages<const TSchema extends WebSocketMessageDeclaration>(
+						schema: TSchema,
+					): WebSocketBuilder<
+						TPath,
+						TRequest,
+						TMetadata,
+						TOpenApi,
+						TUsed,
+						Merge<TMessages, { client: TSchema }>
+					>;
+				}) &
 		(TMessages extends { server: WebSocketMessageDeclaration }
-				? EmptyObject
-				: {
-						serverMessages<const TSchema extends WebSocketMessageDeclaration>(
-							schema: TSchema,
-						): WebSocketBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, Merge<TMessages, { server: TSchema }>>;
-					}) &
-		ProtocolRequestSetters<"webSocket", TPath, TRequest, TMetadata, TOpenApi, TUsed, TMessages>
+			? EmptyObject
+			: {
+					serverMessages<const TSchema extends WebSocketMessageDeclaration>(
+						schema: TSchema,
+					): WebSocketBuilder<
+						TPath,
+						TRequest,
+						TMetadata,
+						TOpenApi,
+						TUsed,
+						Merge<TMessages, { server: TSchema }>
+					>;
+				}) &
+		ProtocolRequestSetters<
+			"webSocket",
+			TPath,
+			TRequest,
+			TMetadata,
+			TOpenApi,
+			TUsed,
+			TMessages
+		>
 >;
 
 type ProtocolBuilder<
@@ -714,7 +1158,14 @@ type ProtocolBuilder<
 	TComplete,
 > = TKind extends "sse"
 	? SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TComplete>
-	: WebSocketBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TComplete extends WebSocketCompletion ? TComplete : EmptyObject>;
+	: WebSocketBuilder<
+			TPath,
+			TRequest,
+			TMetadata,
+			TOpenApi,
+			TUsed,
+			TComplete extends WebSocketCompletion ? TComplete : EmptyObject
+		>;
 
 type HttpBuilderFor<
 	TOptions,
@@ -730,18 +1181,32 @@ type HttpBuilderFor<
 >;
 
 type RouteFactory<TOptions = undefined> = {
-	get<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "GET", TPath>;
-	post<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "POST", TPath>;
-	put<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "PUT", TPath>;
-	patch<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "PATCH", TPath>;
-	delete<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "DELETE", TPath>;
-	sse<const TPath extends string>(path: TPath): SseBuilder<
+	get<const TPath extends string>(
+		path: TPath,
+	): HttpBuilderFor<TOptions, "GET", TPath>;
+	post<const TPath extends string>(
+		path: TPath,
+	): HttpBuilderFor<TOptions, "POST", TPath>;
+	put<const TPath extends string>(
+		path: TPath,
+	): HttpBuilderFor<TOptions, "PUT", TPath>;
+	patch<const TPath extends string>(
+		path: TPath,
+	): HttpBuilderFor<TOptions, "PATCH", TPath>;
+	delete<const TPath extends string>(
+		path: TPath,
+	): HttpBuilderFor<TOptions, "DELETE", TPath>;
+	sse<const TPath extends string>(
+		path: TPath,
+	): SseBuilder<
 		PathFor<TOptions, TPath>,
 		RequestFor<TOptions>,
 		OptionValue<TOptions, "metadata", EmptyObject>,
 		OptionValue<TOptions, "openApi", EmptyObject>
 	>;
-	ws<const TPath extends string>(path: TPath): WebSocketBuilder<
+	ws<const TPath extends string>(
+		path: TPath,
+	): WebSocketBuilder<
 		PathFor<TOptions, TPath>,
 		RequestFor<TOptions>,
 		OptionValue<TOptions, "metadata", EmptyObject>,
