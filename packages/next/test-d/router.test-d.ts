@@ -18,9 +18,7 @@ const api = {
 			method: "GET",
 			path: "/todos/:id",
 			request: {
-				pathParams: {
-					id: schemaType<string>(),
-				},
+				pathParams: schemaType<{ id: string }>(),
 			},
 			responses: {
 				200: todoSchema,

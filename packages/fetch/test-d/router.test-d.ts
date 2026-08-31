@@ -1,7 +1,11 @@
-import type { HttpRouteDeclaration } from "@rest-rpc/core/contract";
 import { noBody } from "@rest-rpc/core/contract";
 import { type as schemaType } from "@rest-rpc/core/standard-schema";
-import { createRouteHandler, route, router } from "@rest-rpc/fetch";
+import {
+	createRouteHandler,
+	route,
+	router,
+	type ServerHttpRouteDeclaration,
+} from "@rest-rpc/fetch";
 import { expectError, expectType } from "tsd";
 
 const todoSchema = schemaType<{ id: string }>();
@@ -12,9 +16,7 @@ const api = {
 			method: "GET",
 			path: "/todos/:id",
 			request: {
-				pathParams: {
-					id: schemaType<string>(),
-				},
+				pathParams: schemaType<{ id: string }>(),
 			},
 			responses: {
 				200: todoSchema,
@@ -44,7 +46,7 @@ declare module "@rest-rpc/fetch" {
 const routes = router(api)
 	.middleware(({ request, route, runtime }) => {
 		expectType<Request>(request);
-		expectType<HttpRouteDeclaration>(route);
+		expectType<ServerHttpRouteDeclaration>(route);
 		expectType<string>(runtime.env.authToken);
 		expectError(runtime.unknownKey);
 

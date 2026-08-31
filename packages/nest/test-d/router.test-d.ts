@@ -29,18 +29,10 @@ const todoSchema = schemaType<{ id: string; title: string; userId: string }>();
 
 const api = {
 	todos: {
-		get: defineRoute({
-			method: "GET",
-			path: "/todos/:id",
-			request: {
-				pathParams: {
-					id: schemaType<string>(),
-				},
-			},
-			responses: {
-				200: todoSchema,
-			},
-		}),
+		get: defineRoute
+			.get("/todos/:id")
+			.pathParams(schemaType<{ id: string }>())
+			.response(200, todoSchema),
 	},
 } as const;
 

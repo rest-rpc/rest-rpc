@@ -286,10 +286,12 @@ const sseApi = {
 				pathParams: z.object({ projectId: z.string() }),
 				query: z.object({ includeDone: z.boolean().optional() }),
 			},
-			response: z.object({
-				id: z.string(),
-				createdAt: z.string().transform((value) => new Date(value)),
-			}),
+			responses: {
+				200: z.object({
+					id: z.string(),
+					createdAt: z.string().transform((value) => new Date(value)),
+				}),
+			},
 		},
 	},
 } as const;

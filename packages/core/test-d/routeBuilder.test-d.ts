@@ -83,7 +83,7 @@ const sse = incompleteSse
 
 expectType<"GET">(sse.method);
 expectType<"sse">(sse.mode);
-expectType<typeof event>(sse.response);
+expectType<typeof event>(sse.responses[200]);
 expectType<true>(sse.metadata.public);
 expectAssignable<SseRouteDeclaration>(sse);
 expectAssignable<Contract>(sse);
