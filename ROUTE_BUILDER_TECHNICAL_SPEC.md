@@ -103,7 +103,6 @@ SSE does not expose `.body()` or `.headers()`.
 .flattenRequestKeys(boolean)
 .clientMessages(schema)
 .serverMessages(schema)
-.messages({ client, server })
 .metadata(value)
 .openApi(value)
 ```
@@ -467,7 +466,7 @@ Expected state: HTTP builder type tests pass; downstream packages may still fail
 - Implement protocol-specific runtime setters.
 - Exclude incompatible setters from each builder surface.
 - Model incomplete and complete protocol typestates.
-- Add `.messages({ client, server })` exclusivity with directional message setters.
+- Require the canonical `.clientMessages()` then `.serverMessages()` declaration style, in either order.
 - Add runtime completeness validation.
 - Add protocol-specific unit and type tests.
 

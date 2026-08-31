@@ -11,6 +11,7 @@ import type {
 	RouteFactoryOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
+	RouteDeclaration,
 } from "./contract.ts";
 import { noBody, type NoBody } from "./body.ts";
 import { getPathParamNames } from "./path.ts";
@@ -21,6 +22,7 @@ import type {
 	RequestSchemaRecord,
 } from "./request.ts";
 import type { ResponseDeclaration, RouteResponses } from "./response.ts";
+import type { WebSocketMessageDeclaration } from "./websocketMessages.ts";
 
 type QuerySchema =
 	| StandardSchemaV1
@@ -281,6 +283,184 @@ class HttpRouteBuilder {
 	}
 }
 
+class ProtocolRouteBuilder {
+	declare method: "GET";
+	declare path: string;
+	declare mode: "sse" | "webSocket";
+	declare request?: Omit<RouteRequestDeclaration, "body" | "headers">;
+	declare protected _state: BuilderState;
+	declare protected _commonMetadata?: RouteMetadata;
+	declare protected _commonOpenApi?: CommonOpenApiRouteOptions;
+
+	constructor(
+		mode: "sse" | "webSocket",
+		path: string,
+		options: RouteFactoryOptions = {},
+	) {
+		this.method = "GET";
+		this.path = options.pathPrefix
+			? joinPathPrefix(options.pathPrefix, path)
+			: path;
+		this.mode = mode;
+		this.request =
+			typeof options.flattenRequestKeys === "boolean"
+				? { flattenKeys: options.flattenRequestKeys }
+				: undefined;
+		Object.defineProperties(this, {
+			_state: {
+				value: { writes: new Set(), responseStatuses: new Set() },
+				writable: true,
+			},
+			_commonMetadata: { value: cloneMetadata(options.metadata) },
+			_commonOpenApi: { value: cloneMetadata(options.openApi) },
+		});
+		this.installCallableDefault("metadata", cloneMetadata(options.metadata));
+		this.installCallableDefault(
+			"openApi",
+			mergeOpenApi(options.openApi, undefined),
+		);
+	}
+
+	private installCallableDefault(
+		setter: "metadata" | "openApi",
+		value: object | undefined,
+	) {
+		if (!value) return;
+		const callable = Object.assign(
+			(
+				this[setter] as (
+					value: RouteMetadata | OpenApiRouteOptions,
+				) => this
+			).bind(this),
+			value,
+		);
+		Object.defineProperty(this, setter, {
+			value: callable,
+			writable: true,
+			enumerable: true,
+			configurable: true,
+		});
+	}
+
+	protected assertSingleWrite(setter: string) {
+		if (this._state.writes.has(setter)) {
+			throw new Error(
+				`Route ${this.method} ${this.path} cannot call ${setter}() more than once.`,
+			);
+		}
+		this._state.writes.add(setter);
+	}
+
+	private requestForWrite() {
+		return (this.request ??= {});
+	}
+
+	query(schema: QuerySchema) {
+		this.assertSingleWrite("query");
+		this.requestForWrite().query = schema;
+		return this;
+	}
+
+	pathParams(schema: RequestSchemaRecord | StandardSchemaV1) {
+		this.assertSingleWrite("pathParams");
+		this.requestForWrite().pathParams = schema;
+		return this;
+	}
+
+	requestKeys(keys: RequestKeys) {
+		this.assertSingleWrite("requestKeys");
+		this.requestForWrite().keys = { ...keys };
+		return this;
+	}
+
+	flattenRequestKeys(value: boolean) {
+		this.assertSingleWrite("flattenRequestKeys");
+		this.requestForWrite().flattenKeys = value;
+		return this;
+	}
+
+	metadata(metadata: RouteMetadata) {
+		this.assertSingleWrite("metadata");
+		Object.assign(this, {
+			metadata: {
+				...cloneMetadata(this._commonMetadata),
+				...cloneMetadata(metadata),
+			},
+		});
+		return this;
+	}
+
+	openApi(openApi: OpenApiRouteOptions) {
+		this.assertSingleWrite("openApi");
+		Object.assign(this, { openApi: mergeOpenApi(this._commonOpenApi, openApi) });
+		return this;
+	}
+}
+
+class SseRouteBuilder extends ProtocolRouteBuilder {
+	constructor(path: string, options?: RouteFactoryOptions) {
+		super("sse", path, options);
+	}
+
+	response(schema: StandardSchemaV1) {
+		this.assertSingleWrite("response");
+		Object.assign(this, { response: schema });
+		return this;
+	}
+}
+
+class WebSocketRouteBuilder extends ProtocolRouteBuilder {
+	constructor(path: string, options?: RouteFactoryOptions) {
+		super("webSocket", path, options);
+	}
+
+	private setMessage(direction: "client" | "server", schema: WebSocketMessageDeclaration) {
+		Object.assign(this, {
+			messages: {
+				...((Object.hasOwn(this, "messages")
+					? (this as unknown as { messages: object }).messages
+					: {}) as object),
+				[direction]: schema,
+			},
+		});
+		return this;
+	}
+
+	clientMessages(schema: WebSocketMessageDeclaration) {
+		this.assertSingleWrite("clientMessages");
+		return this.setMessage("client", schema);
+	}
+
+	serverMessages(schema: WebSocketMessageDeclaration) {
+		this.assertSingleWrite("serverMessages");
+		return this.setMessage("server", schema);
+	}
+
+}
+
+export const assertProtocolRouteComplete = (route: {
+	method: HttpMethod;
+	path: string;
+	mode?: string;
+}) => {
+	if (route.mode === "sse" && !Object.hasOwn(route, "response")) {
+		throw new Error(
+			`SSE route declaration at path "${route.path}" is missing a response schema.`,
+		);
+	}
+	if (route.mode === "webSocket") {
+		const messages = Object.hasOwn(route, "messages")
+			? (route as unknown as { messages: Record<string, unknown> }).messages
+			: undefined;
+		if (!messages?.client || !messages.server) {
+			throw new Error(
+				`WebSocket route declaration at path "${route.path}" must declare client and server messages.`,
+			);
+		}
+	}
+	return route as RouteDeclaration;
+};
+
 const createHttpRoute = (
 	method: HttpMethod,
 	path: string,
@@ -421,6 +601,121 @@ type HttpBuilder<
 				})
 >;
 
+type ProtocolRequestSetters<
+	TKind extends "sse" | "webSocket",
+	TPath extends string,
+	TRequest,
+	TMetadata,
+	TOpenApi,
+	TUsed extends string,
+	TComplete,
+> =
+	("query" extends TUsed
+		? EmptyObject
+		: {
+				query<const TSchema extends QuerySchema>(schema: TSchema): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "query", TSchema>, TMetadata, TOpenApi, TUsed | "query", TComplete>;
+			}) &
+	("pathParams" extends TUsed
+		? EmptyObject
+		: {
+				pathParams<const TSchema extends StandardSchemaV1 | RequestSchemaRecord>(schema: TSchema): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "pathParams", TSchema>, TMetadata, TOpenApi, TUsed | "pathParams", TComplete>;
+			}) &
+	("requestKeys" extends TUsed
+		? EmptyObject
+		: {
+				requestKeys<const TKeys extends RequestKeys>(keys: TKeys): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "keys", TKeys>, TMetadata, TOpenApi, TUsed | "requestKeys", TComplete>;
+			}) &
+	("flattenRequestKeys" extends TUsed
+		? EmptyObject
+		: {
+				flattenRequestKeys<const TFlatten extends boolean>(value: TFlatten): ProtocolBuilder<TKind, TPath, WithRequest<TRequest, "flattenKeys", TFlatten>, TMetadata, TOpenApi, TUsed | "flattenRequestKeys", TComplete>;
+			}) &
+	("metadata" extends TUsed
+		? { metadata: TMetadata }
+		: {
+				metadata: TMetadata & RouteMetadata & (<const TLocal extends RouteMetadata>(metadata: TLocal) => ProtocolBuilder<TKind, TPath, TRequest, Merge<TMetadata, TLocal>, TOpenApi, TUsed | "metadata", TComplete>);
+			}) &
+	("openApi" extends TUsed
+		? { openApi: TOpenApi }
+		: {
+				openApi: TOpenApi & OpenApiRouteOptions & (<const TLocal extends OpenApiRouteOptions>(openApi: TLocal) => ProtocolBuilder<TKind, TPath, TRequest, TMetadata, Merge<TOpenApi, TLocal>, TUsed | "openApi", TComplete>);
+			});
+
+type SseBuilder<
+	TPath extends string,
+	TRequest,
+	TMetadata,
+	TOpenApi,
+	TUsed extends string = never,
+	TResponse = never,
+> = Simplify<
+	{
+		readonly method: "GET";
+		readonly path: TPath;
+		readonly mode: "sse";
+		request?: keyof TRequest extends never ? never : TRequest;
+	} &
+		([TResponse] extends [never]
+			? {
+					response<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TSchema>;
+				}
+			: { response: TResponse }) &
+		ProtocolRequestSetters<"sse", TPath, TRequest, TMetadata, TOpenApi, TUsed, TResponse>
+>;
+
+type WebSocketCompletion = {
+	client?: WebSocketMessageDeclaration;
+	server?: WebSocketMessageDeclaration;
+};
+
+type WebSocketBuilder<
+	TPath extends string,
+	TRequest,
+	TMetadata,
+	TOpenApi,
+	TUsed extends string = never,
+	TMessages extends WebSocketCompletion = EmptyObject,
+> = Simplify<
+	{
+		readonly method: "GET";
+		readonly path: TPath;
+		readonly mode: "webSocket";
+		request?: keyof TRequest extends never ? never : TRequest;
+	} &
+		(keyof TMessages extends never
+			? { messages?: never }
+			: { messages: TMessages }) &
+		(TMessages extends { client: WebSocketMessageDeclaration }
+				? EmptyObject
+				: {
+						clientMessages<const TSchema extends WebSocketMessageDeclaration>(
+							schema: TSchema,
+						): WebSocketBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, Merge<TMessages, { client: TSchema }>>;
+					}) &
+		(TMessages extends { server: WebSocketMessageDeclaration }
+				? EmptyObject
+				: {
+						serverMessages<const TSchema extends WebSocketMessageDeclaration>(
+							schema: TSchema,
+						): WebSocketBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, Merge<TMessages, { server: TSchema }>>;
+					}) &
+		ProtocolRequestSetters<"webSocket", TPath, TRequest, TMetadata, TOpenApi, TUsed, TMessages>
+>;
+
+type ProtocolBuilder<
+	TKind extends "sse" | "webSocket",
+	TPath extends string,
+	TRequest,
+	TMetadata,
+	TOpenApi,
+	TUsed extends string,
+	TComplete,
+> = TKind extends "sse"
+	? SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TComplete>
+	: WebSocketBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TComplete extends WebSocketCompletion ? TComplete : EmptyObject>;
+
 type HttpBuilderFor<
 	TOptions,
 	TMethod extends HttpMethod,
@@ -440,6 +735,18 @@ type RouteFactory<TOptions = undefined> = {
 	put<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "PUT", TPath>;
 	patch<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "PATCH", TPath>;
 	delete<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "DELETE", TPath>;
+	sse<const TPath extends string>(path: TPath): SseBuilder<
+		PathFor<TOptions, TPath>,
+		RequestFor<TOptions>,
+		OptionValue<TOptions, "metadata", EmptyObject>,
+		OptionValue<TOptions, "openApi", EmptyObject>
+	>;
+	ws<const TPath extends string>(path: TPath): WebSocketBuilder<
+		PathFor<TOptions, TPath>,
+		RequestFor<TOptions>,
+		OptionValue<TOptions, "metadata", EmptyObject>,
+		OptionValue<TOptions, "openApi", EmptyObject>
+	>;
 };
 
 const createFactory = (options: RouteFactoryOptions = {}) => {
@@ -450,6 +757,8 @@ const createFactory = (options: RouteFactoryOptions = {}) => {
 		put: (path: string) => createHttpRoute("PUT", path, options),
 		patch: (path: string) => createHttpRoute("PATCH", path, options),
 		delete: (path: string) => createHttpRoute("DELETE", path, options),
+		sse: (path: string) => new SseRouteBuilder(path, options),
+		ws: (path: string) => new WebSocketRouteBuilder(path, options),
 	};
 };
 

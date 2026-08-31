@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { type } from "../standard-schema/index.ts";
 import { noBody } from "./body.ts";
-import { route } from "./route.ts";
+import { assertProtocolRouteComplete, route } from "./route.ts";
 
 describe("HTTP route builder runtime", () => {
 	it("constructs every HTTP method and keeps methods non-enumerable", () => {
@@ -78,5 +78,70 @@ describe("HTTP route builder runtime", () => {
 		assert.equal("with" in route.with({ pathPrefix: "/api" }), false);
 		assert.throws(() => route.with({ pathPrefix: "/:tenant" }), /cannot include path params/);
 		assert.equal(route.with({ pathPrefix: "/api/" }).get("/items").path, "/api//items");
+	});
+});
+
+describe("protocol route builder runtime", () => {
+	it("builds complete SSE routes with only compatible setters", () => {
+		const event = type<{ id: string }>();
+		const declaration = route
+			.sse("/events/:id")
+			.query({ cursor: type<string>() })
+			.pathParams({ id: type<string>() })
+			.response(event);
+		assert.equal(declaration.mode, "sse");
+		assert.equal(declaration.response, event);
+		assert.equal("body" in declaration, false);
+		assert.equal("headers" in declaration, false);
+		assert.equal(assertProtocolRouteComplete(declaration), declaration);
+	});
+
+	it("builds WebSocket routes from both message directions", () => {
+		const client = type<{ command: string }>();
+		const server = type<{ event: string }>();
+		const directional = route
+			.ws("/socket")
+			.serverMessages(server)
+			.clientMessages(client);
+		assert.deepEqual(directional.messages, { client, server });
+		assert.equal(assertProtocolRouteComplete(directional), directional);
+	});
+
+	it("rejects incomplete and conflicting protocol routes", () => {
+		const schema = type<string>();
+		assert.throws(
+			() => assertProtocolRouteComplete(route.sse("/events")),
+			/missing a response schema/,
+		);
+		assert.throws(
+			() =>
+				assertProtocolRouteComplete(
+					route.ws("/socket").clientMessages(schema),
+				),
+			/client and server messages/,
+		);
+		assert.throws(() =>
+			route.ws("/socket").clientMessages(schema).clientMessages(schema),
+		);
+	});
+
+	it("ignores HTTP-only configured defaults for protocols", () => {
+		const schema = type<string>();
+		const factory = route.with({
+			pathPrefix: "/api",
+			headers: { authorization: schema },
+			responses: { 401: schema },
+			metadata: { public: true },
+		});
+		const sse = factory.sse("/events").response(schema);
+		const ws = factory
+			.ws("/socket")
+			.clientMessages(schema)
+			.serverMessages(schema);
+		assert.equal(sse.path, "/api/events");
+		assert.equal(ws.path, "/api/socket");
+		assert.equal(sse.request?.headers, undefined);
+		assert.equal(Object.hasOwn(sse, "responses"), false);
+		assert.deepEqual({ ...sse.metadata }, { public: true });
 	});
 });
