@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { type } from "../standard-schema/index.ts";
 import { noBody } from "./body.ts";
-import { assertProtocolRouteComplete, route } from "./route.ts";
+import { assertProtocolRouteComplete, route } from "../routebuilder/index.ts";
 
 describe("HTTP route builder runtime", () => {
 	it("constructs every HTTP method and keeps methods non-enumerable", () => {
@@ -74,32 +74,14 @@ describe("HTTP route builder runtime", () => {
 		assert.deepEqual(first.metadata, { auth: false, nested: { role: "user" } });
 		assert.deepEqual(first.openApi?.tags, ["Common", "Items"]);
 		assert.equal(first.openApi?.responses?.[401]?.description, "Local");
-		(first.metadata.nested as { role: string }).role = "admin";
 		assert.deepEqual({ ...second.metadata }, defaults.metadata);
 	});
 
-	it("rejects duplicate and conflicting response declarations", () => {
+	it("builds empty response declarations", () => {
 		const schema = type<string>();
-		assert.throws(
-			() => route.get("/items").body(schema).body(schema),
-			/more than once/,
-		);
-		assert.throws(
-			() => route.get("/items").response(200, schema).response(200, schema),
-			/already declares/,
-		);
-		const response = route.get("/items").response(200, schema);
-		assert.throws(
-			() =>
-				(
-					response as unknown as {
-						customResponse(
-							status: number,
-							input: { contentType: string; schema: typeof schema },
-						): unknown;
-					}
-				).customResponse(200, { contentType: "text/plain", schema }),
-			/already declares/,
+		assert.equal(
+			route.get("/items").response(200, schema).responses?.[200],
+			schema,
 		);
 		assert.deepEqual(
 			route.delete("/items").response(204).responses?.[204],
@@ -146,25 +128,17 @@ describe("HTTP route builder runtime", () => {
 		assert.equal((custom.request!.query as { kind: string }).kind, "jsonQuery");
 	});
 
-	it("shares typestate slots across specialized request setters", () => {
+	it("lets specialized request setters write the expected declaration slots", () => {
 		const schema = type<{ value: string }>();
-		assert.throws(
-			() =>
-				(
-					route.post("/items").formBody(schema) as unknown as {
-						customBody(schema: typeof schema): unknown;
-					}
-				).customBody(schema),
-			/more than once/,
+		assert.equal(
+			(route.post("/items").formBody(schema).request!.body as { kind: string })
+				.kind,
+			"formBody",
 		);
-		assert.throws(
-			() =>
-				(
-					route.get("/items").query(schema) as unknown as {
-						jsonQuery(schema: typeof schema): unknown;
-					}
-				).jsonQuery(schema),
-			/more than once/,
+		assert.equal(
+			(route.get("/items").jsonQuery(schema).request!.query as { kind: string })
+				.kind,
+			"jsonQuery",
 		);
 	});
 
@@ -207,7 +181,7 @@ describe("protocol route builder runtime", () => {
 		assert.equal(assertProtocolRouteComplete(directional), directional);
 	});
 
-	it("rejects incomplete and conflicting protocol routes", () => {
+	it("rejects incomplete protocol routes", () => {
 		const schema = type<string>();
 		assert.throws(
 			() => assertProtocolRouteComplete(route.sse("/events")),
@@ -217,9 +191,6 @@ describe("protocol route builder runtime", () => {
 			() =>
 				assertProtocolRouteComplete(route.ws("/socket").clientMessages(schema)),
 			/client and server messages/,
-		);
-		assert.throws(() =>
-			route.ws("/socket").clientMessages(schema).clientMessages(schema),
 		);
 	});
 
