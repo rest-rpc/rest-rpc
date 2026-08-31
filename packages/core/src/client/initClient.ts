@@ -33,13 +33,11 @@ const hasSingleSuccessfulResponse = (route: RouteDeclaration) =>
  */
 export function initClient<
 	TContract extends Contract,
-	const TStrictStatusCodes extends boolean = false,
 	const TGlobalHeaders extends Record<string, string> = Record<never, string>,
 >(
 	contract: TContract,
-	options: ApiClientOptions<TStrictStatusCodes, TGlobalHeaders>,
-): ApiClientFor<TContract, TStrictStatusCodes, TGlobalHeaders> {
-	const strictStatusCodes = options.strictStatusCodes ?? false;
+	options: ApiClientOptions<TGlobalHeaders>,
+): ApiClientFor<TContract, TGlobalHeaders> {
 	const strictRequestKeys = options.strictRequestKeys ?? true;
 	const validateResponses = options.validateResponses ?? false;
 	const requestOptions: ExecuteRequestOptions = {
@@ -60,14 +58,7 @@ export function initClient<
 		routePath: readonly string[],
 		...args: FetchArgs
 	) =>
-		fetchRouteResponse(
-			request,
-			validateResponses,
-			strictStatusCodes,
-			route,
-			routePath,
-			...args,
-		);
+		fetchRouteResponse(request, validateResponses, route, routePath, ...args);
 
 	return mapContractRoutes(contract, (node, routePath) => {
 		if (node.mode === "webSocket" || isSseRouteNode(node)) {
@@ -107,5 +98,5 @@ export function initClient<
 				fetchSuccess(fetchResponse, node, routePath, ...args),
 			fetchResponse: routeFetchResponse,
 		};
-	}) as ApiClientFor<TContract, TStrictStatusCodes, TGlobalHeaders>;
+	}) as ApiClientFor<TContract, TGlobalHeaders>;
 }

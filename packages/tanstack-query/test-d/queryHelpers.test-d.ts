@@ -1,4 +1,4 @@
-import { route, type as schemaType, stream } from "@rest-rpc/core/contract";
+import { route, type as schemaType } from "@rest-rpc/core/contract";
 import {
 	createTanstackQueryHelpers,
 	type CreateTanstackQueryHelpersOptions,
@@ -7,8 +7,6 @@ import {
 	type RouteQueryData,
 	type RouteQueryError,
 	type RouteStreamedQueryData,
-	type StrictRouteQueryError,
-	type StrictTanstackQueryHelpersFor,
 	type TanstackQueryHelpersFor,
 } from "@rest-rpc/tanstack-query";
 import { type QueryClient, skipToken } from "@tanstack/query-core";
@@ -138,6 +136,7 @@ const strictStatusApi = {
 		get: route
 			.get("/todos/:id")
 			.pathParams(schemaType<{ id: string }>())
+			.strictStatusCodes(true)
 			.response(200, schemaType<{ id: string; title: string }>())
 			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
 	},
@@ -145,9 +144,8 @@ const strictStatusApi = {
 
 const strictStatusTq = createTanstackQueryHelpers(strictStatusApi, {
 	baseUrl: "https://example.test",
-	strictStatusCodes: true,
 });
-expectAssignable<StrictTanstackQueryHelpersFor<typeof strictStatusApi>>(
+expectAssignable<TanstackQueryHelpersFor<typeof strictStatusApi>>(
 	strictStatusTq,
 );
 
@@ -162,17 +160,12 @@ expectAssignable<
 		headers: Headers;
 	}>
 >(queryClient.fetchQuery(strictStatusOptions));
-expectAssignable<RouteQueryError<typeof strictStatusApi.todos.get, true>>({
+expectAssignable<RouteQueryError<typeof strictStatusApi.todos.get>>({
 	status: 404,
 	body: { code: "TODO_NOT_FOUND" },
 	headers: new Headers(),
 });
-expectAssignable<StrictRouteQueryError<typeof strictStatusApi.todos.get>>({
-	status: 404,
-	body: { code: "TODO_NOT_FOUND" },
-	headers: new Headers(),
-});
-expectNotAssignable<StrictRouteQueryError<typeof strictStatusApi.todos.get>>({
+expectNotAssignable<RouteQueryError<typeof strictStatusApi.todos.get>>({
 	declared: false,
 	status: 500,
 	body: "server exploded",
@@ -462,10 +455,14 @@ const invalidApi = {
 		.clientMessages(schemaType<{ subscribe: boolean }>())
 		.serverMessages(schemaType<{ id: string }>()),
 	feeds: {
-		live: route.sse("/feeds/live").response(schemaType<{ id: string; message: string }>()),
+		live: route
+			.sse("/feeds/live")
+			.response(schemaType<{ id: string; message: string }>()),
 	},
 	mixed: {
-		live: route.sse("/mixed/live").response(schemaType<{ id: string; message: string }>()),
+		live: route
+			.sse("/mixed/live")
+			.response(schemaType<{ id: string; message: string }>()),
 		list: queryApi.todos.list,
 	},
 };

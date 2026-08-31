@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
 import { initClient } from "./index.ts";
 
@@ -16,20 +15,19 @@ type FetchCall = {
 	init?: RequestInit;
 };
 
-const createResponseTestContract = () =>
-	({
-		todos: {
-			create: route
-				.post("/todos")
-				.body(z.object({ title: z.string() }))
-				.response(201, z.object({ id: z.string(), title: z.string() })),
-			get: route
-				.get("/todos/:id")
-				.pathParams(z.object({ id: z.string() }))
-				.response(200, z.object({ id: z.string(), title: z.string() }))
-				.response(404, z.object({ code: z.literal("not_found") })),
-		},
-	});
+const createResponseTestContract = () => ({
+	todos: {
+		create: route
+			.post("/todos")
+			.body(z.object({ title: z.string() }))
+			.response(201, z.object({ id: z.string(), title: z.string() })),
+		get: route
+			.get("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.response(200, z.object({ id: z.string(), title: z.string() }))
+			.response(404, z.object({ code: z.literal("not_found") })),
+	},
+});
 
 const jsonResponse = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), {
@@ -89,11 +87,11 @@ describe("ApiClient responses", () => {
 					.get("/todos/:id")
 					.pathParams(z.object({ id: z.string() }))
 					.response(200, {
-							body: z.object({ id: z.string() }),
-							headers: {
-								etag: z.string(),
-								"x-count": z.coerce.number(),
-							},
+						body: z.object({ id: z.string() }),
+						headers: {
+							etag: z.string(),
+							"x-count": z.coerce.number(),
+						},
 					}),
 			},
 		};
@@ -143,9 +141,10 @@ describe("ApiClient responses", () => {
 
 	it("rejects undeclared response statuses when strict status codes are enabled", async () => {
 		captureFetch(jsonResponse({ code: "teapot" }, 418));
-		const client = initClient(createResponseTestContract(), {
+		const apiContract = createResponseTestContract();
+		apiContract.todos.get.strictStatusCodes(true);
+		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
-			strictStatusCodes: true,
 		});
 
 		await assert.rejects(
@@ -160,13 +159,17 @@ describe("ApiClient responses", () => {
 				get: route
 					.get("/todos/:id")
 					.pathParams(z.object({ id: z.string() }))
-					.response(200, z.object({
+					.strictStatusCodes(true)
+					.response(
+						200,
+						z.object({
 							id: z.string(),
 							createdAt: z
 								.string()
 								.datetime()
 								.transform((value) => new Date(value)),
-					})),
+						}),
+					),
 			},
 		};
 		captureFetch(
@@ -177,7 +180,6 @@ describe("ApiClient responses", () => {
 		);
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
-			strictStatusCodes: true,
 		});
 
 		const response = await client.todos.get.fetchResponse({ id: "todo-1" });
@@ -447,12 +449,10 @@ describe("ApiClient responses", () => {
 	it("returns declared custom responses as native Response objects", async () => {
 		const apiContract = {
 			reports: {
-				csv: route
-					.get("/reports.csv")
-					.customResponse(200, {
-							contentType: "text/csv",
-							schema: z.string(),
-					}),
+				csv: route.get("/reports.csv").customResponse(200, {
+					contentType: "text/csv",
+					schema: z.string(),
+				}),
 			},
 		};
 		captureFetch(
@@ -478,12 +478,10 @@ describe("ApiClient responses", () => {
 	it("returns selected content type metadata for custom fetchResponse bodies", async () => {
 		const apiContract = {
 			reports: {
-				image: route
-					.get("/reports/image")
-					.customResponse(200, {
-							contentType: ["image/png", "image/jpeg"],
-							schema: z.instanceof(Uint8Array),
-					}),
+				image: route.get("/reports/image").customResponse(200, {
+					contentType: ["image/png", "image/jpeg"],
+					schema: z.instanceof(Uint8Array),
+				}),
 			},
 		};
 		captureFetch(
@@ -506,12 +504,10 @@ describe("ApiClient responses", () => {
 	it("rejects custom fetchResponse bodies with mismatched content types", async () => {
 		const apiContract = {
 			reports: {
-				csv: route
-					.get("/reports.csv")
-					.customResponse(200, {
-							contentType: "text/csv",
-							schema: z.string(),
-					}),
+				csv: route.get("/reports.csv").customResponse(200, {
+					contentType: "text/csv",
+					schema: z.string(),
+				}),
 			},
 		};
 		captureFetch(

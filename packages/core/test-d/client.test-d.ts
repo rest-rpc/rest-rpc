@@ -2,8 +2,6 @@ import {
 	type ApiClientFor,
 	type ClientEventSource,
 	type ClientResponse,
-	type StrictApiClientFor,
-	type StrictClientResponse,
 	type ClientResponseBody,
 	type ClientSseReceived,
 	initClient,
@@ -224,6 +222,7 @@ const strictResponseApi = {
 		get: route
 			.get("/todos/:id")
 			.pathParams(z.object({ id: z.string() }))
+			.strictStatusCodes(true)
 			.response(200, todoSchema)
 			.response(404, z.object({ code: z.literal("not_found") })),
 	},
@@ -231,7 +230,6 @@ const strictResponseApi = {
 
 const strictResponseClient = initClient(strictResponseApi, {
 	baseUrl: "https://example.test",
-	strictStatusCodes: true,
 });
 
 strictResponseClient.todos.get
@@ -248,15 +246,14 @@ strictResponseClient.todos.get
 		}
 	});
 
-type StrictClientResponseType = StrictClientResponse<
+type StrictRouteClientResponseType = ClientResponse<
 	typeof strictResponseApi.todos.get
 >;
 
-expectType<Promise<StrictClientResponseType>>(
+expectType<Promise<StrictRouteClientResponseType>>(
 	strictResponseClient.todos.get.fetchResponse({ id: "todo-1" }),
 );
-expectType<ApiClientFor<typeof strictResponseApi, true>>(strictResponseClient);
-expectType<StrictApiClientFor<typeof strictResponseApi>>(strictResponseClient);
+expectType<ApiClientFor<typeof strictResponseApi>>(strictResponseClient);
 
 const transformedApi = {
 	todos: {

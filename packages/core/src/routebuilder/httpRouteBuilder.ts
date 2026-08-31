@@ -40,6 +40,7 @@ import {
 	type PathFor,
 	type RequestFor,
 	type Simplify,
+	type StrictStatusCodesFor,
 	type WithRequest,
 } from "./shared.ts";
 
@@ -98,6 +99,9 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 	) {
 		super(method, path, options, httpRequestDefaults(options));
 		this.#commonOpenApi = options.openApi;
+		if (typeof options.strictStatusCodes === "boolean") {
+			Object.assign(this, { strictStatusCodes: options.strictStatusCodes });
+		}
 		if (options.responses) {
 			this.responses = { ...options.responses };
 		}
@@ -176,6 +180,7 @@ type HttpBuilder<
 	TResponses,
 	TMetadata,
 	TOpenApi,
+	TStrictStatusCodes,
 	TUsed extends string = never,
 > = Simplify<
 	{
@@ -184,6 +189,9 @@ type HttpBuilder<
 	} & (keyof TRequest extends never
 		? { request?: never }
 		: { request: TRequest }) &
+		([TStrictStatusCodes] extends [boolean]
+			? { readonly strictStatusCodes: TStrictStatusCodes }
+			: EmptyObject) &
 		(keyof TResponses extends never
 			? { responses?: never }
 			: { responses: TResponses }) & {
@@ -207,6 +215,7 @@ type HttpBuilder<
 				>,
 				TMetadata,
 				TOpenApi,
+				TStrictStatusCodes,
 				TUsed
 			>;
 			customResponse<
@@ -226,6 +235,7 @@ type HttpBuilder<
 				>,
 				TMetadata,
 				TOpenApi,
+				TStrictStatusCodes,
 				TUsed
 			>;
 			streamResponse<
@@ -241,6 +251,7 @@ type HttpBuilder<
 				Merge<TResponses, Record<TStatus, Stream<TSchema>>>,
 				TMetadata,
 				TOpenApi,
+				TStrictStatusCodes,
 				TUsed
 			>;
 			customStreamResponse<
@@ -260,6 +271,7 @@ type HttpBuilder<
 				>,
 				TMetadata,
 				TOpenApi,
+				TStrictStatusCodes,
 				TUsed
 			>;
 		} & ("body" extends TUsed
@@ -274,6 +286,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					formBody<const TSchema extends StandardSchemaV1>(
@@ -285,6 +298,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					formBody<
@@ -300,6 +314,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					multipartBody<const TSchema extends StandardSchemaV1>(
@@ -311,6 +326,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					multipartBody<
@@ -326,6 +342,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					customBody<const TSchema extends StandardSchemaV1>(
@@ -337,6 +354,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					customBody<
@@ -352,6 +370,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 				}) &
@@ -367,6 +386,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "query"
 					>;
 					jsonQuery<const TSchema extends StandardSchemaV1>(
@@ -378,6 +398,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "query"
 					>;
 				}) &
@@ -393,6 +414,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "pathParams"
 					>;
 				}) &
@@ -417,6 +439,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "headers"
 					>;
 				}) &
@@ -432,6 +455,7 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "requestKeys"
 					>;
 				}) &
@@ -447,7 +471,24 @@ type HttpBuilder<
 						TResponses,
 						TMetadata,
 						TOpenApi,
+						TStrictStatusCodes,
 						TUsed | "flattenRequestKeys"
+					>;
+				}) &
+		("strictStatusCodes" extends TUsed
+			? EmptyObject
+			: {
+					strictStatusCodes<const TStrict extends boolean>(
+						value: TStrict,
+					): HttpBuilder<
+						TMethod,
+						TPath,
+						TRequest,
+						TResponses,
+						TMetadata,
+						TOpenApi,
+						TStrict,
+						TUsed | "strictStatusCodes"
 					>;
 				}) &
 		("metadata" extends TUsed
@@ -464,6 +505,7 @@ type HttpBuilder<
 							TResponses,
 							Merge<TMetadata, TLocal>,
 							TOpenApi,
+							TStrictStatusCodes,
 							TUsed | "metadata"
 						>);
 				}) &
@@ -481,6 +523,7 @@ type HttpBuilder<
 							TResponses,
 							TMetadata,
 							Merge<TOpenApi, TLocal>,
+							TStrictStatusCodes,
 							TUsed | "openApi"
 						>);
 				})
@@ -496,7 +539,8 @@ export type HttpBuilderFor<
 	RequestFor<TOptions>,
 	OptionValue<TOptions, "responses", EmptyObject>,
 	OptionValue<TOptions, "metadata", EmptyObject>,
-	OptionValue<TOptions, "openApi", EmptyObject>
+	OptionValue<TOptions, "openApi", EmptyObject>,
+	StrictStatusCodesFor<TOptions>
 >;
 
 export const createHttpRoute = (

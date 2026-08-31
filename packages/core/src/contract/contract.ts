@@ -119,6 +119,7 @@ export type Contract = RouteDeclaration | { [key: string]: Contract };
 /** Defaults applied locally by a configured route factory. */
 export type RouteFactoryOptions = {
 	flattenRequestKeys?: boolean;
+	strictStatusCodes?: boolean;
 	pathPrefix?: string;
 	metadata?: RouteMetadata;
 	responses?: RouteResponses;

@@ -78,6 +78,7 @@ describe("HTTP route builder runtime", () => {
 			metadata: { auth: true, nested: { role: "user" } },
 			openApi: { tags: ["Common"], responses: { 401: { description: "No" } } },
 			flattenRequestKeys: true,
+			strictStatusCodes: true,
 		} as const;
 		const factory = route.with(defaults);
 		const first = factory
@@ -101,6 +102,7 @@ describe("HTTP route builder runtime", () => {
 		);
 		assert.deepEqual(Object.keys(first.responses ?? {}), ["200", "401"]);
 		assert.equal((first.responses[401] as { kind: string }).kind, "customBody");
+		assert.equal(first.strictStatusCodes, true);
 		assert.deepEqual(first.metadata, { auth: false, nested: { role: "user" } });
 		assert.deepEqual(first.openApi?.tags, ["Common", "Items"]);
 		assert.equal(first.openApi?.responses?.[401]?.description, "Local");
@@ -116,6 +118,11 @@ describe("HTTP route builder runtime", () => {
 		assert.deepEqual(
 			route.delete("/items").response(204).responses?.[204],
 			noBody(),
+		);
+		assert.equal(
+			route.get("/items").strictStatusCodes(true).response(200, schema)
+				.strictStatusCodes,
+			true,
 		);
 	});
 
@@ -236,6 +243,7 @@ describe("protocol route builder runtime", () => {
 			headers: { authorization: schema },
 			responses: { 401: schema },
 			metadata: { public: true },
+			strictStatusCodes: true,
 		});
 		const sse = factory.sse("/events").response(schema);
 		const ws = factory
@@ -245,6 +253,7 @@ describe("protocol route builder runtime", () => {
 		assert.equal(sse.path, "/api/events");
 		assert.equal(ws.path, "/api/socket");
 		assert.equal(sse.request?.headers, undefined);
+		assert.equal(Object.hasOwn(sse, "strictStatusCodes"), false);
 		assert.equal(Object.hasOwn(sse, "responses"), true);
 		assert.deepEqual({ ...sse.metadata }, { public: true });
 	});

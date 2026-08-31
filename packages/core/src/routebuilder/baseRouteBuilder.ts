@@ -226,6 +226,11 @@ export class BaseRouteBuilder {
 		return this;
 	}
 
+	strictStatusCodes(value: boolean) {
+		Object.assign(this, { strictStatusCodes: value });
+		return this;
+	}
+
 	metadata(metadata: RouteMetadata) {
 		Object.assign(this, {
 			metadata: {

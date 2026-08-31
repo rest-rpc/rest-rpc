@@ -32,6 +32,11 @@ export type RequestFor<TOptions> = Simplify<
 			? { flattenKeys: TFlatten }
 			: EmptyObject)
 >;
+export type StrictStatusCodesFor<TOptions> = TOptions extends {
+	strictStatusCodes: infer TStrictStatusCodes extends boolean;
+}
+	? TStrictStatusCodes
+	: undefined;
 export type ProtocolRequestFor<TOptions> = Simplify<
 	TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
 		? { flattenKeys: TFlatten }
