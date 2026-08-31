@@ -1,7 +1,6 @@
 import type { ExecutionContext } from "@nestjs/common";
 import {
 	route as defineRoute,
-	router as defineRouter,
 	type as schemaType,
 } from "@rest-rpc/core/contract";
 import {
@@ -28,20 +27,22 @@ declare module "@rest-rpc/nest" {
 
 const todoSchema = schemaType<{ id: string; title: string; userId: string }>();
 
-const api = defineRouter({
+const api = {
 	todos: {
 		get: defineRoute({
 			method: "GET",
 			path: "/todos/:id",
-			pathParams: {
-				id: schemaType<string>(),
+			request: {
+				pathParams: {
+					id: schemaType<string>(),
+				},
 			},
 			responses: {
 				200: todoSchema,
 			},
 		}),
 	},
-});
+} as const;
 
 // should expose augmented default context and adapter signal to route handlers
 type GetTodoRequest = RouteRequest<typeof api.todos.get>;

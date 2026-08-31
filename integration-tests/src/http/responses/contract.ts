@@ -1,7 +1,6 @@
-import { router } from "@rest-rpc/core/contract";
 import z from "zod";
 
-export const responsesContract = router({
+export const responsesContract = {
 	jsonContentType: {
 		method: "GET",
 		path: "/responses/json-content-type",
@@ -27,8 +26,10 @@ export const responsesContract = router({
 		read: {
 			method: "GET",
 			path: "/responses/cookies/read",
-			headers: {
-				cookie: z.string().optional(),
+			request: {
+				headers: {
+					cookie: z.string().optional(),
+				},
 			},
 			responses: {
 				200: z.object({ cookie: z.string().nullable() }),
@@ -49,6 +50,6 @@ export const responsesContract = router({
 			200: z.object({ ok: z.boolean() }),
 		},
 	},
-});
+} as const;
 
 export type ResponsesContract = typeof responsesContract;

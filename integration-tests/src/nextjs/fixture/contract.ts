@@ -1,4 +1,4 @@
-import { noBody, router } from "@rest-rpc/core";
+import { noBody } from "@rest-rpc/core";
 import z from "zod";
 
 const itemSchema = z.object({
@@ -6,7 +6,7 @@ const itemSchema = z.object({
 	title: z.string(),
 });
 
-export const nextFixtureContract = router({
+export const nextFixtureContract = {
 	health: {
 		method: "GET",
 		path: "/api/health",
@@ -18,7 +18,9 @@ export const nextFixtureContract = router({
 		get: {
 			method: "GET",
 			path: "/api/items/:id",
-			pathParams: z.object({ id: z.string() }),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+			},
 			responses: {
 				200: itemSchema,
 			},
@@ -26,7 +28,9 @@ export const nextFixtureContract = router({
 		create: {
 			method: "POST",
 			path: "/api/items",
-			body: z.object({ title: z.string() }),
+			request: {
+				body: z.object({ title: z.string() }),
+			},
 			responses: {
 				201: itemSchema,
 			},
@@ -36,10 +40,12 @@ export const nextFixtureContract = router({
 		get: {
 			method: "GET",
 			path: "/api/targeted/items/:id",
-			pathParams: z.object({ id: z.string() }),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+			},
 			responses: {
 				200: itemSchema,
 			},
 		},
 	},
-});
+} as const;

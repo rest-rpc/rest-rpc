@@ -22,11 +22,13 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/todos",
-				body: z.object({
-					createdAt: z.iso.datetime().transform((value) => new Date(value)),
-				}),
-				requestKeys: {
-					createdAt: "body",
+				request: {
+					body: z.object({
+						createdAt: z.iso.datetime().transform((value) => new Date(value)),
+					}),
+					keys: {
+						createdAt: "body",
+					},
 				},
 				responses: {},
 			},
@@ -50,11 +52,13 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/todos",
-				body: z.object({
-					createdAt: z.date(),
-				}),
-				requestKeys: {
-					createdAt: "body",
+				request: {
+					body: z.object({
+						createdAt: z.date(),
+					}),
+					keys: {
+						createdAt: "body",
+					},
 				},
 				responses: {},
 			},
@@ -74,17 +78,19 @@ describe("validateRequest", () => {
 			{
 				method: "GET",
 				path: "/todos/:id",
-				pathParams: {
-					id: z.coerce.number(),
-				},
-				query: {
-					published: z
-						.enum(["true", "false"])
-						.transform((value) => value === "true"),
-				},
-				requestKeys: {
-					id: "pathParams",
-					published: "query",
+				request: {
+					pathParams: {
+						id: z.coerce.number(),
+					},
+					query: {
+						published: z
+							.enum(["true", "false"])
+							.transform((value) => value === "true"),
+					},
+					keys: {
+						id: "pathParams",
+						published: "query",
+					},
 				},
 				responses: {},
 			},
@@ -108,15 +114,17 @@ describe("validateRequest", () => {
 			{
 				method: "GET",
 				path: "/todos/:id",
-				pathParams: {
-					id: z.number(),
-				},
-				query: {
-					published: z.boolean(),
-				},
-				requestKeys: {
-					id: "pathParams",
-					published: "query",
+				request: {
+					pathParams: {
+						id: z.number(),
+					},
+					query: {
+						published: z.boolean(),
+					},
+					keys: {
+						id: "pathParams",
+						published: "query",
+					},
 				},
 				responses: {},
 			},
@@ -137,13 +145,15 @@ describe("validateRequest", () => {
 			{
 				method: "GET",
 				path: "/todos",
-				query: jsonQuery(
-					z.object({
-						page: z.number(),
-						filters: z.object({ tags: z.array(z.string()) }),
-					}),
-				),
-				requestKeys: {},
+				request: {
+					query: jsonQuery(
+						z.object({
+							page: z.number(),
+							filters: z.object({ tags: z.array(z.string()) }),
+						}),
+					),
+					keys: {},
+				},
 				responses: {},
 			},
 			{
@@ -169,8 +179,10 @@ describe("validateRequest", () => {
 			{
 				method: "GET",
 				path: "/todos",
-				query: jsonQuery(z.object({ page: z.number() }).optional()),
-				requestKeys: {},
+				request: {
+					query: jsonQuery(z.object({ page: z.number() }).optional()),
+					keys: {},
+				},
 				responses: {},
 			},
 			{},
@@ -187,11 +199,13 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/images",
-				body: customBody({
-					contentType: ["image/png", "image/jpeg"],
-					schema: z.string().transform((value) => value.toUpperCase()),
-				}),
-				requestKeys: {},
+				request: {
+					body: customBody({
+						contentType: ["image/png", "image/jpeg"],
+						schema: z.string().transform((value) => value.toUpperCase()),
+					}),
+					keys: {},
+				},
 				responses: {},
 			},
 			{
@@ -218,8 +232,10 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/forms",
-				body: customBody(z.instanceof(URLSearchParams)),
-				requestKeys: {},
+				request: {
+					body: customBody(z.instanceof(URLSearchParams)),
+					keys: {},
+				},
 				responses: {},
 			},
 			{
@@ -242,14 +258,16 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/forms",
-				body: formBody(
-					z.object({
-						title: z.string(),
-						count: z.coerce.number(),
-						remember: z.string().optional(),
-					}),
-				),
-				requestKeys: {},
+				request: {
+					body: formBody(
+						z.object({
+							title: z.string(),
+							count: z.coerce.number(),
+							remember: z.string().optional(),
+						}),
+					),
+					keys: {},
+				},
 				responses: {},
 			},
 			{
@@ -279,13 +297,15 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/forms",
-				body: formBody(
-					z.object({
-						title: z.string(),
-						tags: z.array(z.string()),
-					}),
-				),
-				requestKeys: {},
+				request: {
+					body: formBody(
+						z.object({
+							title: z.string(),
+							tags: z.array(z.string()),
+						}),
+					),
+					keys: {},
+				},
 				responses: {},
 			},
 			{
@@ -325,16 +345,18 @@ describe("validateRequest", () => {
 			{
 				method: "POST",
 				path: "/uploads",
-				body: multipartBody({
-					schema: z.object({
-						title: z.string(),
-						count: z.coerce.number(),
-						file: z.instanceof(Blob),
-						tags: z.array(z.string()),
+				request: {
+					body: multipartBody({
+						schema: z.object({
+							title: z.string(),
+							count: z.coerce.number(),
+							file: z.instanceof(Blob),
+							tags: z.array(z.string()),
+						}),
+						arrayKeys: ["tags"],
 					}),
-					arrayKeys: ["tags"],
-				}),
-				requestKeys: {},
+					keys: {},
+				},
 				responses: {},
 			},
 			{
@@ -359,8 +381,10 @@ describe("validateRequest", () => {
 			{
 				method: "GET",
 				path: "/todos",
-				query: jsonQuery(z.object({ page: z.number() })),
-				requestKeys: {},
+				request: {
+					query: jsonQuery(z.object({ page: z.number() })),
+					keys: {},
+				},
 				responses: {},
 			},
 			{

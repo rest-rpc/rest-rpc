@@ -1,4 +1,4 @@
-import { router, webSocketMessages } from "@rest-rpc/core/contract";
+import { webSocketMessages } from "@rest-rpc/core/contract";
 import z from "zod";
 
 const clientMessages = webSocketMessages("action", {
@@ -25,22 +25,24 @@ const serverMessages = {
 	},
 } as const;
 
-export const websocketContract = router({
+export const websocketContract = {
 	room: {
 		method: "GET",
 		path: "/ws/:roomId",
 		mode: "webSocket",
-		pathParams: z.object({
-			roomId: z.string().min(1),
-		}),
-		query: z.object({
-			mode: z.enum(["fast", "slow"]),
-		}),
+		request: {
+			pathParams: z.object({
+				roomId: z.string().min(1),
+			}),
+			query: z.object({
+				mode: z.enum(["fast", "slow"]),
+			}),
+		},
 		messages: {
 			client: clientMessages,
 			server: serverMessages,
 		},
 	},
-});
+} as const;
 
 export type WebSocketContract = typeof websocketContract;

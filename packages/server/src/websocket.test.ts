@@ -57,11 +57,13 @@ const websocketRoute = (
 	({
 		method: "GET",
 		path: "/rooms/:roomId",
-		pathParams: {
-			roomId: z.string(),
-		},
-		requestKeys: {
-			roomId: "pathParams",
+		request: {
+			pathParams: {
+				roomId: z.string(),
+			},
+			keys: {
+				roomId: "pathParams",
+			},
 		},
 		mode: "webSocket",
 		messages,

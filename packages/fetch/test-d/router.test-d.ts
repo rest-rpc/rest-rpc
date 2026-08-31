@@ -1,18 +1,20 @@
 import type { HttpRouteDeclaration } from "@rest-rpc/core/contract";
-import { router as defineRouter, noBody } from "@rest-rpc/core/contract";
+import { noBody } from "@rest-rpc/core/contract";
 import { type as schemaType } from "@rest-rpc/core/standard-schema";
 import { createRouteHandler, route, router } from "@rest-rpc/fetch";
 import { expectError, expectType } from "tsd";
 
 const todoSchema = schemaType<{ id: string }>();
 
-const api = defineRouter({
+const api = {
 	todos: {
 		get: {
 			method: "GET",
 			path: "/todos/:id",
-			pathParams: {
-				id: schemaType<string>(),
+			request: {
+				pathParams: {
+					id: schemaType<string>(),
+				},
 			},
 			responses: {
 				200: todoSchema,
@@ -26,7 +28,7 @@ const api = defineRouter({
 			204: noBody(),
 		},
 	},
-});
+} as const;
 
 type Runtime = {
 	env: {

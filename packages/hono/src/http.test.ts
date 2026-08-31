@@ -14,7 +14,9 @@ describe("registerRoutes", () => {
 			form: {
 				method: "POST",
 				path: "/forms",
-				body: formBody(schemaType<{ title: string }>()),
+				request: {
+					body: formBody(schemaType<{ title: string }>()),
+				},
 				responses: {
 					200: schemaType<{ title: string }>(),
 				},
@@ -47,14 +49,16 @@ describe("registerRoutes", () => {
 			upload: {
 				method: "POST",
 				path: "/uploads",
-				body: multipartBody({
-					schema: schemaType<{
-						title: string;
-						file: Blob;
-						tags: string[];
-					}>(),
-					arrayKeys: ["tags"],
-				}),
+				request: {
+					body: multipartBody({
+						schema: schemaType<{
+							title: string;
+							file: Blob;
+							tags: string[];
+						}>(),
+						arrayKeys: ["tags"],
+					}),
+				},
 				responses: {
 					200: schemaType<{
 						title: string;

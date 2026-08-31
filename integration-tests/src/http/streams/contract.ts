@@ -1,4 +1,4 @@
-import { customBody, router, stream } from "@rest-rpc/core/contract";
+import { customBody, stream } from "@rest-rpc/core/contract";
 import z from "zod";
 
 const eventSchema = z.object({
@@ -6,7 +6,7 @@ const eventSchema = z.object({
 	index: z.number(),
 });
 
-export const streamsContract = router({
+export const streamsContract = {
 	empty: {
 		method: "GET",
 		path: "/streams/empty",
@@ -81,6 +81,6 @@ export const streamsContract = router({
 			200: stream(eventSchema),
 		},
 	},
-});
+} as const;
 
 export type StreamsContract = typeof streamsContract;

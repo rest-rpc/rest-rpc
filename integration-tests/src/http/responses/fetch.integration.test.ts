@@ -30,7 +30,7 @@ runResponseMiddlewareHeadersSuite(
 	{ "x-fetch-middleware": "set" },
 );
 
-const lifecycleContract = router({
+const lifecycleContract = {
 	contextMutation: {
 		method: "GET",
 		path: "/responses/lifecycle/context-mutation",
@@ -45,7 +45,7 @@ const lifecycleContract = router({
 			200: z.object({ ok: z.literal(true) }),
 		},
 	},
-});
+} as const;
 
 type LifecycleContract = typeof lifecycleContract;
 type FetchLifecycleContext = {

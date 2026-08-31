@@ -36,11 +36,13 @@ describe("handleHttpRoute", () => {
 			{
 				method: "GET",
 				path: "/todos/:id",
-				pathParams: {
-					id: z.coerce.number(),
-				},
-				requestKeys: {
-					id: "pathParams",
+				request: {
+					pathParams: {
+						id: z.coerce.number(),
+					},
+					keys: {
+						id: "pathParams",
+					},
 				},
 				responses: {
 					200: z.object({ id: z.number() }),
@@ -75,8 +77,10 @@ describe("handleHttpRoute", () => {
 			{
 				method: "GET",
 				path: "/todos",
-				flattenRequestKeys: false,
-				query: z.object({ q: z.string() }),
+				request: {
+					flattenKeys: false,
+					query: z.object({ q: z.string() }),
+				},
 				responses: {
 					204: noBody(),
 				},
@@ -108,11 +112,13 @@ describe("handleHttpRoute", () => {
 			{
 				method: "GET",
 				path: "/todos/:id",
-				pathParams: {
-					id: z.number(),
-				},
-				requestKeys: {
-					id: "pathParams",
+				request: {
+					pathParams: {
+						id: z.number(),
+					},
+					keys: {
+						id: "pathParams",
+					},
 				},
 				responses: {
 					204: noBody(),
@@ -139,11 +145,13 @@ describe("handleHttpRoute", () => {
 			{
 				method: "GET",
 				path: "/todos/:id",
-				pathParams: {
-					id: z.number(),
-				},
-				requestKeys: {
-					id: "pathParams",
+				request: {
+					pathParams: {
+						id: z.number(),
+					},
+					keys: {
+						id: "pathParams",
+					},
 				},
 				responses: {
 					204: noBody(),

@@ -3,7 +3,6 @@ import {
 	initClient,
 	jsonQuery,
 	noBody,
-	router,
 	type as schemaType,
 	stream,
 } from "@rest-rpc/core";
@@ -32,13 +31,15 @@ import {
 	type StrictRouteQueryError,
 } from "@rest-rpc/tanstack-query";
 
-export const hoverApi = router({
+export const hoverApi = {
 	todos: {
 		get: {
 			method: "GET",
 			path: "/todos/:id",
-			pathParams: schemaType<{ id: string }>(),
-			query: schemaType<{ includeDone?: boolean }>(),
+			request: {
+				pathParams: schemaType<{ id: string }>(),
+				query: schemaType<{ includeDone?: boolean }>(),
+			},
 			responses: {
 				200: schemaType<{ id: string; title: string }>(),
 				404: schemaType<{ code: "TODO_NOT_FOUND" }>(),
@@ -47,14 +48,16 @@ export const hoverApi = router({
 		page: {
 			method: "GET",
 			path: "/todos/page",
-			query:
-				jsonQuery(
-					schemaType<{
-						cursor?: string;
-						status: "open" | "done";
-						limit: number;
-					}>(),
-				),
+			request: {
+				query:
+					jsonQuery(
+						schemaType<{
+							cursor?: string;
+							status: "open" | "done";
+							limit: number;
+						}>(),
+					),
+			},
 			responses: {
 				200: schemaType<{
 					items: Array<{ id: string; title: string }>;
@@ -65,7 +68,9 @@ export const hoverApi = router({
 		create: {
 			method: "POST",
 			path: "/todos",
-			body: schemaType<{ title: string }>(),
+			request: {
+				body: schemaType<{ title: string }>(),
+			},
 			responses: {
 				201: {
 					body: schemaType<{ id: string; title: string }>(),
@@ -80,7 +85,9 @@ export const hoverApi = router({
 		download: {
 			method: "GET",
 			path: "/todos/:id/export",
-			pathParams: schemaType<{ id: string }>(),
+			request: {
+				pathParams: schemaType<{ id: string }>(),
+			},
 			responses: {
 				200: customBody({
 					schema: schemaType<Blob>(),
@@ -98,14 +105,16 @@ export const hoverApi = router({
 		remove: {
 			method: "DELETE",
 			path: "/todos/:id",
-			pathParams: schemaType<{ id: string }>(),
+			request: {
+				pathParams: schemaType<{ id: string }>(),
+			},
 			responses: {
 				204: noBody(),
 				404: schemaType<{ code: "TODO_NOT_FOUND" }>(),
 			},
 		},
 	},
-});
+} as const;
 
 export const hoverClient = initClient(hoverApi, {
 	baseUrl: "https://example.test",

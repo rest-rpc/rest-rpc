@@ -13,7 +13,6 @@ import { NestFactory } from "@nestjs/core";
 import { initClient } from "@rest-rpc/core";
 import {
 	route as contractRoute,
-	router as contractRouter,
 	type as schemaType,
 } from "@rest-rpc/core/contract";
 import {
@@ -184,7 +183,7 @@ it("combines Nest controller prefixes with contract route paths", async () => {
 });
 
 it("registers router routes whose contract key paths would produce the same flattened name", async () => {
-	const collisionContract = contractRouter({
+	const collisionContract = {
 		a_b: contractRoute({
 			method: "GET",
 			path: "/flat",
@@ -197,7 +196,7 @@ it("registers router routes whose contract key paths would produce the same flat
 				response: schemaType<{ source: string }>(),
 			}),
 		},
-	});
+	} as const;
 	const server = await createNestAdapter(collisionContract, {
 		a_b: () => ({ source: "flat" }),
 		a: {
@@ -216,15 +215,17 @@ it("registers router routes whose contract key paths would produce the same flat
 });
 
 it("supports async routers that close over values from Nest parameter decorators", async () => {
-	const asyncContract = contractRouter({
+	const asyncContract = {
 		get: contractRoute({
 			method: "GET",
 			path: "/async-items/:id",
-			pathParams: { id: schemaType<string>() },
-			headers: { "x-test-source": schemaType<string>() },
+			request: {
+				pathParams: { id: schemaType<string>() },
+				headers: { "x-test-source": schemaType<string>() },
+			},
 			response: schemaType<{ id: string; title: string }>(),
 		}),
-	});
+	} as const;
 	@Injectable()
 	class AsyncItemService {
 		get(source: string, { id }: RouteRequest<typeof asyncContract.get>) {
@@ -307,7 +308,7 @@ it("passes non-rest-rpc Observable handlers through the global interceptor", asy
 	}
 });
 
-const classContract = contractRouter({
+const classContract = {
 	items: {
 		get: contractRoute({
 			method: "GET",
@@ -315,7 +316,7 @@ const classContract = contractRouter({
 			response: schemaType<{ id: string; title: string }>(),
 		}),
 	},
-});
+} as const;
 
 it("serves a contract route implemented by a Nest provider class", async () => {
 	type AppContext = {

@@ -1,14 +1,16 @@
-import { customBody, formBody, noBody, router } from "@rest-rpc/core/contract";
+import { customBody, formBody, noBody } from "@rest-rpc/core/contract";
 import z from "zod";
 
-export const bodyParsingContract = router({
+export const bodyParsingContract = {
 	json: {
 		method: "POST",
 		path: "/body-parsing/json",
-		body: z.object({
-			count: z.number(),
-			title: z.string(),
-		}),
+		request: {
+			body: z.object({
+				count: z.number(),
+				title: z.string(),
+			}),
+		},
 		responses: {
 			200: z.object({
 				count: z.number(),
@@ -19,10 +21,12 @@ export const bodyParsingContract = router({
 	text: {
 		method: "POST",
 		path: "/body-parsing/text",
-		body: customBody({
-			contentType: "text/plain",
-			schema: z.string(),
-		}),
+		request: {
+			body: customBody({
+				contentType: "text/plain",
+				schema: z.string(),
+			}),
+		},
 		responses: {
 			200: z.object({
 				body: z.string(),
@@ -32,10 +36,12 @@ export const bodyParsingContract = router({
 	textVariant: {
 		method: "POST",
 		path: "/body-parsing/text-variant",
-		body: customBody({
-			contentType: ["text/plain", "text/markdown"],
-			schema: z.string(),
-		}),
+		request: {
+			body: customBody({
+				contentType: ["text/plain", "text/markdown"],
+				schema: z.string(),
+			}),
+		},
 		responses: {
 			200: z.object({
 				contentType: z.string(),
@@ -46,15 +52,17 @@ export const bodyParsingContract = router({
 	customJson: {
 		method: "POST",
 		path: "/body-parsing/custom-json",
-		body: customBody({
-			contentType: "application/json; charset=utf-8",
-			schema: z.object({
-				count: z.number(),
-				nested: z.object({
-					ok: z.boolean(),
+		request: {
+			body: customBody({
+				contentType: "application/json; charset=utf-8",
+				schema: z.object({
+					count: z.number(),
+					nested: z.object({
+						ok: z.boolean(),
+					}),
 				}),
 			}),
-		}),
+		},
 		responses: {
 			200: z.object({
 				count: z.number(),
@@ -65,7 +73,9 @@ export const bodyParsingContract = router({
 	rawUrlEncoded: {
 		method: "POST",
 		path: "/body-parsing/raw-url-encoded",
-		body: customBody(z.instanceof(URLSearchParams)),
+		request: {
+			body: customBody(z.instanceof(URLSearchParams)),
+		},
 		responses: {
 			200: z.object({
 				title: z.string(),
@@ -76,12 +86,14 @@ export const bodyParsingContract = router({
 	formUrlEncoded: {
 		method: "POST",
 		path: "/body-parsing/form-url-encoded",
-		body: formBody(
-			z.object({
-				count: z.coerce.number(),
-				title: z.string(),
-			}),
-		),
+		request: {
+			body: formBody(
+				z.object({
+					count: z.coerce.number(),
+					title: z.string(),
+				}),
+			),
+		},
 		responses: {
 			200: z.object({
 				count: z.number(),
@@ -92,10 +104,12 @@ export const bodyParsingContract = router({
 	binary: {
 		method: "POST",
 		path: "/body-parsing/binary",
-		body: customBody({
-			contentType: "application/octet-stream",
-			schema: z.instanceof(Uint8Array),
-		}),
+		request: {
+			body: customBody({
+				contentType: "application/octet-stream",
+				schema: z.instanceof(Uint8Array),
+			}),
+		},
 		responses: {
 			200: z.object({
 				byteLength: z.number(),
@@ -106,11 +120,13 @@ export const bodyParsingContract = router({
 	deleteNoBody: {
 		method: "DELETE",
 		path: "/body-parsing/no-body",
-		body: noBody(),
+		request: {
+			body: noBody(),
+		},
 		responses: {
 			204: noBody(),
 		},
 	},
-});
+} as const;
 
 export type BodyParsingContract = typeof bodyParsingContract;

@@ -1,4 +1,4 @@
-import { customBody, noBody, router, stream } from "@rest-rpc/core/contract";
+import { customBody, noBody, stream } from "@rest-rpc/core/contract";
 import z from "zod";
 
 const itemSchema = z.object({
@@ -16,7 +16,7 @@ const echoedRequestSchema = z.object({
 	}),
 });
 
-export const integrationContract = router({
+export const integrationContract = {
 	health: {
 		method: "GET",
 		path: "/health",
@@ -28,18 +28,20 @@ export const integrationContract = router({
 		json: {
 			method: "POST",
 			path: "/echo/json/:id",
-			pathParams: z.object({ id: z.string() }),
-			query: z.object({
-				search: z.string().optional(),
-				limit: z.coerce.number().optional(),
-			}),
-			headers: {
-				"x-test-token": z.string().optional(),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+				query: z.object({
+					search: z.string().optional(),
+					limit: z.coerce.number().optional(),
+				}),
+				headers: {
+					"x-test-token": z.string().optional(),
+				},
+				body: z.object({
+					title: z.string(),
+					count: z.number(),
+				}),
 			},
-			body: z.object({
-				title: z.string(),
-				count: z.number(),
-			}),
 			responses: {
 				200: echoedRequestSchema,
 			},
@@ -47,11 +49,13 @@ export const integrationContract = router({
 		text: {
 			method: "POST",
 			path: "/echo/text/:id",
-			pathParams: z.object({ id: z.string() }),
-			body: customBody({
-				contentType: "text/plain",
-				schema: z.string(),
-			}),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+				body: customBody({
+					contentType: "text/plain",
+					schema: z.string(),
+				}),
+			},
 			responses: {
 				200: customBody({
 					contentType: "text/plain",
@@ -64,10 +68,12 @@ export const integrationContract = router({
 		list: {
 			method: "GET",
 			path: "/items",
-			query: z.object({
-				search: z.string().optional(),
-				empty: z.string().optional(),
-			}),
+			request: {
+				query: z.object({
+					search: z.string().optional(),
+					empty: z.string().optional(),
+				}),
+			},
 			responses: {
 				200: z.array(itemSchema),
 			},
@@ -75,7 +81,9 @@ export const integrationContract = router({
 		get: {
 			method: "GET",
 			path: "/items/:id",
-			pathParams: z.object({ id: z.string() }),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+			},
 			responses: {
 				200: itemSchema,
 				404: z.object({ code: z.literal("not_found"), id: z.string() }),
@@ -84,7 +92,9 @@ export const integrationContract = router({
 		create: {
 			method: "POST",
 			path: "/items",
-			body: z.object({ title: z.string() }),
+			request: {
+				body: z.object({ title: z.string() }),
+			},
 			responses: {
 				201: itemSchema,
 			},
@@ -92,8 +102,10 @@ export const integrationContract = router({
 		publish: {
 			method: "POST",
 			path: "/items/:id/publish",
-			pathParams: z.object({ id: z.string() }),
-			body: z.object({ async: z.boolean().optional() }),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+				body: z.object({ async: z.boolean().optional() }),
+			},
 			responses: {
 				200: itemSchema,
 				202: z.object({ queued: z.literal(true), id: z.string() }),
@@ -102,7 +114,9 @@ export const integrationContract = router({
 		remove: {
 			method: "DELETE",
 			path: "/items/:id",
-			pathParams: z.object({ id: z.string() }),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+			},
 			responses: {
 				204: noBody(),
 			},
@@ -171,6 +185,6 @@ export const integrationContract = router({
 			},
 		},
 	},
-});
+} as const;
 
 export type IntegrationContract = typeof integrationContract;

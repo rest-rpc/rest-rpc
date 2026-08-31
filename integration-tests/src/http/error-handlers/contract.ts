@@ -1,13 +1,14 @@
-import { router } from "@rest-rpc/core/contract";
 import z from "zod";
 
-export const errorHandlersContract = router({
+export const errorHandlersContract = {
 	validation: {
 		method: "GET",
 		path: "/error-handlers/validation",
-		query: z.object({
-			page: z.number(),
-		}),
+		request: {
+			query: z.object({
+				page: z.number(),
+			}),
+		},
 		responses: {
 			200: z.object({ reached: z.literal(true) }),
 		},
@@ -40,6 +41,6 @@ export const errorHandlersContract = router({
 			}),
 		},
 	},
-});
+} as const;
 
 export type ErrorHandlersContract = typeof errorHandlersContract;
