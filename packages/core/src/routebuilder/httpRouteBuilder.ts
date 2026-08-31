@@ -30,7 +30,7 @@ import type {
 	ResponseHeaders,
 	RouteResponses,
 } from "../contract/response.ts";
-import { BaseRouteBuilder } from "./base.ts";
+import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
 import {
 	type EmptyObject,
 	httpRequestDefaults,
@@ -105,21 +105,25 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 
 	body(schema: StandardSchemaV1) {
 		this.requestForWrite().body = schema;
+		this.recalculateRequestKeys();
 		return this;
 	}
 
 	formBody(input: BodyWithArrayKeysInput) {
 		this.requestForWrite().body = toFormBody(input);
+		this.recalculateRequestKeys();
 		return this;
 	}
 
 	multipartBody(input: BodyWithArrayKeysInput) {
 		this.requestForWrite().body = toMultipartBody(input);
+		this.recalculateRequestKeys();
 		return this;
 	}
 
 	customBody(input: CustomBodyInput) {
 		this.requestForWrite().body = toCustomBody(input);
+		this.recalculateRequestKeys();
 		return this;
 	}
 
@@ -129,6 +133,7 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 			...request.headers,
 			...schemas,
 		};
+		this.recalculateRequestKeys();
 		return this;
 	}
 

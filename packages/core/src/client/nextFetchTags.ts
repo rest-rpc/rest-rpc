@@ -1,5 +1,5 @@
 import type { RouteDeclaration } from "../contract/contract.ts";
-import { groupRequestInput } from "../contract/validate.ts";
+import { groupRequestInput } from "./groupRequestInput.ts";
 
 const DEFAULT_NEXT_FETCH_TAG_PREFIX = "rest-rpc";
 type NextFetchTagRequest = Record<string, unknown>;

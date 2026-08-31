@@ -10,8 +10,8 @@ import { isJsonQuery } from "../contract/request.ts";
 import type {
 	FlatRequestInput,
 	GroupedRequestInput,
-} from "../contract/validate.ts";
-import { groupRequestInput } from "../contract/validate.ts";
+} from "./groupRequestInput.ts";
+import { groupRequestInput } from "./groupRequestInput.ts";
 import { getNextFetchTags } from "./nextFetchTags.ts";
 import type {
 	ApiClientFetchOptions,

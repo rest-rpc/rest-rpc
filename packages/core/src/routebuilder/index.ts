@@ -4,9 +4,12 @@ import type {
 	RouteFactoryOptions,
 } from "../contract/contract.ts";
 import { getPathParamNames } from "../contract/path.ts";
-import { createHttpRoute, type HttpBuilderFor } from "./http.ts";
-import { createSseRoute, type SseBuilderFor } from "./sse.ts";
-import { createWebSocketRoute, type WebSocketBuilderFor } from "./webSocket.ts";
+import { createHttpRoute, type HttpBuilderFor } from "./httpRouteBuilder.ts";
+import { createSseRoute, type SseBuilderFor } from "./sseRouteBuilder.ts";
+import {
+	createWebSocketRoute,
+	type WebSocketBuilderFor,
+} from "./webSocketRouteBuilder.ts";
 export { joinPathPrefix } from "./shared.ts";
 
 const assertStaticPathPrefix = (pathPrefix: string | undefined) => {

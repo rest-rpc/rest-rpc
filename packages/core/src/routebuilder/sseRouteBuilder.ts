@@ -5,8 +5,7 @@ import type {
 	RouteMetadata,
 } from "../contract/contract.ts";
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
-import type { WebSocketMessageDeclaration } from "../contract/websocketMessages.ts";
-import { BaseRouteBuilder } from "./base.ts";
+import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
 import type {
 	EmptyObject,
 	Merge,
@@ -18,75 +17,52 @@ import type {
 } from "./shared.ts";
 import { protocolRequestDefaults } from "./shared.ts";
 
-class WebSocketRouteBuilder extends BaseRouteBuilder {
-	declare messages?: Partial<
-		Record<"client" | "server", WebSocketMessageDeclaration>
-	>;
-
+class SseRouteBuilder extends BaseRouteBuilder {
 	constructor(path: string, options?: RouteFactoryOptions) {
 		super(
 			"GET",
 			path,
 			options ?? {},
 			protocolRequestDefaults(options ?? {}),
-			"webSocket",
+			"sse",
 		);
 	}
 
-	private setMessage(
-		direction: "client" | "server",
-		schema: WebSocketMessageDeclaration,
-	) {
-		this.messages = {
-			...this.messages,
-			[direction]: schema,
-		};
+	response(schema: StandardSchemaV1) {
+		Object.assign(this, { response: schema });
 		return this;
-	}
-
-	clientMessages(schema: WebSocketMessageDeclaration) {
-		return this.setMessage("client", schema);
-	}
-
-	serverMessages(schema: WebSocketMessageDeclaration) {
-		return this.setMessage("server", schema);
 	}
 }
 
-export type WebSocketCompletion = {
-	client?: WebSocketMessageDeclaration;
-	server?: WebSocketMessageDeclaration;
-};
-
-type WebSocketRequestSetters<
+type SseRequestSetters<
 	TPath extends string,
 	TRequest,
 	TMetadata,
 	TOpenApi,
 	TUsed extends string,
-	TMessages extends WebSocketCompletion,
+	TResponse,
 > = ("query" extends TUsed
 	? EmptyObject
 	: {
 			query<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
-			): WebSocketBuilder<
+			): SseBuilder<
 				TPath,
 				WithRequest<TRequest, "query", TSchema>,
 				TMetadata,
 				TOpenApi,
 				TUsed | "query",
-				TMessages
+				TResponse
 			>;
 			jsonQuery<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
-			): WebSocketBuilder<
+			): SseBuilder<
 				TPath,
 				WithRequest<TRequest, "query", JsonQuery<TSchema>>,
 				TMetadata,
 				TOpenApi,
 				TUsed | "query",
-				TMessages
+				TResponse
 			>;
 		}) &
 	("pathParams" extends TUsed
@@ -94,13 +70,13 @@ type WebSocketRequestSetters<
 		: {
 				pathParams<const TSchema extends StandardSchemaV1>(
 					schema: TSchema,
-				): WebSocketBuilder<
+				): SseBuilder<
 					TPath,
 					WithRequest<TRequest, "pathParams", TSchema>,
 					TMetadata,
 					TOpenApi,
 					TUsed | "pathParams",
-					TMessages
+					TResponse
 				>;
 			}) &
 	("requestKeys" extends TUsed
@@ -108,13 +84,13 @@ type WebSocketRequestSetters<
 		: {
 				requestKeys<const TKeys extends RequestKeys>(
 					keys: TKeys,
-				): WebSocketBuilder<
+				): SseBuilder<
 					TPath,
 					WithRequest<TRequest, "keys", TKeys>,
 					TMetadata,
 					TOpenApi,
 					TUsed | "requestKeys",
-					TMessages
+					TResponse
 				>;
 			}) &
 	("flattenRequestKeys" extends TUsed
@@ -122,13 +98,13 @@ type WebSocketRequestSetters<
 		: {
 				flattenRequestKeys<const TFlatten extends boolean>(
 					value: TFlatten,
-				): WebSocketBuilder<
+				): SseBuilder<
 					TPath,
 					WithRequest<TRequest, "flattenKeys", TFlatten>,
 					TMetadata,
 					TOpenApi,
 					TUsed | "flattenRequestKeys",
-					TMessages
+					TResponse
 				>;
 			}) &
 	("metadata" extends TUsed
@@ -138,13 +114,13 @@ type WebSocketRequestSetters<
 					RouteMetadata &
 					(<const TLocal extends RouteMetadata>(
 						metadata: TLocal,
-					) => WebSocketBuilder<
+					) => SseBuilder<
 						TPath,
 						TRequest,
 						Merge<TMetadata, TLocal>,
 						TOpenApi,
 						TUsed | "metadata",
-						TMessages
+						TResponse
 					>);
 			}) &
 	("openApi" extends TUsed
@@ -154,83 +130,47 @@ type WebSocketRequestSetters<
 					OpenApiRouteOptions &
 					(<const TLocal extends OpenApiRouteOptions>(
 						openApi: TLocal,
-					) => WebSocketBuilder<
+					) => SseBuilder<
 						TPath,
 						TRequest,
 						TMetadata,
 						Merge<TOpenApi, TLocal>,
 						TUsed | "openApi",
-						TMessages
+						TResponse
 					>);
 			});
 
-export type WebSocketBuilder<
+export type SseBuilder<
 	TPath extends string,
 	TRequest,
 	TMetadata,
 	TOpenApi,
 	TUsed extends string = never,
-	TMessages extends WebSocketCompletion = EmptyObject,
+	TResponse = never,
 > = Simplify<
 	{
 		readonly method: "GET";
 		readonly path: TPath;
-		readonly mode: "webSocket";
+		readonly mode: "sse";
 	} & (keyof TRequest extends never
 		? { request?: never }
 		: { request: TRequest }) &
-		(keyof TMessages extends never
-			? { messages?: never }
-			: { messages: TMessages }) &
-		(TMessages extends { client: WebSocketMessageDeclaration }
-			? EmptyObject
-			: {
-					clientMessages<const TSchema extends WebSocketMessageDeclaration>(
+		([TResponse] extends [never]
+			? {
+					response<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
-					): WebSocketBuilder<
-						TPath,
-						TRequest,
-						TMetadata,
-						TOpenApi,
-						TUsed,
-						Merge<TMessages, { client: TSchema }>
-					>;
-				}) &
-		(TMessages extends { server: WebSocketMessageDeclaration }
-			? EmptyObject
-			: {
-					serverMessages<const TSchema extends WebSocketMessageDeclaration>(
-						schema: TSchema,
-					): WebSocketBuilder<
-						TPath,
-						TRequest,
-						TMetadata,
-						TOpenApi,
-						TUsed,
-						Merge<TMessages, { server: TSchema }>
-					>;
-				}) &
-		WebSocketRequestSetters<
-			TPath,
-			TRequest,
-			TMetadata,
-			TOpenApi,
-			TUsed,
-			TMessages
-		>
+					): SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TSchema>;
+				}
+			: { response: TResponse }) &
+		SseRequestSetters<TPath, TRequest, TMetadata, TOpenApi, TUsed, TResponse>
 >;
 
-export type WebSocketBuilderFor<
-	TOptions,
-	TPath extends string,
-> = WebSocketBuilder<
+export type SseBuilderFor<TOptions, TPath extends string> = SseBuilder<
 	PathFor<TOptions, TPath>,
 	ProtocolRequestFor<TOptions>,
 	OptionValue<TOptions, "metadata", EmptyObject>,
 	OptionValue<TOptions, "openApi", EmptyObject>
 >;
 
-export const createWebSocketRoute = (
-	path: string,
-	options?: RouteFactoryOptions,
-) => new WebSocketRouteBuilder(path, options);
+export const createSseRoute = (path: string, options?: RouteFactoryOptions) =>
+	new SseRouteBuilder(path, options);

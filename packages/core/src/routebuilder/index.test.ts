@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import z from "zod";
 import { type } from "../standard-schema/index.ts";
-import { noBody } from "./body.ts";
-import { assertProtocolRouteComplete, route } from "../routebuilder/index.ts";
+import { noBody } from "../contract/body.ts";
+import { assertProtocolRouteComplete, route } from "./index.ts";
 
 describe("HTTP route builder runtime", () => {
 	it("constructs every HTTP method and keeps methods non-enumerable", () => {
@@ -22,21 +23,50 @@ describe("HTTP route builder runtime", () => {
 	});
 
 	it("supports independent setters in arbitrary order", () => {
-		const schema = type<{ value: string }>();
+		const schema = z.object({ value: z.string() });
 		const declaration = route
 			.post("/items/:id")
 			.response(201, schema)
 			.headers({ authorization: type<string>() })
 			.body(schema)
-			.query(type<{ search: string }>())
+			.query(z.object({ search: z.string() }))
 			.pathParams(type<{ id: string }>())
-			.requestKeys({ value: "body", search: "query", id: "pathParams" })
 			.flattenRequestKeys(false)
 			.metadata({ scope: "write" })
 			.openApi({ tags: ["Items"] });
 		assert.equal(declaration.request?.body, schema);
 		assert.equal(declaration.responses?.[201], schema);
 		assert.equal(declaration.request?.flattenKeys, false);
+	});
+
+	it("requires requestKeys before opaque flattened request schemas", () => {
+		assert.throws(
+			() => route.post("/items").body(type<{ title: string }>()),
+			/requestKeys before declaring this request segment/,
+		);
+
+		const declaration = route
+			.post("/items")
+			.requestKeys({ title: "body" })
+			.body(type<{ title: string }>())
+			.response(201, type<{ id: string }>());
+
+		assert.deepEqual(declaration.request?.keys, { title: "body" });
+	});
+
+	it("resolves flattened request keys while building routes", () => {
+		const declaration = route
+			.post("/items/:id")
+			.body(z.object({ title: z.string() }))
+			.headers({ authorization: type<string>() })
+			.pathParams(type<{ id: string }>())
+			.response(201, type<{ id: string }>());
+
+		assert.deepEqual(declaration.request?.keys, {
+			authorization: "headers",
+			id: "pathParams",
+			title: "body",
+		});
 	});
 
 	it("applies isolated defaults with local values winning", () => {
@@ -126,6 +156,10 @@ describe("HTTP route builder runtime", () => {
 			.response(204);
 		assert.equal((custom.request!.body as { kind: string }).kind, "customBody");
 		assert.equal((custom.request!.query as { kind: string }).kind, "jsonQuery");
+		assert.deepEqual(custom.request?.keys, {
+			body: "body",
+			query: "query",
+		});
 	});
 
 	it("lets specialized request setters write the expected declaration slots", () => {
@@ -160,7 +194,7 @@ describe("protocol route builder runtime", () => {
 		const event = type<{ id: string }>();
 		const declaration = route
 			.sse("/events/:id")
-			.query(type<{ cursor: string }>())
+			.query(z.object({ cursor: z.string() }))
 			.pathParams(type<{ id: string }>())
 			.response(event);
 		assert.equal(declaration.mode, "sse");
