@@ -20,7 +20,7 @@ export {
 	stream,
 } from "./body.ts";
 export type {
-	ApplyRouterOptions,
+	BaseRouteDeclaration,
 	CommonOpenApiRouteOptions,
 	Contract,
 	HttpMethod,
@@ -28,14 +28,15 @@ export type {
 	OpenApiResponseHeader,
 	OpenApiResponseOptions,
 	OpenApiRouteOptions,
-	RouteContractOptions,
 	RouteDeclaration,
+	RouteFactoryOptions,
 	RouteMetadata,
 	RouteMode,
-	RouterContractOptions,
+	RouteRequestDeclaration,
+	SseRouteDeclaration,
 	WebSocketRouteDeclaration,
 } from "./contract.ts";
-export { isRouteDeclaration, route, router } from "./contract.ts";
+export { isRouteDeclaration } from "./contract.ts";
 export {
 	getPathParamNames,
 	getPathParamSegmentName,

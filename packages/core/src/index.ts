@@ -30,6 +30,7 @@ export type {
 	ResponseHeaders,
 	RouteDeclaration,
 	RouteMode,
+	SseRouteDeclaration,
 	Stream,
 	WebSocketMessageSchemas,
 	WebSocketRouteDeclaration,
@@ -40,8 +41,6 @@ export {
 	jsonQuery,
 	multipartBody,
 	noBody,
-	route,
-	router,
 	stream,
 	webSocketMessages,
 } from "./contract/index.ts";
