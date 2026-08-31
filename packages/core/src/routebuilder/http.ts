@@ -7,6 +7,7 @@ import {
 	stream as declareStream,
 	type CustomBody,
 	type CustomBodyContentType,
+	type CustomResponseBody,
 	type FormBody,
 	type MultipartBody,
 	type NoBody,
@@ -31,7 +32,6 @@ import type {
 } from "../contract/response.ts";
 import { BaseRouteBuilder } from "./base.ts";
 import {
-	type CustomResponseBodyFor,
 	type EmptyObject,
 	httpRequestDefaults,
 	mergeOpenApi,
@@ -68,6 +68,11 @@ type CustomResponseInput = {
 	schema: StandardSchemaV1;
 	contentType: CustomBodyContentType;
 };
+
+type CustomResponseBodyFor<
+	TSchema extends StandardSchemaV1,
+	TContentType extends CustomBodyContentType,
+> = Extract<CustomBody<TSchema, TContentType>, CustomResponseBody>;
 
 const toFormBody = declareFormBody as (
 	input: BodyWithArrayKeysInput,

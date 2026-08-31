@@ -1,9 +1,3 @@
-import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type {
-	CustomBody,
-	CustomBodyContentType,
-	CustomResponseBody,
-} from "../contract/body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	OpenApiResponseOptions,
@@ -145,8 +139,3 @@ export const installCallableDefault = (
 		configurable: true,
 	});
 };
-
-export type CustomResponseBodyFor<
-	TSchema extends StandardSchemaV1,
-	TContentType extends CustomBodyContentType,
-> = CustomBody<TSchema, TContentType> & CustomResponseBody;

@@ -36,7 +36,12 @@ export type GroupRequestInputOptions = {
 };
 
 const takesRouteInput = (route: RouteDeclaration) =>
-	Boolean(route.body || route.query || route.pathParams || route.headers);
+	Boolean(
+		route.request?.body ||
+			route.request?.query ||
+			route.request?.pathParams ||
+			route.request?.headers,
+	);
 
 const assertNoDuplicateKeys = (
 	route: RouteDeclaration,
@@ -50,7 +55,7 @@ const assertNoDuplicateKeys = (
 };
 
 const assertNoReservedRequestKeys = (route: RouteDeclaration) => {
-	if (route.requestKeys?.[REQUEST_CONTEXT_KEY] === undefined) return;
+	if (route.request?.keys?.[REQUEST_CONTEXT_KEY] === undefined) return;
 
 	throw new Error(
 		`Route declaration at path "${route.path}" has a reserved request key "${REQUEST_CONTEXT_KEY}". Rename it to avoid conflict with the route handler context.`,
@@ -59,8 +64,8 @@ const assertNoReservedRequestKeys = (route: RouteDeclaration) => {
 
 const getHeaderRequestKeys = (route: RouteDeclaration) => [
 	...new Set([
-		...Object.keys(route.headers ?? {}),
-		...Object.entries(route.requestKeys ?? {})
+		...Object.keys(route.request?.headers ?? {}),
+		...Object.entries(route.request?.keys ?? {})
 			.filter(([, segment]) => segment === "headers")
 			.map(([key]) => key),
 	]),
@@ -139,11 +144,11 @@ const assertCustomResponsesDeclareContentType = (route: RouteDeclaration) => {
 };
 
 const assertPathParamsResolved = (route: RouteDeclaration) => {
-	if (!route.requestKeys && route.flattenRequestKeys === false) return;
+	if (!route.request?.keys && route.request?.flattenKeys === false) return;
 
 	const pathParams = getPathParamNames(route.path);
 	for (const key of pathParams) {
-		if (route.requestKeys?.[key] !== "pathParams") {
+		if (route.request?.keys?.[key] !== "pathParams") {
 			throw new Error(
 				`Route declaration at path "${route.path}" has a path param "${key}" without a matching pathParams schema key.`,
 			);
@@ -151,7 +156,7 @@ const assertPathParamsResolved = (route: RouteDeclaration) => {
 	}
 
 	const pathParamSet = new Set(pathParams);
-	for (const [key, segment] of Object.entries(route.requestKeys ?? {})) {
+	for (const [key, segment] of Object.entries(route.request?.keys ?? {})) {
 		if (segment === "pathParams" && !pathParamSet.has(key)) {
 			throw new Error(
 				`Route declaration at path "${route.path}" has a pathParams request key "${key}" without a matching path param.`,
@@ -164,20 +169,23 @@ const requestSchemas = (route: RouteDeclaration) =>
 	[
 		[
 			"body",
-			isCustomBody(route.body) ||
-			isFormBody(route.body) ||
-			isMultipartBody(route.body) ||
-			isNoBody(route.body)
+			isCustomBody(route.request?.body) ||
+			isFormBody(route.request?.body) ||
+			isMultipartBody(route.request?.body) ||
+			isNoBody(route.request?.body)
 				? undefined
-				: route.body,
+				: route.request?.body,
 		],
-		["query", isJsonQuery(route.query) ? undefined : route.query],
-		["pathParams", route.pathParams],
+		[
+			"query",
+			isJsonQuery(route.request?.query) ? undefined : route.request?.query,
+		],
+		["pathParams", route.request?.pathParams],
 	] as const;
 
 const applyHeaderRequestKeys = (route: RouteDeclaration) => {
-	const headers = route.headers;
-	const requestKeys = route.requestKeys;
+	const headers = route.request?.headers;
+	const requestKeys = route.request?.keys;
 	if (!headers || !requestKeys) return;
 
 	for (const key of Object.keys(headers)) {
@@ -192,13 +200,13 @@ const applyHeaderRequestKeys = (route: RouteDeclaration) => {
 export const validateResolvedRequestKeys = (route: RouteDeclaration) => {
 	if (route.responses) getRouteResponses(route);
 	const routePath = route.path;
-	if (route.mode === "sse" && route.headers !== undefined) {
+	if (route.mode === "sse" && route.request?.headers !== undefined) {
 		throw new Error(
 			`SSE route declaration at path "${routePath}" cannot declare request headers. EventSource does not support custom request headers.`,
 		);
 	}
 	applyHeaderRequestKeys(route);
-	const keys = Object.keys(route.requestKeys ?? {});
+	const keys = Object.keys(route.request?.keys ?? {});
 	assertNoDuplicateKeys(route, keys);
 	assertNoReservedRequestKeys(route);
 	assertNoReservedHeaderKeys(route);
@@ -208,17 +216,17 @@ export const validateResolvedRequestKeys = (route: RouteDeclaration) => {
 	assertCustomResponsesDeclareContentType(route);
 
 	if (
-		(isCustomBody(route.body) ||
-			isFormBody(route.body) ||
-			isMultipartBody(route.body)) &&
-		route.requestKeys?.body
+		(isCustomBody(route.request?.body) ||
+			isFormBody(route.request?.body) ||
+			isMultipartBody(route.request?.body)) &&
+		route.request?.keys?.body
 	) {
 		throw new Error(
 			`Route declaration at path "${route.path}" has a "body" key in query or pathParams. Rename it to avoid conflict with the request body.`,
 		);
 	}
 
-	if (isJsonQuery(route.query) && route.requestKeys?.query) {
+	if (isJsonQuery(route.request?.query) && route.request?.keys?.query) {
 		throw new Error(
 			`Route declaration at path "${route.path}" has a "query" key in body, pathParams or headers. Rename it to avoid conflict with the JSON query value.`,
 		);
@@ -234,15 +242,15 @@ export const groupRequestInput = (
 ): GroupedRequestInput => {
 	const strictRequestKeys = options.strictRequestKeys ?? true;
 	const isSpecialRequestBody =
-		isCustomBody(route.body) ||
-		isFormBody(route.body) ||
-		isMultipartBody(route.body);
-	const isJsonQueryRequest = isJsonQuery(route.query);
-	const requestKeys = route.requestKeys;
+		isCustomBody(route.request?.body) ||
+		isFormBody(route.request?.body) ||
+		isMultipartBody(route.request?.body);
+	const isJsonQueryRequest = isJsonQuery(route.request?.query);
+	const requestKeys = route.request?.keys;
 
 	if (!requestKeys && takesRouteInput(route)) {
 		throw new Error(
-			`Missing request key metadata for ${route.method} ${route.path}. Call router() or provide requestKeys before grouping request input.`,
+			`Missing request key metadata for ${route.method} ${route.path}. Declare requestKeys before grouping flattened request input.`,
 		);
 	}
 
@@ -284,7 +292,7 @@ const resolveRequestKeysForSchema = (
 	const keyInfo = resolveBuiltInRequestKeys(schema);
 	if (!keyInfo) {
 		throw new Error(
-			`Could not resolve request keys for ${segment} schema on ${route.method} ${route.path}. Provide requestKeys or use a schema that supports automatic key resolution.`,
+			`Could not resolve request keys for ${segment} schema on ${route.method} ${route.path}. Declare requestKeys or use a schema that supports automatic key resolution.`,
 		);
 	}
 	return keyInfo;
@@ -296,8 +304,8 @@ export const validateContract = <TContract extends Contract>(
 	for (const route of contractRoutes(contract)) {
 		if (
 			!takesRouteInput(route) ||
-			route.requestKeys ||
-			route.flattenRequestKeys === false
+			route.request?.keys ||
+			route.request?.flattenKeys === false
 		) {
 			validateResolvedRequestKeys(route);
 			continue;
@@ -312,11 +320,11 @@ export const validateContract = <TContract extends Contract>(
 			assertNoDuplicateKeys(route, [...Object.keys(requestKeys), ...keys]);
 			for (const key of keys) requestKeys[key] = segment;
 		}
-		for (const key of Object.keys(route.headers ?? {})) {
+		for (const key of Object.keys(route.request?.headers ?? {})) {
 			assertNoDuplicateKeys(route, [...Object.keys(requestKeys), key]);
 			requestKeys[key] = "headers";
 		}
-		route.requestKeys = requestKeys;
+		(route.request ??= {}).keys = requestKeys;
 		validateResolvedRequestKeys(route);
 	}
 

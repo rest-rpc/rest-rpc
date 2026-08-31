@@ -149,6 +149,7 @@ const readDeclaredHeaders = async (
 
 export type RouteRequestFn = <E extends RouteDeclaration>(
 	route: E,
+	routePath: readonly string[],
 	...args: FetchArgs<E>
 ) => Promise<Response>;
 
@@ -157,9 +158,10 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 	validateResponse: boolean,
 	strictStatusCodes: boolean,
 	route: E,
+	routePath: readonly string[],
 	...args: FetchArgs<E>
 ): Promise<ClientResponse<E>> => {
-	const rawResponse = await request(route, ...args);
+	const rawResponse = await request(route, routePath, ...args);
 
 	const schema = getResponseSchema(route, rawResponse.status);
 	if (!schema) {
@@ -192,12 +194,14 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 export const fetchSuccess = async <E extends RouteDeclaration>(
 	fetchRouteResponse: (
 		route: E,
+		routePath: readonly string[],
 		...args: FetchArgs<E>
 	) => Promise<ClientResponse<E>>,
 	route: E,
+	routePath: readonly string[],
 	...args: FetchArgs<E>
 ): Promise<ClientResponseBody<E>> => {
-	const response = await fetchRouteResponse(route, ...args);
+	const response = await fetchRouteResponse(route, routePath, ...args);
 
 	if (!response.declared || !isSuccessStatus(response.status)) {
 		throw new Error("Request did not return a declared success response");

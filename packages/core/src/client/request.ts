@@ -40,13 +40,14 @@ export const createRequestSignal = (
 };
 
 export const takesRequestInput = (route: RouteDeclaration) => {
-	if (route.query || route.pathParams || route.headers) {
+	const request = route.request;
+	if (request?.query || request?.pathParams || request?.headers) {
 		return true;
 	}
-	if (isFormBody(route.body)) return true;
-	if (isMultipartBody(route.body)) return true;
-	if (isCustomBody(route.body)) return true;
-	return Boolean(route.body && !isNoBody(route.body));
+	if (isFormBody(request?.body)) return true;
+	if (isMultipartBody(request?.body)) return true;
+	if (isCustomBody(request?.body)) return true;
+	return Boolean(request?.body && !isNoBody(request.body));
 };
 
 const findHeader = (headers: Record<string, string>, name: string) =>
@@ -103,7 +104,8 @@ const serializeFormBody = (
 	route: RouteDeclaration,
 	body: Record<string, unknown> | undefined,
 ) => {
-	const arrayKeys = new Set(isFormBody(route.body) ? route.body.arrayKeys : []);
+	const routeBody = route.request?.body;
+	const arrayKeys = new Set(isFormBody(routeBody) ? routeBody.arrayKeys : []);
 
 	return new URLSearchParams(
 		Object.entries(body ?? {}).flatMap(([key, value]) => {
@@ -159,8 +161,9 @@ const serializeMultipartBody = (
 	route: RouteDeclaration,
 	body: Record<string, unknown> | undefined,
 ) => {
+	const routeBody = route.request?.body;
 	const arrayKeys = new Set(
-		isMultipartBody(route.body) ? route.body.arrayKeys : [],
+		isMultipartBody(routeBody) ? routeBody.arrayKeys : [],
 	);
 	const formData = new FormData();
 
@@ -229,7 +232,7 @@ const serializeParams = (
 };
 
 const serializeQuery = (route: RouteDeclaration, query: unknown) => {
-	if (isJsonQuery(route.query)) {
+	if (isJsonQuery(route.request?.query)) {
 		if (query === undefined) return "";
 		let encoded: string;
 		try {
@@ -269,14 +272,15 @@ export const constructBaseRequest = (
 	if (!args) return { url: urlBase };
 
 	const request =
-		route.flattenRequestKeys === false
+		route.request?.flattenKeys === false
 			? (args as GroupedRequestInput)
 			: groupRequestInput(route, args, { strictRequestKeys });
 	const { body, query, pathParams, headers } = request;
+	const routeBody = route.request?.body;
 
 	urlBase = `${baseUrl}${serializeParams(route, pathParams)}${serializeQuery(route, query)}`;
 
-	if (isFormBody(route.body)) {
+	if (isFormBody(routeBody)) {
 		return {
 			url: urlBase,
 			body: serializeFormBody(
@@ -287,7 +291,7 @@ export const constructBaseRequest = (
 		};
 	}
 
-	if (isMultipartBody(route.body)) {
+	if (isMultipartBody(routeBody)) {
 		return {
 			url: urlBase,
 			body: serializeMultipartBody(
@@ -298,11 +302,11 @@ export const constructBaseRequest = (
 		};
 	}
 
-	if (isCustomBody(route.body)) {
-		const { contentType, payload } = Array.isArray(route.body.contentType)
+	if (isCustomBody(routeBody)) {
+		const { contentType, payload } = Array.isArray(routeBody.contentType)
 			? (body as { contentType: string; payload: unknown })
 			: {
-					contentType: route.body.contentType as string | undefined,
+					contentType: routeBody.contentType as string | undefined,
 					payload: body,
 				};
 
@@ -348,6 +352,7 @@ export type ExecuteRequestOptions = {
 const addNextFetchTags = (
 	init: RequestInit,
 	route: RouteDeclaration,
+	routePath: readonly string[],
 	request: FlatRequestInput | undefined,
 	options: NextFetchTagsOptions | undefined,
 ) => {
@@ -366,7 +371,7 @@ const addNextFetchTags = (
 			...nextInit.next,
 			tags: [
 				...(nextInit.next?.tags ?? []),
-				...getNextFetchTags(route, request, {
+				...getNextFetchTags(route, routePath, request, {
 					tagPrefix: options.tagPrefix,
 				}),
 			],
@@ -376,6 +381,7 @@ const addNextFetchTags = (
 
 export const executeRequest = async <E extends RouteDeclaration>(
 	route: E,
+	routePath: readonly string[],
 	args: FetchArgs<E>,
 	options: ExecuteRequestOptions,
 ): Promise<Response> => {
@@ -414,6 +420,7 @@ export const executeRequest = async <E extends RouteDeclaration>(
 				signal: signalState?.signal ?? fetchOptions?.signal,
 			},
 			route,
+			routePath,
 			requestArgs,
 			options.nextFetchTags,
 		);

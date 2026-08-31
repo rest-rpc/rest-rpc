@@ -53,7 +53,7 @@ const getNextFetchTagRequest = (
 ) => {
 	if (!request) return undefined;
 
-	if (route.flattenRequestKeys === false) {
+	if (route.request?.flattenKeys === false) {
 		return {
 			pathParams: request.pathParams,
 			query: request.query,
@@ -89,10 +89,10 @@ const createNextFetchTag = (
  */
 export function getNextFetchTags(
 	route: RouteDeclaration,
+	routePath: readonly string[],
 	request?: NextFetchTagRequest,
 	options?: { tagPrefix?: string },
 ): string[] {
-	const routePath = route.routePath ?? [];
 	const tagRequest = getNextFetchTagRequest(route, request);
 	const routeTag = createNextFetchTag(routePath, undefined, options?.tagPrefix);
 	const exactTag = createNextFetchTag(

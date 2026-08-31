@@ -224,9 +224,11 @@ type InferGroupedRequestSegments<R, TIO extends "input" | "output"> = {
 type RouteRequest<
 	E extends RouteDeclaration,
 	TIO extends "input" | "output",
-> = E extends { flattenRequestKeys: false }
-	? InferGroupedRequestSegments<E, TIO>
-	: InferRequestSegments<E, TIO>;
+> = E extends { request: infer TRequest }
+	? TRequest extends { flattenKeys: false }
+		? InferGroupedRequestSegments<TRequest, TIO>
+		: InferRequestSegments<TRequest, TIO>
+	: never;
 
 type Merge<T> = T extends unknown ? { [K in keyof T]: T[K] } : never;
 type EmptyObject = Record<never, never>;

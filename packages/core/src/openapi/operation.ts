@@ -8,6 +8,7 @@ import {
 import type {
 	HttpRouteDeclaration,
 	OpenApiResponseOptions,
+	SseRouteDeclaration,
 } from "../contract/contract.ts";
 import type {
 	JsonQuery,
@@ -82,7 +83,7 @@ export type SchemaConverter = (
 	mode: "input" | "output",
 ) => OpenApiSchema | undefined;
 
-export type OpenApiRouteDeclaration = HttpRouteDeclaration;
+export type OpenApiRouteDeclaration = HttpRouteDeclaration | SseRouteDeclaration;
 
 export type ParameterTransformContext = {
 	route: OpenApiRouteDeclaration;
@@ -397,16 +398,17 @@ export const createOperation = (
 	options: CreateOperationOptions,
 	routePath: readonly string[] = [],
 ): OpenApiOperation => {
+	const request = route.request;
 	const parameters = [
-		...createParameters(route.pathParams, "path", options),
-		...createParameters(route.query, "query", options),
-		...createHeaderParameters(route.headers, options),
+		...createParameters(request?.pathParams, "path", options),
+		...createParameters(request?.query, "query", options),
+		...createHeaderParameters(request?.headers, options),
 	].map(
 		(parameter) =>
 			options.transformParameter?.({ route, routePath, parameter }) ??
 			parameter,
 	);
-	const requestBody = createRequestBody(route.body, options.schemaConverter);
+	const requestBody = createRequestBody(request?.body, options.schemaConverter);
 	const { extensions, ...openApi } = route.openApi ?? {};
 	const operation: OpenApiOperation = {
 		...openApi,
