@@ -18,6 +18,8 @@ import type {
 import { protocolRequestDefaults } from "./shared.ts";
 
 class SseRouteBuilder extends BaseRouteBuilder {
+	declare responses?: Record<200, StandardSchemaV1>;
+
 	constructor(path: string, options?: RouteFactoryOptions) {
 		super(
 			"GET",
@@ -29,7 +31,7 @@ class SseRouteBuilder extends BaseRouteBuilder {
 	}
 
 	response(schema: StandardSchemaV1) {
-		Object.assign(this, { response: schema });
+		this.responses = { 200: schema };
 		return this;
 	}
 }
@@ -161,7 +163,7 @@ export type SseBuilder<
 						schema: TSchema,
 					): SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TSchema>;
 				}
-			: { response: TResponse }) &
+			: { responses: { 200: TResponse } }) &
 		SseRequestSetters<TPath, TRequest, TMetadata, TOpenApi, TUsed, TResponse>
 >;
 

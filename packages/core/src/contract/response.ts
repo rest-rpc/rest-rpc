@@ -378,7 +378,7 @@ type InferSingleServerResponseBody<TResponse> = [TResponse] extends [never]
 				: never;
 
 type SseResponseDeclaration<E extends RouteDeclaration> = E extends {
-	response: infer TResponse;
+	responses: { 200: infer TResponse };
 }
 	? TResponse
 	: never;

@@ -57,8 +57,9 @@ export const assertProtocolRouteComplete = (route: {
 	method: HttpMethod;
 	path: string;
 	mode?: string;
+	responses?: { 200?: unknown };
 }) => {
-	if (route.mode === "sse" && !Object.hasOwn(route, "response")) {
+	if (route.mode === "sse" && !route.responses?.[200]) {
 		throw new Error(
 			`SSE route declaration at path "${route.path}" is missing a response schema.`,
 		);

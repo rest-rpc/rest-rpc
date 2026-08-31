@@ -106,9 +106,10 @@ const serializeFormBody = (
 ) => {
 	const routeBody = route.request?.body;
 	const arrayKeys = new Set(isFormBody(routeBody) ? routeBody.arrayKeys : []);
+	const formBody = (body?.body as Record<string, unknown> | undefined) ?? body;
 
 	return new URLSearchParams(
-		Object.entries(body ?? {}).flatMap(([key, value]) => {
+		Object.entries(formBody ?? {}).flatMap(([key, value]) => {
 			if (Array.isArray(value)) {
 				if (!arrayKeys.has(key)) {
 					throw new Error(
@@ -165,9 +166,11 @@ const serializeMultipartBody = (
 	const arrayKeys = new Set(
 		isMultipartBody(routeBody) ? routeBody.arrayKeys : [],
 	);
+	const multipartBody =
+		(body?.body as Record<string, unknown> | undefined) ?? body;
 	const formData = new FormData();
 
-	for (const [key, value] of Object.entries(body ?? {})) {
+	for (const [key, value] of Object.entries(multipartBody ?? {})) {
 		if (Array.isArray(value)) {
 			if (!arrayKeys.has(key)) {
 				throw new Error(
@@ -232,29 +235,29 @@ const serializeParams = (
 };
 
 const serializeQuery = (route: RouteDeclaration, query: unknown) => {
-	if (isJsonQuery(route.request?.query)) {
-		if (query === undefined) return "";
-		let encoded: string;
-		try {
-			const json = JSON.stringify(query);
-			if (json === undefined) return "";
-			encoded = json;
-		} catch (error) {
-			throw new Error(
-				`Invalid JSON query for ${route.method} ${route.path}. Expected a JSON-serializable value.`,
-				{ cause: error },
-			);
-		}
-		return `?${new URLSearchParams([["query", encoded]]).toString()}`;
-	}
-
 	const entries = Object.entries(query ?? {}).flatMap(([key, value]) => {
-		const stringValue = stringifyRequestValue(route, "query", key, value, true);
+		const stringValue = isJsonQuery(route.request?.query)
+			? stringifyJsonQueryValue(route, value)
+			: stringifyRequestValue(route, "query", key, value, true);
 		return stringValue === undefined ? [] : [[key, stringValue]];
 	});
 
 	const search = new URLSearchParams(entries).toString();
 	return search ? `?${search}` : "";
+};
+
+const stringifyJsonQueryValue = (route: RouteDeclaration, value: unknown) => {
+	if (value === undefined) return undefined;
+	try {
+		const json = JSON.stringify(value);
+		if (json === undefined) return undefined;
+		return json;
+	} catch (error) {
+		throw new Error(
+			`Invalid JSON query for ${route.method} ${route.path}. Expected a JSON-serializable value.`,
+			{ cause: error },
+		);
+	}
 };
 
 export const constructBaseRequest = (
@@ -303,11 +306,12 @@ export const constructBaseRequest = (
 	}
 
 	if (isCustomBody(routeBody)) {
+		const bodyPayload = (body as Record<string, unknown> | undefined)?.body;
 		const { contentType, payload } = Array.isArray(routeBody.contentType)
-			? (body as { contentType: string; payload: unknown })
+			? (bodyPayload as { contentType: string; payload: unknown })
 			: {
 					contentType: routeBody.contentType as string | undefined,
-					payload: body,
+					payload: bodyPayload,
 				};
 
 		return {

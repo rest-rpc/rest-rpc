@@ -85,8 +85,7 @@ export type SseRouteDeclaration = Omit<
 		body?: never;
 		headers?: never;
 	};
-	response: StandardSchemaV1;
-	responses?: never;
+	responses: { 200: StandardSchemaV1 };
 	messages?: never;
 };
 

@@ -24,11 +24,6 @@ export const groupRequestInput = (
 	return Object.entries(input).reduce((grouped, [key, value]) => {
 		const segment = requestKeys[key];
 		if (segment) {
-			if (segment === "body" || segment === "query") {
-				grouped[segment] = value;
-				return grouped;
-			}
-
 			const segmentInput = (grouped[segment] ??= {}) as Record<string, unknown>;
 			segmentInput[key] = value;
 			return grouped;

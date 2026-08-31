@@ -10,12 +10,6 @@ describe("Next fetch tags", () => {
 			items: {
 				list: route
 					.get("/items/:id")
-					.body(type<{ ignoredBody: string }>())
-					.headers({
-						authorization: type<string>(),
-					})
-					.pathParams(type<{ id: string }>())
-					.query(type<{ filter: string; page: number }>())
 					.requestKeys({
 						id: "pathParams",
 						filter: "query",
@@ -23,22 +17,24 @@ describe("Next fetch tags", () => {
 						authorization: "headers",
 						ignoredBody: "body",
 					})
+					.body(type<{ ignoredBody: string }>())
+					.headers({
+						authorization: type<string>(),
+					})
+					.pathParams(type<{ id: string }>())
+					.query(type<{ filter: string; page: number }>())
 					.response(204),
 			},
 		};
 
 		assert.deepEqual(
-			getNextFetchTags(
-				apiContract.items.list,
-				["items", "list"],
-				{
-					id: "one/two",
-					filter: "open",
-					page: 2,
-					authorization: "Bearer secret",
-					ignoredBody: "ignored",
-				},
-			),
+			getNextFetchTags(apiContract.items.list, ["items", "list"], {
+				id: "one/two",
+				filter: "open",
+				page: 2,
+				authorization: "Bearer secret",
+				ignoredBody: "ignored",
+			}),
 			[
 				"rest-rpc:items.list:filter:open:id:one%2Ftwo:page:2",
 				"rest-rpc:items.list",
@@ -87,14 +83,10 @@ describe("Next fetch tags", () => {
 		};
 
 		assert.deepEqual(
-			getNextFetchTags(
-				apiContract.items.list,
-				["items", "list"],
-				{
-					pathParams: { id: "one", unused: undefined },
-					query: { filter: "open" },
-				},
-			),
+			getNextFetchTags(apiContract.items.list, ["items", "list"], {
+				pathParams: { id: "one", unused: undefined },
+				query: { filter: "open" },
+			}),
 			[
 				"rest-rpc:items.list:pathParams:%7B%22id%22%3A%22one%22%7D:query:%7B%22filter%22%3A%22open%22%7D",
 				"rest-rpc:items.list",
@@ -114,16 +106,12 @@ describe("Next fetch tags", () => {
 		};
 
 		assert.deepEqual(
-			getNextFetchTags(
-				apiContract.items.list,
-				["items", "list"],
-				{
-					query: {
-						page: 2,
-						filters: { tag: "open" },
-					},
+			getNextFetchTags(apiContract.items.list, ["items", "list"], {
+				query: {
+					page: 2,
+					filters: { tag: "open" },
 				},
-			),
+			}),
 			[
 				"rest-rpc:items.list:query:%7B%22filters%22%3A%7B%22tag%22%3A%22open%22%7D%2C%22page%22%3A2%7D",
 				"rest-rpc:items.list",

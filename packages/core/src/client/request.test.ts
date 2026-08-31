@@ -17,43 +17,44 @@ type FetchCall = {
 	init?: RequestInit;
 };
 
-const createRequestTestContract = () =>
-	({
-		todos: {
-			list: route
-				.get("/todos")
-				.query(z.object({
+const createRequestTestContract = () => ({
+	todos: {
+		list: route
+			.get("/todos")
+			.query(
+				z.object({
 					search: z.string().optional(),
 					empty: z.string().optional(),
-				}))
-				.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
-			create: route
-				.post("/todos")
-				.body(z.object({ title: z.string() }))
-				.response(201, z.object({ id: z.string(), title: z.string() })),
-			get: route
-				.get("/todos/:id")
-				.pathParams(z.object({ id: z.string() }))
-				.response(200, z.object({ id: z.string(), title: z.string() })),
-		},
-		uploads: {
-			create: route
-				.post("/uploads/:id")
-				.pathParams(z.object({ id: z.string() }))
-				.customBody({
-					schema: z.string(),
-					contentType: "text/plain",
-				})
-				.response(204),
-			json: route
-				.post("/uploads/json")
-				.customBody({
-					schema: z.object({ type: z.string() }),
-					contentType: "application/json",
-				})
-				.response(204),
-		},
-	});
+				}),
+			)
+			.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
+		create: route
+			.post("/todos")
+			.body(z.object({ title: z.string() }))
+			.response(201, z.object({ id: z.string(), title: z.string() })),
+		get: route
+			.get("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.response(200, z.object({ id: z.string(), title: z.string() })),
+	},
+	uploads: {
+		create: route
+			.post("/uploads/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.customBody({
+				schema: z.string(),
+				contentType: "text/plain",
+			})
+			.response(204),
+		json: route
+			.post("/uploads/json")
+			.customBody({
+				schema: z.object({ type: z.string() }),
+				contentType: "application/json",
+			})
+			.response(204),
+	},
+});
 
 const jsonResponse = (body: unknown, status = 200) =>
 	new Response(JSON.stringify(body), {
@@ -102,12 +103,16 @@ describe("ApiClient requests", () => {
 			todos: {
 				update: route
 					.post("/todos/:id")
-					.pathParams(z.object({
-						id: z.string(),
-					}))
-					.query(z.object({
-						page: z.number(),
-					}))
+					.pathParams(
+						z.object({
+							id: z.string(),
+						}),
+					)
+					.query(
+						z.object({
+							page: z.number(),
+						}),
+					)
 					.body(z.object({ title: z.string() }))
 					.headers({
 						"x-request-id": z.number(),
@@ -164,14 +169,18 @@ describe("ApiClient requests", () => {
 			items: {
 				get: route
 					.get("/items/:id/:visible")
-					.pathParams(z.object({
-						id: z.number(),
-						visible: z.boolean(),
-					}))
-					.query(z.object({
-						page: z.number(),
-						includeArchived: z.boolean(),
-					}))
+					.pathParams(
+						z.object({
+							id: z.number(),
+							visible: z.boolean(),
+						}),
+					)
+					.query(
+						z.object({
+							page: z.number(),
+							includeArchived: z.boolean(),
+						}),
+					)
 					.headers({
 						"x-page": z.number(),
 						"x-visible": z.boolean(),
@@ -208,10 +217,12 @@ describe("ApiClient requests", () => {
 			items: {
 				get: route
 					.get("/items/:id/:id2")
-					.pathParams(z.object({
-						id: z.string(),
-						id2: z.string(),
-					}))
+					.pathParams(
+						z.object({
+							id: z.string(),
+							id2: z.string(),
+						}),
+					)
 					.response(204),
 			},
 		};
@@ -233,9 +244,11 @@ describe("ApiClient requests", () => {
 			items: {
 				list: route
 					.get("/items")
-					.query(z.object({
-						search: z.string().optional(),
-					}))
+					.query(
+						z.object({
+							search: z.string().optional(),
+						}),
+					)
 					.headers({
 						"x-request-id": z.string().optional(),
 					})
@@ -343,9 +356,11 @@ describe("ApiClient requests", () => {
 			items: {
 				list: route
 					.get("/items")
-					.query(z.object({
-						search: z.string().optional(),
-					}))
+					.query(
+						z.object({
+							search: z.string().optional(),
+						}),
+					)
 					.headers({
 						"x-request-id": z.string().optional(),
 					})
@@ -390,9 +405,11 @@ describe("ApiClient requests", () => {
 			items: {
 				list: route
 					.get("/items")
-					.query(z.object({
-						page: z.number(),
-					}))
+					.query(
+						z.object({
+							page: z.number(),
+						}),
+					)
 					.response(204),
 			},
 		};
@@ -794,7 +811,10 @@ describe("ApiClient requests", () => {
 						"X-Route": z.string(),
 						"x-shared": z.string(),
 					})
-					.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
+					.response(
+						200,
+						z.array(z.object({ id: z.string(), title: z.string() })),
+					),
 			},
 		};
 		const calls = captureFetch(jsonResponse([]));
@@ -865,30 +885,6 @@ describe("ApiClient requests", () => {
 		});
 
 		assert.equal(calls[0]?.url, "https://api.test/todos?search=milk");
-	});
-
-	it("requires request key metadata for unvalidated contracts", async () => {
-		const apiContract = {
-			todos: {
-				list: {
-					method: "GET",
-					path: "/todos",
-					request: {
-						query: z.object({ search: z.string() }),
-					},
-					responses: {
-						204: noBody(),
-					},
-				},
-			},
-		} as const;
-		captureFetch();
-		const client = initClient(apiContract, { baseUrl: "https://api.test" });
-
-		await assert.rejects(
-			() => client.todos.list.fetch({ search: "milk" }),
-			/Missing request key metadata/,
-		);
 	});
 
 	it("cleans up timeout signals after fetch failures", async () => {

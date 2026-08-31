@@ -198,7 +198,8 @@ describe("protocol route builder runtime", () => {
 			.pathParams(type<{ id: string }>())
 			.response(event);
 		assert.equal(declaration.mode, "sse");
-		assert.equal(declaration.response, event);
+		assert.equal(declaration.responses?.[200], event);
+		assert.equal(Object.hasOwn(declaration, "response"), false);
 		assert.equal("body" in declaration, false);
 		assert.equal("headers" in declaration, false);
 		assert.equal(assertProtocolRouteComplete(declaration), declaration);
@@ -244,7 +245,7 @@ describe("protocol route builder runtime", () => {
 		assert.equal(sse.path, "/api/events");
 		assert.equal(ws.path, "/api/socket");
 		assert.equal(sse.request?.headers, undefined);
-		assert.equal(Object.hasOwn(sse, "responses"), false);
+		assert.equal(Object.hasOwn(sse, "responses"), true);
 		assert.deepEqual({ ...sse.metadata }, { public: true });
 	});
 });
