@@ -37,6 +37,7 @@ export type {
 	WebSocketRouteDeclaration,
 } from "./contract.ts";
 export { isRouteDeclaration } from "./contract.ts";
+export { route } from "./route.ts";
 export {
 	getPathParamNames,
 	getPathParamSegmentName,

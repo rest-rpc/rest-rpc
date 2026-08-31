@@ -41,6 +41,7 @@ export {
 	jsonQuery,
 	multipartBody,
 	noBody,
+	route,
 	stream,
 	webSocketMessages,
 } from "./contract/index.ts";

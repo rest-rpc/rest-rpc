@@ -75,9 +75,7 @@ Selecting a method or protocol must happen first. After that, compatible setters
 .headers(schemas)
 .requestKeys(map)
 .flattenRequestKeys(boolean)
-.response(status, schema)
-.response(schema)
-.responses(map)
+.response(status, schema?)
 .metadata(value)
 .openApi(value)
 ```
@@ -153,7 +151,7 @@ type HttpRouteDeclaration = BaseRouteDeclaration & {
 };
 ```
 
-Omitted HTTP responses retain existing method-specific default semantics. Consumers may derive the default response without mutating the route. If a local response is declared, it replaces the implicit default while common response statuses remain merged in.
+HTTP routes must declare at least one response locally or inherit a common response from their configured factory. Calling `.response(status)` declares an empty response body; supplying the schema argument declares the existing response schema or schema-plus-headers forms. Local statuses override duplicate common statuses.
 
 SSE routes expose their required event schema in one canonical field selected during implementation. The public `.response(schema)` setter is single-write and must produce the representation expected by SSE client and server inference.
 
@@ -207,7 +205,7 @@ Calling `get()`, `post()`, `sse()`, or `ws()` eagerly applies all compatible def
 
 Merge rules:
 
-- `pathPrefix` joins with the route-local path while preserving a literal joined path type where practical.
+- `pathPrefix` concatenates literally with the route-local path and preserves the resulting literal type. The builder does not repair missing or duplicate separators.
 - Common HTTP headers are copied into `request.headers`; local keys override common duplicate keys.
 - Common HTTP responses are copied into the response map; local statuses override common duplicate statuses.
 - Metadata shallow-merges; local keys override common duplicate keys.
@@ -253,9 +251,9 @@ route
 
 Repeating the same literal status is a type error and a runtime error when types are bypassed.
 
-`.response(schema)` uses the method-specific default body status and may be followed by additional distinct explicit statuses.
+Every HTTP response status is explicit. `.response(status)` uses the existing `noBody()` representation, while `.response(status, schema)` records the supplied response declaration. Either form may be followed by additional distinct statuses.
 
-`.responses(map)` and `.response(...)` are mutually exclusive declaration styles in the initial design. This avoids asymmetric call-order and merge behavior.
+Response maps remain part of the canonical inline declaration format, but the builder exposes only `.response(...)`. This keeps one builder declaration style while preserving additive status declarations.
 
 Advanced composition belongs in the supplied values:
 
@@ -405,7 +403,7 @@ Important type guarantees:
 - Duplicate literal response statuses are rejected.
 - Only complete protocol builders satisfy `RouteDeclaration` and `Contract`.
 
-Avoid deeply recursive string manipulation or normalization types unless benchmarks show acceptable cost. Simple literal joining and shallow local merges are preferred.
+Do not normalize path strings. Literal concatenation and shallow local merges are preferred.
 
 ## 14. Server Scope
 
@@ -489,7 +487,7 @@ Expected state: core request behavior compiles and passes tests.
 
 ### Commit 6: Migrate responses, client, OpenAPI, and TanStack Query
 
-- Update response inference and default-response resolution for the canonical route shape.
+- Update response inference for the canonical route shape.
 - Update `initClient()` and request execution.
 - Continue using `mapContractRoutes()` without annotating routes.
 - Update OpenAPI to consume `{ route, path }` directly from traversal.
