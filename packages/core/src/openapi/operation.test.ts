@@ -202,22 +202,24 @@ describe("OpenAPI operations", () => {
 		const route: OpenApiRouteDeclaration = {
 			path: "/todos/:id",
 			method: "GET",
-			pathParams: z.object({ id: z.string() }),
-			query: {
-				search: z
-					.string()
-					.min(1)
-					.meta({ openApi: { required: true } }),
-				cursor: z
-					.string()
-					.optional()
-					.meta({ openApi: { required: false } }),
-			},
-			headers: {
-				"x-preview": z
-					.literal("1")
-					.optional()
-					.meta({ openApi: { required: false } }),
+			request: {
+				pathParams: z.object({ id: z.string() }),
+				query: {
+					search: z
+						.string()
+						.min(1)
+						.meta({ openApi: { required: true } }),
+					cursor: z
+						.string()
+						.optional()
+						.meta({ openApi: { required: false } }),
+				},
+				headers: {
+					"x-preview": z
+						.literal("1")
+						.optional()
+						.meta({ openApi: { required: false } }),
+				},
 			},
 			responses: {
 				200: z.array(z.object({ id: z.string() })),
@@ -651,9 +653,11 @@ describe("OpenAPI operations", () => {
 		const route: OpenApiRouteDeclaration = {
 			path: "/todos/:id",
 			method: "POST",
-			pathParams: { id: z.string() },
-			headers: { "x-api-key": z.string() },
-			body: { title: z.string() },
+			request: {
+				pathParams: { id: z.string() },
+				headers: { "x-api-key": z.string() },
+				body: { title: z.string() },
+			},
 			responses: {
 				201: z.object({ id: z.string() }),
 			},

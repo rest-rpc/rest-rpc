@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import { router } from "../contract/contract.ts";
+import { route } from "../routebuilder/index.ts";
 import { initClient } from "./index.ts";
 
 const OriginalEventSource = globalThis.EventSource;
@@ -28,21 +28,18 @@ const instances: FakeEventSource[] = [];
 const waitForEventListeners = () =>
 	new Promise<void>((resolve) => setImmediate(resolve));
 
-const sseContract = router({
+const sseContract = {
 	events: {
-		notifications: {
-			method: "GET",
-			path: "/projects/:projectId/events",
-			mode: "sse",
-			pathParams: z.object({ projectId: z.string() }),
-			query: z.object({ done: z.coerce.boolean().optional() }),
-			response: z.object({
+		notifications: route
+			.sse("/projects/:projectId/events")
+			.pathParams(z.object({ projectId: z.string() }))
+			.query(z.object({ done: z.coerce.boolean().optional() }))
+			.response(z.object({
 				id: z.string(),
 				createdAt: z.string().transform((value) => new Date(value)),
-			}),
-		},
+			})),
 	},
-});
+};
 
 afterEach(() => {
 	globalThis.EventSource = OriginalEventSource;

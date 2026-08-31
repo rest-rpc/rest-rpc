@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
 import { customBody, noBody, stream } from "../contract/body.ts";
-import { router } from "../contract/contract.ts";
+import { route } from "../routebuilder/index.ts";
 import { createOpenApiDocument } from "./document.ts";
 import type { SchemaConverter } from "./operation.ts";
 
@@ -14,75 +14,48 @@ const schemaConverter: SchemaConverter = (schema, mode) =>
 		reused: "inline",
 	}) as Record<string, unknown>;
 
-const openApiTestContract = router({
+const openApiTestContract = {
 	todos: {
-		list: {
-			path: "/todos",
-			method: "GET",
-			query: z.object({
+		list: route
+			.get("/todos")
+			.query(z.object({
 				search: z.string(),
 				includeCompleted: z.boolean().optional(),
-			}),
-			responses: {
-				200: z.array(z.object({ id: z.string(), title: z.string() })),
-			},
-		},
-		update: {
-			path: "/todos/:id",
-			method: "POST",
-			pathParams: z.object({ id: z.string() }),
-			body: z.object({ title: z.string().min(1) }),
-			responses: {
-				202: z.object({
+			}))
+			.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
+		update: route
+			.post("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.body(z.object({ title: z.string().min(1) }))
+			.response(202, z.object({
 					id: z.string(),
 					title: z.string(),
-				}),
-				409: z.object({
+			}))
+			.response(409, z.object({
 					code: z.literal("TITLE_ALREADY_EXISTS"),
-				}),
-			},
-		},
-		remove: {
-			path: "/todos/:id",
-			method: "DELETE",
-			pathParams: z.object({ id: z.string() }),
-			responses: {
-				204: noBody(),
-			},
-		},
-		events: {
-			path: "/todos/events",
-			method: "GET",
-			responses: {
-				200: stream(
-					z.object({
+			})),
+		remove: route
+			.delete("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.response(204),
+		events: route
+			.get("/todos/events")
+			.streamResponse(200, z.object({
 						type: z.string(),
-					}),
-				),
-			},
-		},
-		socket: {
-			path: "/todos/socket",
-			method: "GET",
-			mode: "webSocket",
-			messages: {
-				client: z.object({ type: z.literal("ping") }),
-				server: z.object({ type: z.literal("pong") }),
-			},
-		},
-		import: {
-			path: "/todos/import",
-			method: "POST",
-			body: customBody({
+			})),
+		socket: route
+			.ws("/todos/socket")
+			.clientMessages(z.object({ type: z.literal("ping") }))
+			.serverMessages(z.object({ type: z.literal("pong") })),
+		import: route
+			.post("/todos/import")
+			.customBody({
 				schema: z.string(),
 				contentType: "text/csv",
-			}),
-			responses: {
-				204: noBody(),
-			},
-		},
+			})
+			.response(204),
 	},
-});
+};
 
 describe("createOpenApiDocument", () => {
 	it("builds base document fields", () => {
@@ -140,18 +113,14 @@ describe("createOpenApiDocument", () => {
 					get: {
 						path: "/todos/:id",
 						method: "GET",
-						pathParams: z.object({ id: z.string() }),
-						responses: {
-							200: z.object({ id: z.string() }),
-						},
+					request: { pathParams: z.object({ id: z.string() }) },
+					responses: { 200: z.object({ id: z.string() }) },
 					},
 					remove: {
 						path: "/todos/:id",
 						method: "DELETE",
-						pathParams: z.object({ id: z.string() }),
-						responses: {
-							204: noBody(),
-						},
+					request: { pathParams: z.object({ id: z.string() }) },
+					responses: { 204: noBody() },
 					},
 				},
 			},

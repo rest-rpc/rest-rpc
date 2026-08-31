@@ -1,14 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import {
-	customBody,
-	formBody,
-	multipartBody,
-	noBody,
-} from "../contract/body.ts";
-import { router } from "../contract/contract.ts";
-import { jsonQuery } from "../contract/request.ts";
+import { noBody } from "../contract/body.ts";
+import { route } from "../routebuilder/index.ts";
 import { initClient } from "./index.ts";
 import { constructBaseRequest, createRequestSignal } from "./request.ts";
 
@@ -24,60 +18,40 @@ type FetchCall = {
 };
 
 const createRequestTestContract = () =>
-	router({
+	({
 		todos: {
-			list: {
-				method: "GET",
-				path: "/todos",
-				query: z.object({
+			list: route
+				.get("/todos")
+				.query(z.object({
 					search: z.string().optional(),
 					empty: z.string().optional(),
-				}),
-				responses: {
-					200: z.array(z.object({ id: z.string(), title: z.string() })),
-				},
-			},
-			create: {
-				method: "POST",
-				path: "/todos",
-				body: z.object({ title: z.string() }),
-				responses: {
-					201: z.object({ id: z.string(), title: z.string() }),
-				},
-			},
-			get: {
-				method: "GET",
-				path: "/todos/:id",
-				pathParams: z.object({ id: z.string() }),
-				responses: {
-					200: z.object({ id: z.string(), title: z.string() }),
-				},
-			},
+				}))
+				.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
+			create: route
+				.post("/todos")
+				.body(z.object({ title: z.string() }))
+				.response(201, z.object({ id: z.string(), title: z.string() })),
+			get: route
+				.get("/todos/:id")
+				.pathParams(z.object({ id: z.string() }))
+				.response(200, z.object({ id: z.string(), title: z.string() })),
 		},
 		uploads: {
-			create: {
-				method: "POST",
-				path: "/uploads/:id",
-				pathParams: z.object({ id: z.string() }),
-				body: customBody({
+			create: route
+				.post("/uploads/:id")
+				.pathParams(z.object({ id: z.string() }))
+				.customBody({
 					schema: z.string(),
 					contentType: "text/plain",
-				}),
-				responses: {
-					204: noBody(),
-				},
-			},
-			json: {
-				method: "POST",
-				path: "/uploads/json",
-				body: customBody({
+				})
+				.response(204),
+			json: route
+				.post("/uploads/json")
+				.customBody({
 					schema: z.object({ type: z.string() }),
 					contentType: "application/json",
-				}),
-				responses: {
-					204: noBody(),
-				},
-			},
+				})
+				.response(204),
 		},
 	});
 
@@ -124,29 +98,23 @@ describe("ApiClient requests", () => {
 	});
 
 	it("builds requests from schema record request declarations", async () => {
-		const apiContract = router({
+		const apiContract = {
 			todos: {
-				update: {
-					method: "POST",
-					path: "/todos/:id",
-					pathParams: {
+				update: route
+					.post("/todos/:id")
+					.pathParams(z.object({
 						id: z.string(),
-					},
-					query: {
+					}))
+					.query(z.object({
 						page: z.number(),
-					},
-					body: {
-						title: z.string(),
-					},
-					headers: {
+					}))
+					.body(z.object({ title: z.string() }))
+					.headers({
 						"x-request-id": z.number(),
-					},
-					responses: {
-						200: z.object({ id: z.string(), title: z.string() }),
-					},
-				},
+					})
+					.response(200, z.object({ id: z.string(), title: z.string() })),
 			},
-		});
+		};
 		const calls = captureFetch(
 			jsonResponse({ id: "todo-1", title: "Updated" }),
 		);
@@ -170,23 +138,15 @@ describe("ApiClient requests", () => {
 	});
 
 	it("constructs requests from grouped segments when flattened request keys are disabled", () => {
-		const apiContract = router(
-			{
-				todos: {
-					get: {
-						method: "GET",
-						path: "/todos/:id",
-						pathParams: z.object({ id: z.string() }),
-						responses: {
-							204: noBody(),
-						},
-					},
-				},
+		const groupedRoute = route.with({ flattenRequestKeys: false });
+		const apiContract = {
+			todos: {
+				get: groupedRoute
+					.get("/todos/:id")
+					.pathParams(z.object({ id: z.string() }))
+					.response(204),
 			},
-			{
-				flattenRequestKeys: false,
-			},
-		);
+		};
 		const request = constructBaseRequest(
 			"https://api.test",
 			apiContract.todos.get,
@@ -200,29 +160,25 @@ describe("ApiClient requests", () => {
 	});
 
 	it("serializes finite number and boolean params, query, and headers", async () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				get: {
-					method: "GET",
-					path: "/items/:id/:visible",
-					pathParams: {
+				get: route
+					.get("/items/:id/:visible")
+					.pathParams(z.object({
 						id: z.number(),
 						visible: z.boolean(),
-					},
-					query: {
+					}))
+					.query(z.object({
 						page: z.number(),
 						includeArchived: z.boolean(),
-					},
-					headers: {
+					}))
+					.headers({
 						"x-page": z.number(),
 						"x-visible": z.boolean(),
-					},
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 		const request = constructBaseRequest(
 			"https://api.test",
 			apiContract.items.get,
@@ -248,21 +204,17 @@ describe("ApiClient requests", () => {
 	});
 
 	it("serializes path params by matching full path placeholders", () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				get: {
-					method: "GET",
-					path: "/items/:id/:id2",
-					pathParams: {
+				get: route
+					.get("/items/:id/:id2")
+					.pathParams(z.object({
 						id: z.string(),
 						id2: z.string(),
-					},
-					responses: {
-						204: noBody(),
-					},
-				},
+					}))
+					.response(204),
 			},
-		});
+		};
 		const request = constructBaseRequest(
 			"https://api.test",
 			apiContract.items.get,
@@ -277,23 +229,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("omits undefined query and header values", async () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				list: {
-					method: "GET",
-					path: "/items",
-					query: {
+				list: route
+					.get("/items")
+					.query(z.object({
 						search: z.string().optional(),
-					},
-					headers: {
+					}))
+					.headers({
 						"x-request-id": z.string().optional(),
-					},
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 		const request = constructBaseRequest(
 			"https://api.test",
 			apiContract.items.list,
@@ -309,23 +257,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("serializes JSON query values into the query parameter", () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				search: {
-					method: "GET",
-					path: "/items",
-					query: jsonQuery(
+				search: route
+					.get("/items")
+					.jsonQuery(
 						z.object({
 							page: z.number(),
 							filters: z.object({ tags: z.array(z.string()) }),
 						}),
-					),
-					responses: {
-						204: noBody(),
-					},
-				},
+					)
+					.response(204),
 			},
-		});
+		};
 		const request = constructBaseRequest(
 			"https://api.test",
 			apiContract.items.search,
@@ -345,24 +289,20 @@ describe("ApiClient requests", () => {
 	});
 
 	it("omits optional JSON query values when the query key is not provided", () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				search: {
-					method: "GET",
-					path: "/items",
-					query: jsonQuery(
+				search: route
+					.get("/items")
+					.jsonQuery(
 						z
 							.object({
 								page: z.number(),
 							})
 							.optional(),
-					),
-					responses: {
-						204: noBody(),
-					},
-				},
+					)
+					.response(204),
 			},
-		});
+		};
 		const request = constructBaseRequest(
 			"https://api.test",
 			apiContract.items.search,
@@ -399,23 +339,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("rejects non-scalar query and header values before fetch", () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				list: {
-					method: "GET",
-					path: "/items",
-					query: {
+				list: route
+					.get("/items")
+					.query(z.object({
 						search: z.string().optional(),
-					},
-					headers: {
+					}))
+					.headers({
 						"x-request-id": z.string().optional(),
-					},
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 
 		assert.throws(
 			() =>
@@ -450,20 +386,16 @@ describe("ApiClient requests", () => {
 	});
 
 	it("rejects non-finite number query values before fetch", () => {
-		const apiContract = router({
+		const apiContract = {
 			items: {
-				list: {
-					method: "GET",
-					path: "/items",
-					query: {
+				list: route
+					.get("/items")
+					.query(z.object({
 						page: z.number(),
-					},
-					responses: {
-						204: noBody(),
-					},
-				},
+					}))
+					.response(204),
 			},
-		});
+		};
 
 		assert.throws(
 			() =>
@@ -512,18 +444,14 @@ describe("ApiClient requests", () => {
 	});
 
 	it("sends custom bodies without declared content types as raw fetch bodies", async () => {
-		const apiContract = router({
+		const apiContract = {
 			forms: {
-				submit: {
-					method: "POST",
-					path: "/forms",
-					body: customBody(z.instanceof(URLSearchParams)),
-					responses: {
-						204: noBody(),
-					},
-				},
+				submit: route
+					.post("/forms")
+					.customBody(z.instanceof(URLSearchParams))
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -537,23 +465,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("sends form bodies as URLSearchParams without generated content type", async () => {
-		const apiContract = router({
+		const apiContract = {
 			forms: {
-				submit: {
-					method: "POST",
-					path: "/forms",
-					body: formBody(
+				submit: route
+					.post("/forms")
+					.formBody(
 						z.object({
 							title: z.string(),
 							remember: z.boolean().optional(),
 						}),
-					),
-					responses: {
-						204: noBody(),
-					},
-				},
+					)
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -575,23 +499,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("sends inferred form array keys as repeated URLSearchParams entries", async () => {
-		const apiContract = router({
+		const apiContract = {
 			forms: {
-				submit: {
-					method: "POST",
-					path: "/forms",
-					body: formBody(
+				submit: route
+					.post("/forms")
+					.formBody(
 						z.object({
 							title: z.string(),
 							tags: z.array(z.string()),
 						}),
-					),
-					responses: {
-						204: noBody(),
-					},
-				},
+					)
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -612,23 +532,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("rejects omitted explicit form array keys before sending requests", async () => {
-		const apiContract = router({
+		const apiContract = {
 			forms: {
-				submit: {
-					method: "POST",
-					path: "/forms",
-					body: formBody({
+				submit: route
+					.post("/forms")
+					.formBody({
 						schema: z.object({
 							tags: z.array(z.string()),
 						}),
 						arrayKeys: [],
-					}),
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -646,25 +562,21 @@ describe("ApiClient requests", () => {
 	});
 
 	it("sends multipart bodies as FormData without generated content type", async () => {
-		const apiContract = router({
+		const apiContract = {
 			uploads: {
-				create: {
-					method: "POST",
-					path: "/uploads",
-					body: multipartBody({
+				create: route
+					.post("/uploads")
+					.multipartBody({
 						schema: z.object({
 							title: z.string(),
 							file: z.instanceof(Blob),
 							tags: z.array(z.string()).optional(),
 						}),
 						arrayKeys: ["tags"],
-					}),
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -687,23 +599,19 @@ describe("ApiClient requests", () => {
 	});
 
 	it("rejects omitted explicit multipart array keys before sending requests", async () => {
-		const apiContract = router({
+		const apiContract = {
 			uploads: {
-				create: {
-					method: "POST",
-					path: "/uploads",
-					body: multipartBody({
+				create: route
+					.post("/uploads")
+					.multipartBody({
 						schema: z.object({
 							tags: z.array(z.string()),
 						}),
 						arrayKeys: [],
-					}),
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -721,22 +629,18 @@ describe("ApiClient requests", () => {
 	});
 
 	it("sends custom bodies with a selected declared content type", async () => {
-		const apiContract = router({
+		const apiContract = {
 			uploads: {
-				image: {
-					method: "POST",
-					path: "/uploads/:id/image",
-					pathParams: z.object({ id: z.string() }),
-					body: customBody({
+				image: route
+					.post("/uploads/:id/image")
+					.pathParams(z.object({ id: z.string() }))
+					.customBody({
 						contentType: ["image/png", "image/jpeg"],
 						schema: z.string(),
-					}),
-					responses: {
-						204: noBody(),
-					},
-				},
+					})
+					.response(204),
 			},
-		});
+		};
 		const calls = captureFetch();
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -771,16 +675,14 @@ describe("ApiClient requests", () => {
 	});
 
 	it("treats explicit no-body request declarations as options-only routes", async () => {
-		const apiContract = router({
+		const apiContract = {
 			ping: {
 				method: "POST",
 				path: "/ping",
-				body: noBody(),
-				responses: {
-					204: noBody(),
-				},
+				request: { body: noBody() },
+				responses: { 204: noBody() },
 			},
-		});
+		};
 		const calls = captureFetch();
 		const controller = new AbortController();
 		const client = initClient(apiContract, {
@@ -877,30 +779,24 @@ describe("ApiClient requests", () => {
 	});
 
 	it("normalizes merged headers and lets declared request headers win", async () => {
-		const apiContract = router(
-			{
-				todos: {
-					list: {
-						method: "GET",
-						path: "/todos",
-						query: z.object({ search: z.string() }),
-						headers: {
-							"X-Route": z.string(),
-							"x-shared": z.string(),
-						},
-						responses: {
-							200: z.array(z.object({ id: z.string(), title: z.string() })),
-						},
-					},
-				},
+		const apiRoute = route.with({
+			headers: {
+				"x-common": z.number(),
+				"x-shared": z.number(),
 			},
-			{
-				commonHeaders: {
-					"x-common": z.number(),
-					"x-shared": z.number(),
-				},
+		});
+		const apiContract = {
+			todos: {
+				list: apiRoute
+					.get("/todos")
+					.query(z.object({ search: z.string() }))
+					.headers({
+						"X-Route": z.string(),
+						"x-shared": z.string(),
+					})
+					.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
 			},
-		);
+		};
 		const calls = captureFetch(jsonResponse([]));
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
@@ -977,7 +873,9 @@ describe("ApiClient requests", () => {
 				list: {
 					method: "GET",
 					path: "/todos",
-					query: z.object({ search: z.string() }),
+					request: {
+						query: z.object({ search: z.string() }),
+					},
 					responses: {
 						204: noBody(),
 					},

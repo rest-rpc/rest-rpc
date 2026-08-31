@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
 import { noBody } from "../contract/body.ts";
-import { router } from "../contract/contract.ts";
+import { route } from "../routebuilder/index.ts";
 import { webSocketMessages } from "../contract/websocketMessages.ts";
 import { initClient } from "./index.ts";
 import { assertWebSocketRoute, buildWebSocketUrl } from "./websocket.ts";
@@ -40,20 +40,15 @@ class FakeWebSocket extends EventTarget {
 
 const instances: FakeWebSocket[] = [];
 
-const apiContract = router({
+const apiContract = {
 	socket: {
-		join: {
-			method: "GET",
-			path: "/rooms/:roomId",
-			pathParams: z.object({ roomId: z.string() }),
-			mode: "webSocket",
-			messages: {
-				client: z.object({ text: z.string() }),
-				server: z.object({ text: z.string() }),
-			},
-		},
+		join: route
+			.ws("/rooms/:roomId")
+			.pathParams(z.object({ roomId: z.string() }))
+			.clientMessages(z.object({ text: z.string() }))
+			.serverMessages(z.object({ text: z.string() })),
 	},
-});
+};
 
 afterEach(() => {
 	globalThis.WebSocket = OriginalWebSocket;
@@ -204,20 +199,15 @@ describe("ApiClient websockets", () => {
 				})
 				.transform(({ first, last }) => `${first} ${last}`),
 		});
-		const apiContract = router({
+		const apiContract = {
 			socket: {
-				join: {
-					method: "GET",
-					path: "/rooms/:roomId",
-					pathParams: z.object({ roomId: z.string() }),
-					mode: "webSocket",
-					messages: {
-						client: z.object({ text: z.string() }),
-						server: serverMessageSchema,
-					},
-				},
+				join: route
+					.ws("/rooms/:roomId")
+					.pathParams(z.object({ roomId: z.string() }))
+					.clientMessages(z.object({ text: z.string() }))
+					.serverMessages(serverMessageSchema),
 			},
-		});
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 		});
@@ -245,20 +235,15 @@ describe("ApiClient websockets", () => {
 				})
 				.transform(({ first, last }) => `${first} ${last}`),
 		});
-		const apiContract = router({
+		const apiContract = {
 			socket: {
-				join: {
-					method: "GET",
-					path: "/rooms/:roomId",
-					pathParams: z.object({ roomId: z.string() }),
-					mode: "webSocket",
-					messages: {
-						client: z.object({ text: z.string() }),
-						server: serverMessageSchema,
-					},
-				},
+				join: route
+					.ws("/rooms/:roomId")
+					.pathParams(z.object({ roomId: z.string() }))
+					.clientMessages(z.object({ text: z.string() }))
+					.serverMessages(serverMessageSchema),
 			},
-		});
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 			validateResponses: true,
@@ -287,20 +272,15 @@ describe("ApiClient websockets", () => {
 				.datetime()
 				.transform((value) => new Date(value)),
 		});
-		const apiContract = router({
+		const apiContract = {
 			socket: {
-				join: {
-					method: "GET",
-					path: "/rooms/:roomId",
-					pathParams: z.object({ roomId: z.string() }),
-					mode: "webSocket",
-					messages: {
-						client: z.object({ text: z.string() }),
-						server: serverMessageSchema,
-					},
-				},
+				join: route
+					.ws("/rooms/:roomId")
+					.pathParams(z.object({ roomId: z.string() }))
+					.clientMessages(z.object({ text: z.string() }))
+					.serverMessages(serverMessageSchema),
 			},
-		});
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 		});
@@ -326,20 +306,15 @@ describe("ApiClient websockets", () => {
 				.datetime()
 				.transform((value) => new Date(value)),
 		});
-		const apiContract = router({
+		const apiContract = {
 			socket: {
-				join: {
-					method: "GET",
-					path: "/rooms/:roomId",
-					pathParams: z.object({ roomId: z.string() }),
-					mode: "webSocket",
-					messages: {
-						client: z.object({ text: z.string() }),
-						server: serverMessageSchema,
-					},
-				},
+				join: route
+					.ws("/rooms/:roomId")
+					.pathParams(z.object({ roomId: z.string() }))
+					.clientMessages(z.object({ text: z.string() }))
+					.serverMessages(serverMessageSchema),
 			},
-		});
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 			validateResponses: true,
@@ -364,27 +339,22 @@ describe("ApiClient websockets", () => {
 
 	it("validates discriminated incoming server message payloads", () => {
 		globalThis.WebSocket = FakeWebSocket as unknown as typeof WebSocket;
-		const apiContract = router({
+		const apiContract = {
 			socket: {
-				join: {
-					method: "GET",
-					path: "/rooms/:roomId",
-					pathParams: z.object({ roomId: z.string() }),
-					mode: "webSocket",
-					messages: {
-						client: z.object({ text: z.string() }),
-						server: {
+				join: route
+					.ws("/rooms/:roomId")
+					.pathParams(z.object({ roomId: z.string() }))
+					.clientMessages(z.object({ text: z.string() }))
+					.serverMessages({
 							discriminator: "type",
 							schemas: {
 								count: z.object({
 									value: z.string().transform((value) => Number(value)),
 								}),
 							},
-						},
-					},
-				},
+					}),
 			},
-		});
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 			validateResponses: true,
@@ -404,22 +374,17 @@ describe("ApiClient websockets", () => {
 
 	it("closes invalid discriminated incoming server messages", () => {
 		globalThis.WebSocket = FakeWebSocket as unknown as typeof WebSocket;
-		const apiContract = router({
+		const apiContract = {
 			socket: {
-				join: {
-					method: "GET",
-					path: "/rooms/:roomId",
-					pathParams: z.object({ roomId: z.string() }),
-					mode: "webSocket",
-					messages: {
-						client: z.object({ text: z.string() }),
-						server: webSocketMessages("type", {
+				join: route
+					.ws("/rooms/:roomId")
+					.pathParams(z.object({ roomId: z.string() }))
+					.clientMessages(z.object({ text: z.string() }))
+					.serverMessages(webSocketMessages("type", {
 							count: z.object({ value: z.number() }),
-						}),
-					},
-				},
+					})),
 			},
-		});
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 			validateResponses: true,
