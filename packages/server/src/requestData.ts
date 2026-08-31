@@ -13,7 +13,7 @@ const flattenQuerySegment = (
 	route: RouteDeclaration,
 	request: Record<string, unknown>,
 ) =>
-	isJsonQuery(route.query)
+	isJsonQuery(route.request?.query)
 		? { query: request.query }
 		: flattenObjectSegment(request.query);
 
@@ -26,13 +26,13 @@ export const flattenRequestData = (
 	route: RouteDeclaration,
 	request: Record<string, unknown>,
 ) => {
-	if (route.flattenRequestKeys === false) return request;
+	if (route.request?.flattenKeys === false) return request;
 
 	return {
 		...(route.mode !== "webSocket"
-			? isCustomBody(route.body) ||
-				isFormBody(route.body) ||
-				isMultipartBody(route.body)
+			? isCustomBody(route.request?.body) ||
+				isFormBody(route.request?.body) ||
+				isMultipartBody(route.request?.body)
 				? { body: request.body }
 				: flattenObjectSegment(request.body)
 			: {}),

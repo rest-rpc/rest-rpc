@@ -151,9 +151,10 @@ const validateCustomBody = async (
 	body: unknown,
 	headers: unknown,
 ): Promise<SegmentValidationResult> => {
-	if (!isCustomBody(route.body)) return { data: {}, errors: [] };
-	const contentTypes = Array.isArray(route.body.contentType)
-		? route.body.contentType
+	const declaration = route.request?.body;
+	if (!isCustomBody(declaration)) return { data: {}, errors: [] };
+	const contentTypes = Array.isArray(declaration.contentType)
+		? declaration.contentType
 		: undefined;
 	const contentType =
 		contentTypes && body !== undefined
@@ -171,7 +172,7 @@ const validateCustomBody = async (
 		};
 	}
 
-	const result = await validateStandardSchema(route.body.schema, body);
+	const result = await validateStandardSchema(declaration.schema, body);
 	if (result.issues) {
 		return { data: {}, errors: result.issues };
 	}
@@ -302,22 +303,23 @@ const getValidatedRequestData = (
 	pathParams: SegmentValidationResult,
 	headers: SegmentValidationResult,
 ) => {
+	const request = route.request;
 	return {
-		...(route.body && !isNoBody(route.body)
+		...(request?.body && !isNoBody(request.body)
 			? {
 					body:
-						isCustomBody(route.body) ||
-						isFormBody(route.body) ||
-						isMultipartBody(route.body)
+						isCustomBody(request.body) ||
+						isFormBody(request.body) ||
+						isMultipartBody(request.body)
 							? body.data.body
 							: body.data,
 				}
 			: {}),
-		...(route.query
-			? { query: isJsonQuery(route.query) ? query.data.query : query.data }
+		...(request?.query
+			? { query: isJsonQuery(request.query) ? query.data.query : query.data }
 			: {}),
-		...(route.pathParams ? { pathParams: pathParams.data } : {}),
-		...(route.headers ? { headers: headers.data } : {}),
+		...(request?.pathParams ? { pathParams: pathParams.data } : {}),
+		...(request?.headers ? { headers: headers.data } : {}),
 	};
 };
 
@@ -325,21 +327,25 @@ export async function validateRequest(
 	route: RouteDeclaration,
 	segments: RequestSegments,
 ): Promise<RequestValidationResponse> {
-	const body = isCustomBody(route.body)
+	const request = route.request;
+	const body = isCustomBody(request?.body)
 		? await validateCustomBody(route, segments.body, segments.headers)
-		: isFormBody(route.body)
-			? await validateFormBody(route.body, segments.body)
-			: isMultipartBody(route.body)
-				? await validateMultipartBody(route.body, segments.body)
-				: await validateRequestObject(route.body, segments.body);
-	const query = isJsonQuery(route.query)
-		? await validateJsonQuery(route.query, segments.query)
-		: await validateRequestObject(route.query, segments.query);
+		: isFormBody(request?.body)
+			? await validateFormBody(request.body, segments.body)
+			: isMultipartBody(request?.body)
+				? await validateMultipartBody(request.body, segments.body)
+				: await validateRequestObject(request?.body, segments.body);
+	const query = isJsonQuery(request?.query)
+		? await validateJsonQuery(request.query, segments.query)
+		: await validateRequestObject(request?.query, segments.query);
 	const pathParams = await validateRequestObject(
-		route.pathParams,
+		request?.pathParams,
 		segments.pathParams,
 	);
-	const headers = await validateRequestObject(route.headers, segments.headers);
+	const headers = await validateRequestObject(
+		request?.headers,
+		segments.headers,
+	);
 	const errors = [
 		...body.errors,
 		...query.errors,
