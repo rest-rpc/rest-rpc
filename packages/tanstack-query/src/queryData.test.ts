@@ -11,7 +11,9 @@ const routeWithoutRequest = {
 const routeWithRequest = {
 	method: "GET",
 	path: "/items/:id",
-	pathParams: {},
+	request: {
+		pathParams: {},
+	},
 	responses: { 200: {} },
 } as any;
 

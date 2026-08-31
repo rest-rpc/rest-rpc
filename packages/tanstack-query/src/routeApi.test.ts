@@ -6,29 +6,36 @@ import { createRouteApi } from "./routeApi.ts";
 const routeWithoutRequest = {
 	method: "GET",
 	path: "/items",
-	routePath: ["items", "list"],
 	responses: { 200: {} },
 } as any;
 
 const routeWithRequest = {
 	method: "GET",
 	path: "/items/:id",
-	routePath: ["items", "byId"],
-	pathParams: {},
+	request: {
+		pathParams: {},
+	},
 	responses: { 200: {} },
 } as any;
+
+const routeWithoutRequestPath = ["items", "list"];
+const routeWithRequestPath = ["items", "byId"];
 
 describe("createRouteApi", () => {
 	it("creates query options with request-aware keys and fetchResponse", async () => {
 		const fetchResponseCalls: unknown[][] = [];
-		const routeApi = createRouteApi(routeWithRequest, async (...args) => {
-			fetchResponseCalls.push(args);
-			return {
-				declared: true,
-				status: 200,
-				body: { id: "item-1" },
-			};
-		});
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async (...args) => {
+				fetchResponseCalls.push(args);
+				return {
+					declared: true,
+					status: 200,
+					body: { id: "item-1" },
+				};
+			},
+		);
 		const request = { id: "item-1" };
 
 		const options = routeApi.queryOptions(request, { staleTime: 123 }) as any;
@@ -48,14 +55,18 @@ describe("createRouteApi", () => {
 
 	it("forwards query fetch options to fetchResponse without returning them", async () => {
 		const fetchResponseCalls: unknown[][] = [];
-		const routeApi = createRouteApi(routeWithRequest, async (...args) => {
-			fetchResponseCalls.push(args);
-			return {
-				declared: true,
-				status: 200,
-				body: { id: "item-1" },
-			};
-		});
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async (...args) => {
+				fetchResponseCalls.push(args);
+				return {
+					declared: true,
+					status: 200,
+					body: { id: "item-1" },
+				};
+			},
+		);
 		const request = { id: "item-1" };
 
 		const options = routeApi.queryOptions(request, {
@@ -79,11 +90,15 @@ describe("createRouteApi", () => {
 	});
 
 	it("allows query options to override generated query keys", () => {
-		const routeApi = createRouteApi(routeWithRequest, async () => ({
-			declared: true,
-			status: 200,
-			body: {},
-		}));
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async () => ({
+				declared: true,
+				status: 200,
+				body: {},
+			}),
+		);
 		const request = { id: "item-1" };
 
 		const options = routeApi.queryOptions(request, {
@@ -95,11 +110,15 @@ describe("createRouteApi", () => {
 	});
 
 	it("uses skipToken to disable request-based query options", () => {
-		const routeApi = createRouteApi(routeWithRequest, async () => ({
-			declared: true,
-			status: 200,
-			body: {},
-		}));
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async () => ({
+				declared: true,
+				status: 200,
+				body: {},
+			}),
+		);
 
 		const options = routeApi.queryOptions(skipToken) as any;
 
@@ -108,11 +127,15 @@ describe("createRouteApi", () => {
 	});
 
 	it("uses conditional request input to disable request-based query options", () => {
-		const routeApi = createRouteApi(routeWithRequest, async () => ({
-			declared: true,
-			status: 200,
-			body: {},
-		}));
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async () => ({
+				declared: true,
+				status: 200,
+				body: {},
+			}),
+		);
 
 		const optionalId = "";
 		const options = routeApi.queryOptions(
@@ -125,14 +148,18 @@ describe("createRouteApi", () => {
 
 	it("treats the first queryOptions argument as options for routes without request input", async () => {
 		const fetchResponseCalls: unknown[][] = [];
-		const routeApi = createRouteApi(routeWithoutRequest, async (...args) => {
-			fetchResponseCalls.push(args);
-			return {
-				declared: true,
-				status: 200,
-				body: { items: [] },
-			};
-		});
+		const routeApi = createRouteApi(
+			routeWithoutRequest,
+			routeWithoutRequestPath,
+			async (...args) => {
+				fetchResponseCalls.push(args);
+				return {
+					declared: true,
+					status: 200,
+					body: { items: [] },
+				};
+			},
+		);
 
 		const options = routeApi.queryOptions({ gcTime: 50 }) as any;
 
@@ -147,14 +174,18 @@ describe("createRouteApi", () => {
 
 	it("creates mutation options", async () => {
 		const fetchResponseCalls: unknown[][] = [];
-		const routeApi = createRouteApi(routeWithRequest, async (...args) => {
-			fetchResponseCalls.push(args);
-			return {
-				declared: true,
-				status: 201,
-				body: { id: "item-2" },
-			};
-		});
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async (...args) => {
+				fetchResponseCalls.push(args);
+				return {
+					declared: true,
+					status: 201,
+					body: { id: "item-2" },
+				};
+			},
+		);
 		const request = { name: "Potato" };
 
 		const options = routeApi.mutationOptions({
@@ -175,14 +206,18 @@ describe("createRouteApi", () => {
 
 	it("creates infinite query options with route requests as page params", async () => {
 		const fetchResponseCalls: unknown[][] = [];
-		const routeApi = createRouteApi(routeWithRequest, async (...args) => {
-			fetchResponseCalls.push(args);
-			return {
-				declared: true,
-				status: 200,
-				body: { items: [], nextCursor: "cursor-2" },
-			};
-		});
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async (...args) => {
+				fetchResponseCalls.push(args);
+				return {
+					declared: true,
+					status: 200,
+					body: { items: [], nextCursor: "cursor-2" },
+				};
+			},
+		);
 		const initialRequest = { cursor: undefined, limit: 20 };
 		const nextRequest = { cursor: "cursor-2", limit: 20 };
 
@@ -214,11 +249,15 @@ describe("createRouteApi", () => {
 	});
 
 	it("allows custom infinite query keys", () => {
-		const routeApi = createRouteApi(routeWithRequest, async () => ({
-			declared: true,
-			status: 200,
-			body: {},
-		}));
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async () => ({
+				declared: true,
+				status: 200,
+				body: {},
+			}),
+		);
 
 		const options = routeApi.infiniteQueryOptions({
 			queryKey: ["custom", "items"],
@@ -230,11 +269,15 @@ describe("createRouteApi", () => {
 	});
 
 	it("omits undefined request fields in generated keys", () => {
-		const routeApi = createRouteApi(routeWithRequest, async () => ({
-			declared: true,
-			status: 200,
-			body: {},
-		}));
+		const routeApi = createRouteApi(
+			routeWithRequest,
+			routeWithRequestPath,
+			async () => ({
+				declared: true,
+				status: 200,
+				body: {},
+			}),
+		);
 
 		assert.deepEqual(routeApi.getKey({ id: "item-4", optional: undefined }), [
 			"items",

@@ -474,6 +474,7 @@ export function createTanstackQueryHelpers<
 
 			return createRouteApi(
 				node,
+				path,
 				apiNode.fetchResponse as (...args: unknown[]) => Promise<unknown>,
 			);
 		}

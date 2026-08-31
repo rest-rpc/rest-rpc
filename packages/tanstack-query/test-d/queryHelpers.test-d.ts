@@ -1,4 +1,4 @@
-import { router, type as schemaType, stream } from "@rest-rpc/core/contract";
+import { route, type as schemaType, stream } from "@rest-rpc/core/contract";
 import {
 	createTanstackQueryHelpers,
 	type CreateTanstackQueryHelpersOptions,
@@ -24,25 +24,17 @@ declare const queryClient: QueryClient;
 // query options
 
 // should create request-aware query options that carry typed data through QueryClient
-const queryApi = router({
+const queryApi = {
 	todos: {
-		list: {
-			method: "GET",
-			path: "/todos",
-			responses: {
-				200: schemaType<Array<{ id: string; title: string }>>(),
-			},
-		},
-		get: {
-			method: "GET",
-			path: "/todos/:id",
-			pathParams: schemaType<{ id: string }>(),
-			responses: {
-				200: schemaType<{ id: string; title: string }>(),
-			},
-		},
+		list: route
+			.get("/todos")
+			.response(200, schemaType<Array<{ id: string; title: string }>>()),
+		get: route
+			.get("/todos/:id")
+			.pathParams(schemaType<{ id: string }>())
+			.response(200, schemaType<{ id: string; title: string }>()),
 	},
-});
+};
 
 const queryTq = createTanstackQueryHelpers(queryApi, {
 	baseUrl: "https://example.test",
@@ -141,19 +133,15 @@ expectAssignable<RouteQueryError<typeof queryApi.todos.get>>({
 // strict status code options
 
 // should allow strict status codes and remove undeclared responses from query errors
-const strictStatusApi = router({
+const strictStatusApi = {
 	todos: {
-		get: {
-			method: "GET",
-			path: "/todos/:id",
-			pathParams: schemaType<{ id: string }>(),
-			responses: {
-				200: schemaType<{ id: string; title: string }>(),
-				404: schemaType<{ code: "TODO_NOT_FOUND" }>(),
-			},
-		},
+		get: route
+			.get("/todos/:id")
+			.pathParams(schemaType<{ id: string }>())
+			.response(200, schemaType<{ id: string; title: string }>())
+			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
 	},
-});
+};
 
 const strictStatusTq = createTanstackQueryHelpers(strictStatusApi, {
 	baseUrl: "https://example.test",
@@ -194,17 +182,13 @@ expectNotAssignable<StrictRouteQueryError<typeof strictStatusApi.todos.get>>({
 // stream query options
 
 // should expose stream routes as regular query data with raw async iterable bodies
-const streamApi = router({
+const streamApi = {
 	events: {
-		list: {
-			method: "GET",
-			path: "/events",
-			responses: {
-				200: stream(schemaType<{ id: string; message: string }>()),
-			},
-		},
+		list: route
+			.get("/events")
+			.streamResponse(200, schemaType<{ id: string; message: string }>()),
 	},
-});
+};
 
 const streamTq = createTanstackQueryHelpers(streamApi, {
 	baseUrl: "https://example.test",
@@ -337,18 +321,14 @@ queryTq.todos.get.queryOptions(
 // mutation options
 
 // should create mutation options with typed data and variables callbacks
-const mutationApi = router({
+const mutationApi = {
 	todos: {
-		create: {
-			method: "POST",
-			path: "/todos",
-			body: schemaType<{ title: string }>(),
-			responses: {
-				201: schemaType<{ id: string; title: string }>(),
-			},
-		},
+		create: route
+			.post("/todos")
+			.body(schemaType<{ title: string }>())
+			.response(201, schemaType<{ id: string; title: string }>()),
 	},
-});
+};
 
 const mutationTq = createTanstackQueryHelpers(mutationApi, {
 	baseUrl: "https://example.test",
@@ -371,25 +351,26 @@ mutationTq.todos.create.mutationOptions({
 // infinite query options
 
 // should carry page response data and request page params through infinite queries
-const pageApi = router({
+const pageApi = {
 	todos: {
-		page: {
-			method: "GET",
-			path: "/todos/page",
-			query: schemaType<{
-				cursor?: string;
-				status: "open" | "done";
-				limit: number;
-			}>(),
-			responses: {
-				200: schemaType<{
+		page: route
+			.get("/todos/page")
+			.query(
+				schemaType<{
+					cursor?: string;
+					status: "open" | "done";
+					limit: number;
+				}>(),
+			)
+			.response(
+				200,
+				schemaType<{
 					items: Array<{ id: string; title: string }>;
 					nextCursor?: string;
 				}>(),
-			},
-		},
+			),
 	},
-});
+};
 
 const pageTq = createTanstackQueryHelpers(pageApi, {
 	baseUrl: "https://example.test",
@@ -465,48 +446,29 @@ queryClient.setQueryData(listKey, (current) => current);
 // invalid calls
 
 // should reject malformed request input, options placement, infinite options, and websocket/sse routes
-const invalidApi = router({
+const invalidApi = {
 	todos: {
 		list: queryApi.todos.list,
 		get: queryApi.todos.get,
 		page: pageApi.todos.page,
 	},
 	normalStream: streamApi.events.list,
-	ambiguousStream: {
-		method: "GET",
-		path: "/ambiguous-stream",
-		responses: {
-			200: stream(schemaType<{ id: string; message: string }>()),
-			202: schemaType<{ pending: true }>(),
-		},
-	},
-	events: {
-		method: "GET",
-		path: "/events",
-		mode: "webSocket",
-		messages: {
-			client: schemaType<{ subscribe: boolean }>(),
-			server: schemaType<{ id: string }>(),
-		},
-	},
+	ambiguousStream: route
+		.get("/ambiguous-stream")
+		.streamResponse(200, schemaType<{ id: string; message: string }>())
+		.response(202, schemaType<{ pending: true }>()),
+	events: route
+		.ws("/events")
+		.clientMessages(schemaType<{ subscribe: boolean }>())
+		.serverMessages(schemaType<{ id: string }>()),
 	feeds: {
-		live: {
-			method: "GET",
-			path: "/feeds/live",
-			mode: "sse",
-			response: schemaType<{ id: string; message: string }>(),
-		},
+		live: route.sse("/feeds/live").response(schemaType<{ id: string; message: string }>()),
 	},
 	mixed: {
-		live: {
-			method: "GET",
-			path: "/mixed/live",
-			mode: "sse",
-			response: schemaType<{ id: string; message: string }>(),
-		},
+		live: route.sse("/mixed/live").response(schemaType<{ id: string; message: string }>()),
 		list: queryApi.todos.list,
 	},
-});
+};
 
 const invalidTq = createTanstackQueryHelpers(invalidApi, {
 	baseUrl: "https://example.test",
