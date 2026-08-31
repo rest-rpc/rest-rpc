@@ -54,15 +54,17 @@ describe("HTTP route builder runtime", () => {
 			.get("/items")
 			.headers({ authorization: type<"override">(), trace: type<string>() })
 			.response(200, type<string>())
-			;
+			.metadata({ auth: false })
+			.openApi({ tags: ["Items"], responses: { 401: { description: "Local" } } });
 		const second = factory.get("/other");
 		assert.equal(first.path, "/api/items");
 		assert.equal(first.request?.headers?.authorization["~standard"].vendor, "rest-rpc");
 		assert.deepEqual(Object.keys(first.responses ?? {}), ["200", "401"]);
-		assert.deepEqual(first.metadata, defaults.metadata);
-		assert.deepEqual(first.openApi?.tags, ["Common"]);
+		assert.deepEqual(first.metadata, { auth: false, nested: { role: "user" } });
+		assert.deepEqual(first.openApi?.tags, ["Common", "Items"]);
+		assert.equal(first.openApi?.responses?.[401]?.description, "Local");
 		(first.metadata.nested as { role: string }).role = "admin";
-		assert.deepEqual(second.metadata, defaults.metadata);
+		assert.deepEqual({ ...second.metadata }, defaults.metadata);
 	});
 
 	it("rejects duplicate and conflicting response declarations", () => {

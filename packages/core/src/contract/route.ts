@@ -10,8 +10,9 @@ import type {
 	OpenApiRouteOptions,
 	RouteFactoryOptions,
 	RouteMetadata,
+	RouteRequestDeclaration,
 } from "./contract.ts";
-import { noBody } from "./body.ts";
+import { noBody, type NoBody } from "./body.ts";
 import { getPathParamNames } from "./path.ts";
 import type {
 	JsonQuery,
@@ -148,15 +149,6 @@ class HttpRouteBuilder {
 							: {}),
 					}
 				: undefined;
-		if (options.responses) {
-			Object.assign(this, { responses: cloneResponses(options.responses) });
-		}
-		if (options.metadata) {
-			Object.assign(this, { metadata: cloneMetadata(options.metadata) });
-		}
-		if (options.openApi) {
-			Object.assign(this, { openApi: mergeOpenApi(options.openApi, undefined) });
-		}
 		Object.defineProperties(this, {
 			_state: {
 				value: { writes: new Set(), responseStatuses: new Set() },
@@ -165,6 +157,35 @@ class HttpRouteBuilder {
 			_commonResponses: { value: cloneResponses(options.responses) },
 			_commonMetadata: { value: cloneMetadata(options.metadata) },
 			_commonOpenApi: { value: cloneMetadata(options.openApi) },
+		});
+		if (options.responses) {
+			Object.assign(this, { responses: cloneResponses(options.responses) });
+		}
+		this.installCallableDefault("metadata", cloneMetadata(options.metadata));
+		this.installCallableDefault(
+			"openApi",
+			mergeOpenApi(options.openApi, undefined),
+		);
+	}
+
+	private installCallableDefault(
+		setter: "metadata" | "openApi",
+		value: object | undefined,
+	) {
+		if (!value) return;
+		const callable = Object.assign(
+			(
+				this[setter] as (
+					value: RouteMetadata | OpenApiRouteOptions,
+				) => this
+			).bind(this),
+			value,
+		);
+		Object.defineProperty(this, setter, {
+			value: callable,
+			writable: true,
+			enumerable: true,
+			configurable: true,
 		});
 	}
 
@@ -266,6 +287,161 @@ const createHttpRoute = (
 	options?: RouteFactoryOptions,
 ) => new HttpRouteBuilder(method, path, options);
 
+type Simplify<T> = { [K in keyof T]: T[K] };
+type EmptyObject = Record<never, never>;
+type Merge<TCommon, TLocal> = Simplify<
+	Omit<TCommon, keyof TLocal> & TLocal
+>;
+type JoinPath<TPrefix extends string, TPath extends string> =
+	`${TPrefix}${TPath}`;
+type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
+	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
+type PathFor<TOptions, TPath extends string> = TOptions extends {
+	pathPrefix: infer TPrefix extends string;
+}
+	? JoinPath<TPrefix, TPath>
+	: TPath;
+type RequestFor<TOptions> = Simplify<
+	(TOptions extends { headers: infer THeaders extends RequestSchemaRecord }
+		? { headers: THeaders }
+		: EmptyObject) &
+		(TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
+			? { flattenKeys: TFlatten }
+			: EmptyObject)
+>;
+type WithRequest<
+	TRequest,
+	TKey extends keyof RouteRequestDeclaration,
+	TValue,
+> = Simplify<Omit<TRequest, TKey> & Record<TKey, TValue>>;
+type LocalResponseStatus<TStatus extends number, TUsed extends number> =
+	TStatus extends TUsed ? never : TStatus;
+
+type HttpBuilder<
+	TMethod extends HttpMethod,
+	TPath extends string,
+	TRequest,
+	TResponses,
+	TMetadata,
+	TOpenApi,
+	TUsed extends string = never,
+	TLocalStatuses extends number = never,
+> = Simplify<
+	{
+		readonly method: TMethod;
+		readonly path: TPath;
+		request?: keyof TRequest extends never ? never : TRequest;
+	} &
+		(keyof TResponses extends never
+			? { responses?: never }
+			: { responses: TResponses }) &
+		{
+			response<
+				const TStatus extends number,
+				const TSchema extends ResponseDeclaration | undefined = undefined,
+			>(
+				status: LocalResponseStatus<TStatus, TLocalStatuses>,
+				schema?: TSchema,
+			): HttpBuilder<
+				TMethod,
+				TPath,
+				TRequest,
+				Merge<
+					TResponses,
+					Record<
+						TStatus,
+						TSchema extends ResponseDeclaration ? TSchema : NoBody
+					>
+				>,
+				TMetadata,
+				TOpenApi,
+				TUsed,
+				TLocalStatuses | TStatus
+			>;
+		} &
+		("body" extends TUsed
+			? EmptyObject
+			: {
+					body<const TSchema extends RequestBodySchema>(
+						schema: TSchema,
+					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "body", TSchema>, TResponses, TMetadata, TOpenApi, TUsed | "body", TLocalStatuses>;
+				}) &
+		("query" extends TUsed
+			? EmptyObject
+			: {
+					query<const TSchema extends QuerySchema>(
+						schema: TSchema,
+					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "query", TSchema>, TResponses, TMetadata, TOpenApi, TUsed | "query", TLocalStatuses>;
+				}) &
+		("pathParams" extends TUsed
+			? EmptyObject
+			: {
+					pathParams<const TSchema extends StandardSchemaV1 | RequestSchemaRecord>(
+						schema: TSchema,
+					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "pathParams", TSchema>, TResponses, TMetadata, TOpenApi, TUsed | "pathParams", TLocalStatuses>;
+				}) &
+		("headers" extends TUsed
+			? EmptyObject
+			: {
+					headers<const THeaders extends RequestSchemaRecord>(
+						headers: THeaders,
+					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "headers", Merge<TRequest extends { headers: infer TCommon } ? TCommon : EmptyObject, THeaders>>, TResponses, TMetadata, TOpenApi, TUsed | "headers", TLocalStatuses>;
+				}) &
+		("requestKeys" extends TUsed
+			? EmptyObject
+			: {
+					requestKeys<const TKeys extends RequestKeys>(
+						keys: TKeys,
+					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "keys", TKeys>, TResponses, TMetadata, TOpenApi, TUsed | "requestKeys", TLocalStatuses>;
+				}) &
+		("flattenRequestKeys" extends TUsed
+			? EmptyObject
+			: {
+					flattenRequestKeys<const TFlatten extends boolean>(
+						value: TFlatten,
+					): HttpBuilder<TMethod, TPath, WithRequest<TRequest, "flattenKeys", TFlatten>, TResponses, TMetadata, TOpenApi, TUsed | "flattenRequestKeys", TLocalStatuses>;
+				}) &
+		("metadata" extends TUsed
+			? { metadata: TMetadata }
+			: {
+					metadata: TMetadata &
+						RouteMetadata &
+						(<const TLocal extends RouteMetadata>(
+							metadata: TLocal,
+						) => HttpBuilder<TMethod, TPath, TRequest, TResponses, Merge<TMetadata, TLocal>, TOpenApi, TUsed | "metadata", TLocalStatuses>);
+				}) &
+		("openApi" extends TUsed
+			? { openApi: TOpenApi }
+			: {
+					openApi: TOpenApi &
+						OpenApiRouteOptions &
+						(<const TLocal extends OpenApiRouteOptions>(
+							openApi: TLocal,
+						) => HttpBuilder<TMethod, TPath, TRequest, TResponses, TMetadata, Merge<TOpenApi, TLocal>, TUsed | "openApi", TLocalStatuses>);
+				})
+>;
+
+type HttpBuilderFor<
+	TOptions,
+	TMethod extends HttpMethod,
+	TPath extends string,
+> = HttpBuilder<
+	TMethod,
+	PathFor<TOptions, TPath>,
+	RequestFor<TOptions>,
+	OptionValue<TOptions, "responses", EmptyObject>,
+	OptionValue<TOptions, "metadata", EmptyObject>,
+	OptionValue<TOptions, "openApi", EmptyObject>
+>;
+
+type RouteFactory<TOptions = undefined> = {
+	get<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "GET", TPath>;
+	post<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "POST", TPath>;
+	put<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "PUT", TPath>;
+	patch<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "PATCH", TPath>;
+	delete<const TPath extends string>(path: TPath): HttpBuilderFor<TOptions, "DELETE", TPath>;
+};
+
 const createFactory = (options: RouteFactoryOptions = {}) => {
 	assertStaticPathPrefix(options.pathPrefix);
 	return {
@@ -280,7 +456,11 @@ const createFactory = (options: RouteFactoryOptions = {}) => {
 /** Route-first contract declaration factory. */
 export const route = {
 	...createFactory(),
-	with(options: RouteFactoryOptions) {
+	with<const TOptions extends RouteFactoryOptions>(options: TOptions) {
 		return createFactory(options);
 	},
+} as unknown as RouteFactory & {
+	with<const TOptions extends RouteFactoryOptions>(
+		options: TOptions,
+	): RouteFactory<TOptions>;
 };
