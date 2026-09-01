@@ -27,7 +27,7 @@ describe("HTTP route builder runtime", () => {
 		const declaration = route
 			.post("/items/:id")
 			.response(201, schema)
-			.headers({ authorization: type<string>() })
+			.headers(z.object({ authorization: z.string() }))
 			.body(schema)
 			.query(z.object({ search: z.string() }))
 			.params(type<{ id: string }>())
@@ -61,9 +61,10 @@ describe("HTTP route builder runtime", () => {
 
 	it("resolves flattened request keys while building routes", () => {
 		const declaration = route
+			.with({ headers: z.object({ authorization: z.string() }) })
 			.post("/items/:id")
 			.body(z.object({ title: z.string() }))
-			.headers({ authorization: type<string>() })
+			.headers(z.object({ "x-request-id": z.string() }))
 			.params(type<{ id: string }>())
 			.response(201, type<{ id: string }>());
 
@@ -71,6 +72,7 @@ describe("HTTP route builder runtime", () => {
 			authorization: "headers",
 			id: "params",
 			title: "body",
+			"x-request-id": "headers",
 		});
 	});
 
@@ -78,7 +80,7 @@ describe("HTTP route builder runtime", () => {
 		const unauthorized = type<{ message: string }>();
 		const defaults = {
 			pathPrefix: "/api",
-			headers: { authorization: type<string>() },
+			headers: type<{ authorization: string }>(),
 			responses: { 401: unauthorized },
 			metadata: { auth: true, nested: { role: "user" } },
 			openApi: { tags: ["Common"], responses: { 401: { description: "No" } } },
@@ -88,7 +90,9 @@ describe("HTTP route builder runtime", () => {
 		const factory = route.with(defaults);
 		const first = factory
 			.get("/items")
-			.headers({ authorization: type<"override">(), trace: type<string>() })
+			.headers(
+				z.object({ authorization: z.literal("override"), trace: z.string() }),
+			)
 			.response(200, type<string>())
 			.customResponse(401, {
 				contentType: "application/problem+json",
@@ -102,7 +106,7 @@ describe("HTTP route builder runtime", () => {
 		const second = factory.get("/other");
 		assert.equal(first.path, "/api/items");
 		assert.equal(
-			first.request?.headers?.authorization["~standard"].vendor,
+			first.request?.headers?.inherited?.["~standard"].vendor,
 			"rest-rpc",
 		);
 		assert.deepEqual(Object.keys(first.responses ?? {}), ["200", "401"]);
@@ -315,7 +319,7 @@ describe("protocol route builder runtime", () => {
 		const schema = type<string>();
 		const factory = route.with({
 			pathPrefix: "/api",
-			headers: { authorization: schema },
+			headers: type<{ authorization: string }>(),
 			responses: { 401: schema },
 			metadata: { public: true },
 			strictStatusCodes: true,

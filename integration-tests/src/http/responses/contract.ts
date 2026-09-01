@@ -14,7 +14,7 @@ export const responsesContract = {
 			.response(200, z.object({ ok: z.literal(true) })),
 		read: route
 			.get("/responses/cookies/read")
-			.headers({ cookie: z.string().optional() })
+			.headers(z.object({ cookie: z.string().optional() }))
 			.response(200, z.object({ cookie: z.string().nullable() })),
 	},
 	undeclared: route

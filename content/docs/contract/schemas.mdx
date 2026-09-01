@@ -11,7 +11,7 @@ Zod, Valibot, and ArkType are supported Standard Schema libraries. The built-in
 
 ## Request Schema Shapes
 
-Request locations are declared with schema records or whole-location schemas.
+Request locations are declared with whole-location schemas.
 
 :::note
 This section describes the default flattened request shape. With
@@ -19,15 +19,15 @@ This section describes the default flattened request shape. With
 segments, so whole-location schemas do not need flattened key metadata.
 :::
 
-A route builder receives one schema for `params`, `query`, and `body`, while
-`.headers()` receives a record keyed by header name.
+A route builder receives one schema for `params`, `query`, `body`, and
+`.headers()`.
 
 ```ts
 route
 	.patch("/todos/:id")
 	.params(z.object({ id: z.string().uuid() }))
 	.query(z.object({ includeCompleted: z.coerce.boolean().optional() }))
-	.headers({ "x-request-id": z.string().optional() })
+	.headers(z.object({ "x-request-id": z.string().optional() }))
 	.body(z.object({ title: z.string().min(1) }))
 	.response(200, todoSchema);
 ```
@@ -113,7 +113,12 @@ route
 	.response(204);
 ```
 
-Headers are always declared as a schema record with `.headers()`.
+Headers are declared as a whole-object schema with `.headers()`.
+
+Header schemas configured with `route.with()` are inherited. If a route also
+calls `.headers()`, both schemas validate the original header object and their
+validated outputs are shallow-merged. Route-local output properties win on a
+duplicate key, but the input must pass both schemas.
 
 ## Schema Input And Output
 

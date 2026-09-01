@@ -5,7 +5,8 @@ import type {
 	RequestQuerySchema,
 	RequestBodySchema,
 	RequestKeys,
-	RequestSchemaRecord,
+	RequestHeadersDeclaration,
+	RequestHeadersSchema,
 } from "./request.ts";
 import type { RouteResponses } from "./response.ts";
 import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
@@ -54,7 +55,7 @@ export type RouteRequestDeclaration = {
 	body?: RequestBodySchema;
 	query?: RequestQuerySchema | JsonQuery;
 	params?: RequestParamsSchema;
-	headers?: RequestSchemaRecord;
+	headers?: RequestHeadersDeclaration;
 	keys?: RequestKeys;
 	flattenKeys?: boolean;
 };
@@ -130,7 +131,7 @@ export type RouteFactoryOptions = {
 	pathPrefix?: string;
 	metadata?: RouteMetadata;
 	responses?: RouteResponses;
-	headers?: RequestSchemaRecord;
+	headers?: RequestHeadersSchema;
 	openApi?: CommonOpenApiRouteOptions;
 };
 

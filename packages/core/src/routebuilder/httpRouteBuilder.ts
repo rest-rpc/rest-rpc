@@ -23,10 +23,11 @@ import type {
 } from "../contract/contract.ts";
 import type {
 	JsonQuery,
+	RequestHeadersDeclaration,
+	RequestHeadersSchema,
 	RequestKeys,
 	RequestParamsSchema,
 	RequestQuerySchema,
-	RequestSchemaRecord,
 } from "../contract/request.ts";
 import type {
 	RegularResponseDeclaration,
@@ -43,9 +44,9 @@ type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
 	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
 
 type RequestFor<TOptions> = (TOptions extends {
-	headers: infer THeaders extends RequestSchemaRecord;
+	headers: infer THeaders extends RequestHeadersSchema;
 }
-	? { headers: THeaders }
+	? { headers: { inherited: THeaders } }
 	: EmptyObject) &
 	(TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
 		? { flattenKeys: TFlatten }
@@ -64,7 +65,7 @@ const httpRequestDefaults = (
 ): RouteRequestDeclaration | undefined =>
 	options.headers || typeof options.flattenRequestKeys === "boolean"
 		? {
-				...(options.headers ? { headers: { ...options.headers } } : {}),
+				...(options.headers ? { headers: { inherited: options.headers } } : {}),
 				...(typeof options.flattenRequestKeys === "boolean"
 					? { flattenKeys: options.flattenRequestKeys }
 					: {}),
@@ -125,12 +126,9 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 		return this;
 	}
 
-	headers(schemas: RequestSchemaRecord) {
+	headers(schema: RequestHeadersSchema) {
 		const request = this.requestForWrite();
-		request.headers = {
-			...request.headers,
-			...schemas,
-		};
+		request.headers = { ...request.headers, local: schema };
 		this.recalculateRequestKeys();
 		return this;
 	}
@@ -340,17 +338,18 @@ type HttpBuilder<
 	("headers" extends TUsed
 		? EmptyObject
 		: {
-				headers<const THeaders extends RequestSchemaRecord>(
-					headers: THeaders,
+				headers<const THeaders extends RequestHeadersSchema>(
+					schema: THeaders,
 				): HttpBuilder<
 					TRoute,
 					WithRequest<
 						TRequest,
 						"headers",
-						(TRequest extends { headers: infer TCommon }
-							? TCommon
-							: EmptyObject) &
-							THeaders
+						TRequest extends {
+							headers: infer TCommon extends RequestHeadersDeclaration;
+						}
+							? TCommon & { local: THeaders }
+							: { local: THeaders }
 					>,
 					TResponses,
 					TUsed | "headers"

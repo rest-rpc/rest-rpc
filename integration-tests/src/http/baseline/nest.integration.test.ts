@@ -215,7 +215,8 @@ it("supports async routers that close over values from Nest parameter decorators
 		get: contractRoute
 			.get("/async-items/:id")
 			.params(schemaType<{ id: string }>())
-			.headers({ "x-test-source": schemaType<string>() })
+			.headers(schemaType<{ "x-test-source": string }>())
+			.requestKeys({ "x-test-source": "headers" })
 			.response(200, schemaType<{ id: string; title: string }>()),
 	} as const;
 	@Injectable()

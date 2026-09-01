@@ -76,17 +76,14 @@ describe("OpenAPI operations", () => {
 		);
 	});
 
-	it("creates path params as required and query params without assumed requiredness from schema records", () => {
+	it("creates path params as required and query params from object schemas", () => {
 		const params = createParameters(
-			{ id: z.string() },
+			z.object({ id: z.string() }),
 			"path",
 			operationOptions,
 		);
 		const query = createParameters(
-			{
-				search: z.string(),
-				page: z.number().optional(),
-			},
+			z.object({ search: z.string(), page: z.number().optional() }),
 			"query",
 			operationOptions,
 		);
@@ -100,8 +97,8 @@ describe("OpenAPI operations", () => {
 			})),
 			[
 				{ name: "id", in: "path", required: true, type: "string" },
-				{ name: "search", in: "query", required: undefined, type: "string" },
-				{ name: "page", in: "query", required: undefined, type: "number" },
+				{ name: "search", in: "query", required: true, type: "string" },
+				{ name: "page", in: "query", required: false, type: "number" },
 			],
 		);
 	});
@@ -181,9 +178,9 @@ describe("OpenAPI operations", () => {
 		);
 	});
 
-	it("documents schema-record path params as required", () => {
+	it("documents object-schema path params as required", () => {
 		const parameters = createParameters(
-			{ id: z.string().optional() },
+			z.object({ id: z.string().optional() }),
 			"path",
 			operationOptions,
 		);
@@ -204,7 +201,7 @@ describe("OpenAPI operations", () => {
 			method: "GET",
 			request: {
 				params: z.object({ id: z.string() }),
-				query: {
+				query: z.object({
 					search: z
 						.string()
 						.min(1)
@@ -213,12 +210,14 @@ describe("OpenAPI operations", () => {
 						.string()
 						.optional()
 						.meta({ openApi: { required: false } }),
-				},
+				}),
 				headers: {
-					"x-preview": z
-						.literal("1")
-						.optional()
-						.meta({ openApi: { required: false } }),
+					local: z.object({
+						"x-preview": z
+							.literal("1")
+							.optional()
+							.meta({ openApi: { required: false } }),
+					}),
 				},
 			},
 			responses: {
@@ -292,7 +291,14 @@ describe("OpenAPI operations", () => {
 	it("creates request header parameters", () => {
 		const headers = createHeaderParameters(
 			{
-				"x-api-key": z.string(),
+				inherited: z.object({
+					"x-api-key": z.string(),
+					"x-shared": z.string(),
+				}),
+				local: z.object({
+					"x-request-id": z.string().optional(),
+					"x-shared": z.number(),
+				}),
 			},
 			operationOptions,
 		);
@@ -301,6 +307,23 @@ describe("OpenAPI operations", () => {
 			{
 				name: "x-api-key",
 				in: "header",
+				required: true,
+				schema: {
+					type: "string",
+				},
+			},
+			{
+				name: "x-shared",
+				in: "header",
+				required: true,
+				schema: {
+					type: "number",
+				},
+			},
+			{
+				name: "x-request-id",
+				in: "header",
+				required: false,
 				schema: {
 					type: "string",
 				},
@@ -393,12 +416,12 @@ describe("OpenAPI operations", () => {
 		assert.equal(body?.content["application/json"], undefined);
 	});
 
-	it("creates JSON request bodies from schema records", () => {
+	it("creates JSON request bodies from object schemas", () => {
 		const body = createRequestBody(
-			{
+			z.object({
 				title: z.string(),
 				priority: z.number().optional(),
-			},
+			}),
 			schemaConverter,
 		);
 
@@ -407,6 +430,7 @@ describe("OpenAPI operations", () => {
 				"application/json": {
 					schema: {
 						type: "object",
+						required: ["title"],
 						properties: {
 							title: { type: "string" },
 							priority: { type: "number" },
@@ -439,10 +463,10 @@ describe("OpenAPI operations", () => {
 			"Created.",
 			{
 				body: z.object({ id: z.string() }),
-				headers: {
+				headers: z.object({
 					location: z.string(),
 					"x-next-cursor": z.string().optional(),
-				},
+				}),
 			},
 			schemaConverter,
 		);
@@ -467,9 +491,7 @@ describe("OpenAPI operations", () => {
 			"",
 			{
 				body: noBody(),
-				headers: {
-					location: z.string(),
-				},
+				headers: z.object({ location: z.string() }),
 			},
 			schemaConverter,
 		);
@@ -524,9 +546,7 @@ describe("OpenAPI operations", () => {
 			"",
 			{
 				body: z.object({ id: z.string() }),
-				headers: {
-					etag: z.string(),
-				},
+				headers: z.object({ etag: z.string() }),
 			},
 			schemaConverter,
 			{
@@ -654,9 +674,9 @@ describe("OpenAPI operations", () => {
 			path: "/todos/:id",
 			method: "POST",
 			request: {
-				params: { id: z.string() },
-				headers: { "x-api-key": z.string() },
-				body: { title: z.string() },
+				params: z.object({ id: z.string() }),
+				headers: { local: z.object({ "x-api-key": z.string() }) },
+				body: z.object({ title: z.string() }),
 			},
 			responses: {
 				201: z.object({ id: z.string() }),

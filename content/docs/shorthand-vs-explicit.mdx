@@ -25,9 +25,7 @@ const api = {
 			.params(z.object({ id: z.string() }))
 			.query(z.object({ notify: z.boolean().optional() }))
 			.body(z.object({ title: z.string() }))
-			.headers({
-				"x-request-id": z.string(),
-			})
+			.headers(z.object({ "x-request-id": z.string() }))
 			.response(200, todoSchema),
 	},
 };
@@ -55,7 +53,7 @@ const api = {
 			.params(z.object({ id: z.string() }))
 			.query(z.object({ notify: z.boolean().optional() }))
 			.body(z.object({ title: z.string() }))
-			.headers({ "x-request-id": z.string() })
+			.headers(z.object({ "x-request-id": z.string() }))
 			.response(200, todoSchema),
 	},
 };
@@ -152,9 +150,9 @@ a configured route factory without changing the default `route` factory.
 ```ts
 const apiRoute = route.with({
 	pathPrefix: "/api",
-	headers: {
+	headers: z.object({
 		"x-request-id": z.string().optional(),
-	},
+	}),
 	responses: {
 		401: z.object({ code: z.literal("UNAUTHORIZED") }),
 	},
@@ -176,7 +174,7 @@ Declare the same fields on a route when only that route needs them.
 get: route
 	.get("/api/todos/:id")
 	.params(z.object({ id: z.string() }))
-	.headers({ "x-request-id": z.string().optional() })
+	.headers(z.object({ "x-request-id": z.string().optional() }))
 	.response(200, todoSchema)
 	.response(401, z.object({ code: z.literal("UNAUTHORIZED") })),
 ```

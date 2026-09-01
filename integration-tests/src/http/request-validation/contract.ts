@@ -12,7 +12,7 @@ export const requestValidationContract = {
 					.transform((value) => value === "true"),
 			}),
 		)
-		.headers({ "x-page": z.string().pipe(z.coerce.number()) })
+		.headers(z.object({ "x-page": z.string().pipe(z.coerce.number()) }))
 		.response(
 			200,
 			z.object({ id: z.number(), published: z.boolean(), page: z.number() }),
@@ -27,7 +27,7 @@ export const requestValidationContract = {
 		.response(200, z.object({ reached: z.literal(true) })),
 	headers: route
 		.get("/request-validation/headers")
-		.headers({ "x-required": z.string().min(1) })
+		.headers(z.object({ "x-required": z.string().min(1) }))
 		.response(200, z.object({ reached: z.literal(true) })),
 	body: route
 		.post("/request-validation/body")

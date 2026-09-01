@@ -22,7 +22,7 @@ export const integrationContract = {
 					limit: z.coerce.number().optional(),
 				}),
 			)
-			.headers({ "x-test-token": z.string().optional() })
+			.headers(z.object({ "x-test-token": z.string().optional() }))
 			.body(z.object({ title: z.string(), count: z.number() }))
 			.response(200, echoedRequestSchema),
 		text: route
@@ -77,10 +77,10 @@ export const integrationContract = {
 		),
 		headers: route.get("/responses/headers").response(200, {
 			body: z.object({ ok: z.literal(true) }),
-			headers: {
+			headers: z.object({
 				"x-declared-result": z.string(),
 				"x-optional-result": z.string().optional(),
-			},
+			}),
 		}),
 		text: route
 			.get("/responses/text")

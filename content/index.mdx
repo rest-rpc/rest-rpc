@@ -77,9 +77,7 @@ export const api = {
 					notify: z.coerce.boolean().optional(),
 				}),
 			)
-			.headers({
-				"x-request-id": z.string().optional(),
-			})
+			.headers(z.object({ "x-request-id": z.string().optional() }))
 			.body(
 				z.object({
 					title: z.string().min(1),

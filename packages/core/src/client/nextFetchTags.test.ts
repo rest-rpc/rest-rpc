@@ -18,9 +18,7 @@ describe("Next fetch tags", () => {
 						ignoredBody: "body",
 					})
 					.body(type<{ ignoredBody: string }>())
-					.headers({
-						authorization: type<string>(),
-					})
+					.headers(type<{ authorization: string }>())
 					.params(type<{ id: string }>())
 					.query(type<{ filter: string; page: number }>())
 					.response(204),

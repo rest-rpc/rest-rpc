@@ -99,7 +99,7 @@ describe("ApiClient requests", () => {
 		assert.equal(calls[1]?.url, "https://api.test/todos?search=milk");
 	});
 
-	it("builds requests from schema record request declarations", async () => {
+	it("builds requests from object-schema request declarations", async () => {
 		const apiContract = {
 			todos: {
 				update: route
@@ -115,9 +115,7 @@ describe("ApiClient requests", () => {
 						}),
 					)
 					.body(z.object({ title: z.string() }))
-					.headers({
-						"x-request-id": z.number(),
-					})
+					.headers(z.object({ "x-request-id": z.number() }))
 					.response(200, z.object({ id: z.string(), title: z.string() })),
 			},
 		};
@@ -182,10 +180,7 @@ describe("ApiClient requests", () => {
 							includeArchived: z.boolean(),
 						}),
 					)
-					.headers({
-						"x-page": z.number(),
-						"x-visible": z.boolean(),
-					})
+					.headers(z.object({ "x-page": z.number(), "x-visible": z.boolean() }))
 					.response(204),
 			},
 		};
@@ -250,9 +245,7 @@ describe("ApiClient requests", () => {
 							search: z.string().optional(),
 						}),
 					)
-					.headers({
-						"x-request-id": z.string().optional(),
-					})
+					.headers(z.object({ "x-request-id": z.string().optional() }))
 					.response(204),
 			},
 		};
@@ -698,20 +691,17 @@ describe("ApiClient requests", () => {
 
 	it("normalizes merged headers and lets declared request headers win", async () => {
 		const apiRoute = route.with({
-			headers: {
+			headers: z.object({
 				"x-common": z.number(),
 				"x-shared": z.number(),
-			},
+			}),
 		});
 		const apiContract = {
 			todos: {
 				list: apiRoute
 					.get("/todos")
 					.query(z.object({ search: z.string() }))
-					.headers({
-						"X-Route": z.string(),
-						"x-shared": z.string(),
-					})
+					.headers(z.object({ "X-Route": z.string(), "x-shared": z.string() }))
 					.response(
 						200,
 						z.array(z.object({ id: z.string(), title: z.string() })),

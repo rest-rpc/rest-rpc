@@ -23,11 +23,9 @@ const clientMessage = schemaType<{ command: string }>();
 const clientClose = schemaType<{ code: number }>();
 const serverMessage = schemaType<{ event: string }>();
 const serverReady = schemaType<{ connected: boolean }>();
-const typedResponseHeaders = {
-	"x-total": schemaType<number>(),
-};
-const factoryHeaders = { authorization: schemaType<string>() };
-const localRequestHeader = schemaType<number>();
+const typedResponseHeaders = schemaType<{ "x-total": number }>();
+const factoryHeaders = schemaType<{ authorization: string }>();
+const localRequestHeader = schemaType<{ trace: number }>();
 const scalarQuery = schemaType<{
 	search?: string;
 	page: number;
@@ -50,7 +48,7 @@ const apiRoute = route.with({
 const create = apiRoute
 	.post("/todos")
 	.body(input)
-	.headers({ trace: schemaType<string>() })
+	.headers(schemaType<{ trace: string }>())
 	.params(schemaType<{ accountId: string }>())
 	.requestKeys({ title: "body", accountId: "params" })
 	.withMetadata({ permission: "todos:create" as const })
@@ -76,7 +74,7 @@ expectNotAssignable<Contract>(incompleteHttp);
 const factoryResponse = apiRoute.get("/factory-response");
 expectAssignable<HttpRouteDeclaration>(factoryResponse);
 expectAssignable<Contract>(factoryResponse);
-expectType<typeof factoryHeaders>(factoryResponse.request.headers);
+expectType<typeof factoryHeaders>(factoryResponse.request.headers.inherited);
 expectType<true>(factoryResponse.request.flattenKeys);
 
 // Preserves factory boolean options as literal route properties.
@@ -163,17 +161,23 @@ const typedResponses = route
 expectType<typeof todo>(typedResponses.responses[200].body);
 expectType<typeof typedResponseHeaders>(typedResponses.responses[200].headers);
 expectType<typeof input>(typedResponses.responses[201].schema.schema);
+expectError(
+	route.get("/invalid-response-headers").response(200, {
+		body: todo,
+		headers: schemaType<{ invalid: { nested: string } }>(),
+	}),
+);
 
 // Merges factory request headers with route-local request headers.
 const factoryAndLocalHeaders = apiRoute
 	.get("/merged-headers")
-	.headers({ trace: localRequestHeader })
+	.headers(localRequestHeader)
 	.response(200);
-expectType<typeof factoryHeaders.authorization>(
-	factoryAndLocalHeaders.request.headers.authorization,
+expectType<typeof factoryHeaders>(
+	factoryAndLocalHeaders.request.headers.inherited,
 );
 expectType<typeof localRequestHeader>(
-	factoryAndLocalHeaders.request.headers.trace,
+	factoryAndLocalHeaders.request.headers.local,
 );
 
 expectAssignable<HttpRouteDeclaration>(route.get("/health").response(204));
@@ -220,7 +224,7 @@ const configuredAfterResponse = route
 	.body(input)
 	.jsonQuery(schemaType<{ search: string }>())
 	.params(schemaType<{ id: string }>())
-	.headers({ authorization: input })
+	.headers(input)
 	.requestKeys({ title: "body", id: "params" })
 	.withMetadata({ auth: true })
 	.withOpenApi({ summary: "Configured after response" })
@@ -250,12 +254,12 @@ const singleUseHttpConfigured = route
 	.get("/single-use-http")
 	.query(input)
 	.params(input)
-	.headers({ trace: input })
+	.headers(input)
 	.requestKeys({ title: "query" })
 	.withMetadata({ auth: true })
 	.withOpenApi({ summary: "single use" });
 expectError(singleUseHttpConfigured.params(input));
-expectError(singleUseHttpConfigured.headers({ trace: input }));
+expectError(singleUseHttpConfigured.headers(input));
 expectError(singleUseHttpConfigured.requestKeys({ title: "query" }));
 expectError(singleUseHttpConfigured.withMetadata({ auth: true }));
 expectError(singleUseHttpConfigured.withOpenApi({ summary: "again" }));
@@ -271,7 +275,7 @@ const incompleteSse = route.sse("/events");
 expectNotAssignable<SseRouteDeclaration>(incompleteSse);
 expectNotAssignable<Contract>(incompleteSse);
 expectError(incompleteSse.body(event));
-expectError(incompleteSse.headers({ authorization: schemaType<string>() }));
+expectError(incompleteSse.headers(schemaType<{ authorization: string }>()));
 expectError(incompleteSse.response(event).response(event));
 
 // Allows each SSE request setter once and remains configurable until response().
@@ -295,7 +299,7 @@ expectType<false>(sseConfigured.request.flattenKeys);
 expectType<typeof input>(sseConfigured.request.query);
 expectType<typeof event>(sseConfigured.responses[200]);
 expectError(sseConfigured.body(event));
-expectError(sseConfigured.headers({ authorization: input }));
+expectError(sseConfigured.headers(input));
 expectError(sseConfigured.response(event));
 expectError(sseConfigured.streamResponse(200, event));
 expectError(sseConfigured.clientMessage(clientMessage));
@@ -374,7 +378,7 @@ expectError(completeSocket.withOpenApi({ summary: "socket" }));
 expectError(completeSocket.response(event));
 expectError(completeSocket.streamResponse(200, event));
 expectError(completeSocket.body(event));
-expectError(completeSocket.headers({ authorization: input }));
+expectError(completeSocket.headers(input));
 
 // A single message direction is enough to complete a WebSocket route.
 const clientOnlySocket = route

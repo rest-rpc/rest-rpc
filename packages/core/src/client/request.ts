@@ -203,13 +203,7 @@ const stringifyHeaders = (
 ) =>
 	Object.fromEntries(
 		Object.entries(headers ?? {}).flatMap(([key, value]) => {
-			const stringValue = stringifyRequestValue(
-				route,
-				"headers",
-				key,
-				value,
-				true,
-			);
+			const stringValue = value === undefined ? undefined : String(value);
 			return stringValue === undefined ? [] : [[key, stringValue]];
 		}),
 	);

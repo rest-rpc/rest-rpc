@@ -32,8 +32,7 @@ clients, TanStack Query options, and OpenAPI generation.
 
 Start a route with an HTTP method and path, then add request and response
 declarations with chainable setters. Body, query, and path-parameter setters
-each receive one schema. Headers are the exception: `.headers()` receives a
-`Record<string, schema>` because each header has its own name.
+each receive one schema.
 
 Use `.response(status, schema)` repeatedly for declared statuses. Protocol
 routes start with `.sse(path)` or `.ws(path)` and have their own completion
@@ -48,7 +47,7 @@ route
 	.patch("/todos/:id")
 	.params(z.object({ id: z.string() }))
 	.query(z.object({ includeCompleted: z.coerce.boolean().optional() }))
-	.headers({ "x-request-id": z.string().optional() })
+	.headers(z.object({ "x-request-id": z.string().optional() }))
 	.body(z.object({ title: z.string() }))
 	.response(200, todoSchema);
 ```
@@ -239,10 +238,10 @@ route
 	.body(z.object({ title: z.string().min(1) }))
 	.response(201, {
 		body: todoSchema,
-		headers: {
+		headers: z.object({
 			location: z.string(),
 			"x-next-cursor": z.string().optional(),
-		},
+		}),
 	});
 ```
 
@@ -256,7 +255,7 @@ path prefix, and request or response behavior.
 const apiRoute = route.with({
 	pathPrefix: "/api",
 	metadata: { auth: "required" },
-	headers: { "x-request-id": z.string().optional() },
+	headers: z.object({ "x-request-id": z.string().optional() }),
 	responses: { 401: z.object({ code: z.literal("UNAUTHORIZED") }) },
 	openApi: {
 		tags: ["Todos"],
@@ -276,6 +275,11 @@ export const api = {
 
 The route above is normalized to `GET /api/todos`, includes the factory header,
 the factory `401` response, and keeps the route-specific OpenAPI summary.
+
+When a route adds its own header schema, both the factory and route schemas
+validate the original request headers. Their validated object outputs are
+shallow-merged, with route-local properties winning when both outputs contain
+the same key. Both schemas remain validation requirements.
 
 ## Single Routes
 

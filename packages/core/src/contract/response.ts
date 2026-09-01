@@ -11,11 +11,14 @@ export type ResponseBodySchema =
 	| Stream;
 
 /**
- * Declares typed response headers by header name.
+ * Declares a whole-object schema for typed response headers.
  *
  * @see {@link https://rest-rpc.dev/docs/http-responses#response-with-typed-headers}
  */
-export type ResponseHeaders = Record<string, StandardSchemaV1>;
+export type ResponseHeaders = StandardSchemaV1<
+	unknown,
+	Record<string, string | number | undefined>
+>;
 
 export type RegularResponseDeclaration =
 	| ResponseSchema
@@ -162,45 +165,13 @@ type ResponseHeadersFor<TResponse> = TResponse extends {
 	? THeaders
 	: never;
 
-type InferHeaderSchema<
-	TSchema,
+type InferResponseHeaders<
+	THeaders,
 	TIO extends "input" | "output",
-> = TSchema extends StandardSchemaV1
+> = THeaders extends StandardSchemaV1
 	? TIO extends "input"
-		? StandardSchemaV1.InferInput<TSchema>
-		: StandardSchemaV1.InferOutput<TSchema>
-	: never;
-
-type ResponseHeaderRequiredKeys<THeaders, TIO extends "input" | "output"> = {
-	[TKey in keyof THeaders]: undefined extends InferHeaderSchema<
-		THeaders[TKey],
-		TIO
-	>
-		? never
-		: TKey;
-}[keyof THeaders];
-
-type ResponseHeaderOptionalKeys<THeaders, TIO extends "input" | "output"> = {
-	[TKey in keyof THeaders]: undefined extends InferHeaderSchema<
-		THeaders[TKey],
-		TIO
-	>
-		? TKey
-		: never;
-}[keyof THeaders];
-
-type ResponseHeaderValues<THeaders, TIO extends "input" | "output"> = {
-	[TKey in ResponseHeaderRequiredKeys<THeaders, TIO>]: InferHeaderSchema<
-		THeaders[TKey],
-		TIO
-	>;
-} & {
-	[TKey in ResponseHeaderOptionalKeys<THeaders, TIO>]?: InferHeaderSchema<
-		THeaders[TKey],
-		TIO
-	>;
-} extends infer THeaderValues
-	? Simplify<THeaderValues>
+		? StandardSchemaV1.InferInput<THeaders>
+		: StandardSchemaV1.InferOutput<THeaders>
 	: never;
 
 type ResponseHeadersMetadata<TResponse, TIO extends "input" | "output"> = [
@@ -208,9 +179,7 @@ type ResponseHeadersMetadata<TResponse, TIO extends "input" | "output"> = [
 ] extends [never]
 	? unknown
 	: {
-			responseHeaders: Simplify<
-				ResponseHeaderValues<ResponseHeadersFor<TResponse>, TIO>
-			>;
+			responseHeaders: InferResponseHeaders<ResponseHeadersFor<TResponse>, TIO>;
 		};
 
 type ResponseEntry<TStatus extends number, TBody> = {

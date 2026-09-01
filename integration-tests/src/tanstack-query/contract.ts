@@ -48,7 +48,7 @@ export const tanstackQueryContract = {
 			),
 		create: route
 			.post("/projects")
-			.headers({ "x-test-tenant": z.string().optional() })
+			.headers(z.object({ "x-test-tenant": z.string().optional() }))
 			.body(
 				z.object({
 					name: z.string(),

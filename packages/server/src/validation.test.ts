@@ -5,6 +5,7 @@ import {
 	formBody,
 	jsonQuery,
 	multipartBody,
+	route,
 	stream,
 } from "@rest-rpc/core/contract";
 import z from "zod";
@@ -17,6 +18,64 @@ import {
 } from "./validation.ts";
 
 describe("validateRequest", () => {
+	it("validates inherited and local headers against raw input and merges local output last", async () => {
+		const seen: unknown[] = [];
+		const inherited = z
+			.object({ authorization: z.string(), shared: z.string() })
+			.transform((value) => {
+				seen.push(value);
+				return { inherited: true, shared: "inherited" };
+			});
+		const local = z
+			.object({ shared: z.string(), requestId: z.string() })
+			.transform((value) => {
+				seen.push(value);
+				return { local: true, shared: "local" };
+			});
+		const declaration = route
+			.with({ headers: inherited })
+			.get("/headers")
+			.headers(local)
+			.response(204);
+
+		const result = await validateRequest(declaration, {
+			headers: {
+				authorization: "Bearer token",
+				shared: "raw-shared",
+				requestId: "request-1",
+			},
+		});
+
+		assert.equal(result.success, true);
+		if (result.success) {
+			assert.deepEqual(result.data.headers, {
+				inherited: true,
+				local: true,
+				shared: "local",
+			});
+		}
+		assert.deepEqual(seen, [
+			{ authorization: "Bearer token", shared: "raw-shared" },
+			{ shared: "raw-shared", requestId: "request-1" },
+		]);
+	});
+
+	it("rejects a request when either inherited or local header validation fails", async () => {
+		const declaration = route
+			.with({ headers: z.object({ authorization: z.string() }) })
+			.get("/headers")
+			.headers(z.object({ requestId: z.string() }))
+			.response(204);
+
+		for (const headers of [
+			{ requestId: "request-1" },
+			{ authorization: "Bearer token" },
+		]) {
+			const result = await validateRequest(declaration, { headers });
+			assert.equal(result.success, false);
+		}
+	});
+
 	it("parses JSON date strings with request body transforms", async () => {
 		const result = await validateRequest(
 			{
@@ -79,14 +138,12 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: {
-						id: z.coerce.number(),
-					},
-					query: {
+					params: z.object({ id: z.coerce.number() }),
+					query: z.object({
 						published: z
 							.enum(["true", "false"])
 							.transform((value) => value === "true"),
-					},
+					}),
 					keys: {
 						id: "params",
 						published: "query",
@@ -115,12 +172,8 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: {
-						id: z.number(),
-					},
-					query: {
-						published: z.boolean(),
-					},
+					params: z.object({ id: z.number() }),
+					query: z.object({ published: z.boolean() }),
 					keys: {
 						id: "params",
 						published: "query",
@@ -416,15 +469,27 @@ describe("validateResponseBody", () => {
 });
 
 describe("validateResponseHeaders", () => {
+	it("validates and transforms unconstrained response-header input", async () => {
+		const result = await validateResponseHeaders(
+			{
+				body: z.object({ id: z.string() }),
+				headers: z.string().transform((value) => ({ etag: value })),
+			},
+			"todo-etag",
+		);
+
+		assert.deepEqual(result, { etag: "todo-etag" });
+	});
+
 	it("normalizes declared response headers", async () => {
 		assert.deepEqual(
 			await validateResponseHeaders(
 				{
 					body: z.object({ id: z.string() }),
-					headers: {
+					headers: z.object({
 						etag: z.string(),
 						"x-optional": z.string().optional(),
-					},
+					}),
 				},
 				{
 					etag: "todo-etag",
@@ -434,40 +499,6 @@ describe("validateResponseHeaders", () => {
 			{
 				etag: "todo-etag",
 			},
-		);
-	});
-
-	it("rejects declared response header values that are not scalar", async () => {
-		await assert.rejects(
-			validateResponseHeaders(
-				{
-					body: z.object({ id: z.string() }),
-					headers: {
-						"x-meta": z.object({ id: z.string() }),
-					},
-				},
-				{
-					"x-meta": { id: "meta-1" },
-				},
-			),
-			/Declared response header "x-meta" must resolve to a string or number/,
-		);
-	});
-
-	it("rejects array values for declared response headers", async () => {
-		await assert.rejects(
-			validateResponseHeaders(
-				{
-					body: z.object({ id: z.string() }),
-					headers: {
-						"x-tags": z.array(z.string()),
-					},
-				},
-				{
-					"x-tags": ["alpha", "beta"],
-				},
-			),
-			/Declared response header "x-tags" must resolve to a string or number/,
 		);
 	});
 });

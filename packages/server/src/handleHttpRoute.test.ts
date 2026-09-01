@@ -37,9 +37,7 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: {
-						id: z.coerce.number(),
-					},
+					params: z.object({ id: z.coerce.number() }),
 					keys: {
 						id: "params",
 					},
@@ -113,9 +111,7 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: {
-						id: z.number(),
-					},
+					params: z.object({ id: z.number() }),
 					keys: {
 						id: "params",
 					},
@@ -146,9 +142,7 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: {
-						id: z.number(),
-					},
+					params: z.object({ id: z.number() }),
 					keys: {
 						id: "params",
 					},
@@ -377,10 +371,10 @@ describe("handleHttpRoute", () => {
 				responses: {
 					200: {
 						body: z.object({ id: z.string() }),
-						headers: {
+						headers: z.object({
 							etag: z.string(),
 							"x-optional": z.string().optional(),
-						},
+						}),
 					},
 				},
 			},
@@ -417,9 +411,7 @@ describe("handleHttpRoute", () => {
 				responses: {
 					200: {
 						body: z.object({ id: z.string() }),
-						headers: {
-							etag: z.string(),
-						},
+						headers: z.object({ etag: z.string() }),
 					},
 				},
 			},

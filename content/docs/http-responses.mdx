@@ -143,10 +143,10 @@ export const api = {
 			.params(z.object({ id: z.string() }))
 			.response(200, {
 				body: todoSchema,
-				headers: {
+				headers: z.object({
 					etag: z.string(),
 					"x-next-cursor": z.string().optional(),
-				},
+				}),
 			}),
 	},
 };

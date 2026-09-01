@@ -12,10 +12,10 @@ import type {
 } from "../contract/contract.ts";
 import type {
 	JsonQuery,
+	RequestHeadersDeclaration,
 	RequestBodySchema,
-	RequestSchemaRecord,
 } from "../contract/request.ts";
-import { isJsonQuery, isRequestSchemaRecord } from "../contract/request.ts";
+import { getRequestHeaderSchemas, isJsonQuery } from "../contract/request.ts";
 import type {
 	ResponseDeclaration,
 	ResponseHeaders,
@@ -139,24 +139,9 @@ const contentTypesForCustomBody = (schema: {
 			? schema.contentType
 			: [schema.contentType];
 
-const createSchemaRecordObject = (
-	schemas: RequestSchemaRecord,
-	converter: SchemaConverter | undefined,
-) => {
-	return {
-		type: "object",
-		properties: Object.fromEntries(
-			Object.entries(schemas).map(([name, schema]) => [
-				name,
-				converter?.(schema, "input") ?? {},
-			]),
-		),
-	};
-};
-
 export const createParameters = (
-	schema: StandardSchemaV1 | RequestSchemaRecord | JsonQuery | undefined,
-	location: "path" | "query",
+	schema: StandardSchemaV1 | JsonQuery | undefined,
+	location: "path" | "query" | "header",
 	options: CreateOperationOptions,
 ): OpenApiParameter[] => {
 	if (!schema) return [];
@@ -175,19 +160,6 @@ export const createParameters = (
 				},
 			},
 		];
-	}
-
-	if (isRequestSchemaRecord(schema)) {
-		return Object.entries(schema).map(([name, fieldSchema]) => {
-			const jsonSchema = options.schemaConverter?.(fieldSchema, "input") ?? {};
-
-			return {
-				name,
-				in: location,
-				...(location === "path" ? { required: true } : {}),
-				schema: jsonSchema,
-			};
-		});
 	}
 
 	const jsonSchema = options.schemaConverter?.(schema, "input") ?? {};
@@ -209,20 +181,19 @@ export const createParameters = (
 };
 
 export const createHeaderParameters = (
-	headers: Record<string, StandardSchemaV1> | undefined,
+	headers: RequestHeadersDeclaration | undefined,
 	options: CreateOperationOptions,
 ): OpenApiParameter[] => {
 	if (!headers) return [];
 
-	return Object.entries(headers).map(([name, schema]) => {
-		const jsonSchema = options.schemaConverter?.(schema, "input") ?? {};
-
-		return {
-			name,
-			in: "header" as const,
-			schema: jsonSchema,
-		};
-	});
+	const parameters = getRequestHeaderSchemas(headers).flatMap((schema) =>
+		createParameters(schema, "header", options),
+	);
+	return [
+		...new Map(
+			parameters.map((parameter) => [parameter.name, parameter]),
+		).values(),
+	];
 };
 
 export const createRequestBody = (
@@ -243,11 +214,9 @@ export const createRequestBody = (
 		isCustomBody(schema) || isFormBody(schema) || isMultipartBody(schema)
 			? schema.schema
 			: schema;
-	const openApiSchema = isRequestSchemaRecord(bodySchema)
-		? createSchemaRecordObject(bodySchema, converter)
-		: isStandardSchema(bodySchema)
-			? (converter?.(bodySchema, "input") ?? {})
-			: undefined;
+	const openApiSchema = isStandardSchema(bodySchema)
+		? (converter?.(bodySchema, "input") ?? {})
+		: undefined;
 
 	return {
 		content: createContent(
@@ -317,13 +286,11 @@ export const createResponseHeaders = (
 ): OpenApiResponse["headers"] | undefined => {
 	if (!headers) return undefined;
 
+	const schema = converter?.(headers, "output") ?? {};
 	return Object.fromEntries(
-		Object.entries(headers).map(([name, schema]) => [
-			name,
-			{
-				schema: converter?.(schema, "output") ?? {},
-			},
-		]),
+		Object.entries(getSchemaProperties(schema)).map(
+			([name, propertySchema]) => [name, { schema: propertySchema }],
+		),
 	);
 };
 

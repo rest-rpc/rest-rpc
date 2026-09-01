@@ -78,6 +78,32 @@ expectType<Promise<Array<{ id: string; title: string }>>>(
 	}),
 );
 
+const scalarRequestApi = {
+	items: {
+		get: route
+			.get("/items/:id")
+			.params(z.object({ id: z.number() }))
+			.query(
+				z.object({
+					page: z.number(),
+					active: z.boolean().optional(),
+				}),
+			)
+			.response(204),
+	},
+};
+
+const scalarRequestClient = initClient(scalarRequestApi, {
+	baseUrl: "https://example.test",
+});
+
+scalarRequestClient.items.get.fetch({ id: 1, page: 2, active: false });
+
+expectError(
+	route.get("/items").query(schemaType<{ filters: { tag: string } }>()),
+);
+expectError(route.get("/items/:id").params(schemaType<{ id: string[] }>()));
+
 const groupedRequestApi = {
 	todos: {
 		create: route
@@ -86,7 +112,7 @@ const groupedRequestApi = {
 			.params(z.object({ accountId: z.string() }))
 			.query(z.object({ notify: z.boolean() }))
 			.body(z.object({ title: z.string() }))
-			.headers({ authorization: z.string() })
+			.headers(z.object({ authorization: z.string() }))
 			.response(201, todoSchema),
 	},
 };
@@ -188,10 +214,10 @@ const responseApi = {
 			.body(z.object({ title: z.string() }))
 			.response(201, {
 				body: todoSchema,
-				headers: {
+				headers: z.object({
 					location: z.string(),
 					"x-next-cursor": z.string().optional(),
-				},
+				}),
 			}),
 	},
 };
@@ -455,16 +481,16 @@ const globalHeadersApi = {
 		search: route
 			.get("/todos/search")
 			.query(z.object({ search: z.string() }))
-			.headers({
-				authorization: z.string(),
-				"x-request-id": z.string(),
-			})
+			.headers(
+				z.object({
+					authorization: z.string(),
+					"x-request-id": z.string(),
+				}),
+			)
 			.response(200, z.array(todoSchema)),
 		secure: route
 			.get("/todos/secure")
-			.headers({
-				authorization: z.string(),
-			})
+			.headers(z.object({ authorization: z.string() }))
 			.response(200, z.array(todoSchema)),
 	},
 };
@@ -502,6 +528,47 @@ const looseGlobalHeadersClient = initClient(globalHeadersApi, {
 expectError(looseGlobalHeadersClient.todos.search.fetch({}));
 expectError(looseGlobalHeadersClient.todos.search.fetch({ search: "milk" }));
 expectError(looseGlobalHeadersClient.todos.search.fetch());
+
+const composedHeadersApi = {
+	todos: {
+		get: route
+			.with({
+				headers: z.object({ shared: z.string(), inherited: z.string() }),
+			})
+			.get("/todos/composed")
+			.headers(z.object({ shared: z.number(), local: z.boolean() }))
+			.response(204),
+	},
+};
+const composedHeadersClient = initClient(composedHeadersApi, {
+	baseUrl: "https://example.test",
+});
+expectError(
+	composedHeadersClient.todos.get.fetch({
+		shared: "cannot satisfy both schemas",
+		inherited: "token",
+		local: true,
+	}),
+);
+
+const additiveHeadersApi = {
+	items: route
+		.with({ headers: z.object({ authorization: z.string() }) })
+		.get("/items")
+		.headers(z.object({ "x-request-id": z.string() }))
+		.response(204),
+};
+const additiveHeadersClient = initClient(additiveHeadersApi, {
+	baseUrl: "https://example.test",
+});
+additiveHeadersClient.items.fetch({
+	authorization: "Bearer token",
+	"x-request-id": "request-1",
+});
+expectError(
+	additiveHeadersClient.items.fetch({ authorization: "Bearer token" }),
+);
+expectError(additiveHeadersClient.items.fetch({ "x-request-id": "request-1" }));
 
 const websocketApi = {
 	todos: {

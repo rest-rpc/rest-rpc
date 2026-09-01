@@ -22,6 +22,7 @@ import type {
 	RequestSegment,
 } from "../contract/request.ts";
 import {
+	getRequestHeaderSchemas,
 	isJsonQuery,
 	jsonQuery as declareJsonQuery,
 	REQUEST_CONTEXT_KEY,
@@ -199,7 +200,9 @@ export class BaseRouteBuilder {
 				? [
 						{
 							segment: "headers" as const,
-							keys: Object.keys(request.headers),
+							keys: getRequestHeaderSchemas(request.headers).flatMap(
+								(schema) => resolveSchemaRequestKeyNames(schema) ?? [],
+							),
 						},
 					]
 				: []),

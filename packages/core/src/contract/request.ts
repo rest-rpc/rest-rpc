@@ -1,9 +1,5 @@
-import {
-	isStandardSchema,
-	type StandardSchemaV1,
-} from "../standard-schema/index.ts";
+import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { CustomBody, FormBody, MultipartBody, NoBody } from "./body.ts";
-import { isCustomBody, isFormBody, isMultipartBody, isNoBody } from "./body.ts";
 import type { RouteDeclaration } from "./contract.ts";
 import type { InferCustomBody } from "./response.ts";
 import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
@@ -12,7 +8,8 @@ export type RequestSegment = "body" | "query" | "params" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
 export const REQUEST_CONTEXT_KEY = "context";
 
-type RequestScalar = string | number | boolean;
+/** Scalar value accepted by ordinary HTTP request schemas. */
+export type RequestScalar = string | number | boolean;
 
 /** An ordinary query schema whose wire input contains scalar values. */
 export type RequestQuerySchema = StandardSchemaV1<
@@ -26,7 +23,26 @@ export type RequestParamsSchema = StandardSchemaV1<
 	unknown
 >;
 
-export type RequestSchemaRecord = Record<string, StandardSchemaV1>;
+/** A whole-object schema for request headers. */
+export type RequestHeadersSchema = StandardSchemaV1<
+	Record<string, RequestScalar | undefined>,
+	Record<string, unknown>
+>;
+
+/** The canonical header declaration, including an optional inherited schema. */
+export type RequestHeadersDeclaration = {
+	inherited?: RequestHeadersSchema;
+	local?: RequestHeadersSchema;
+};
+
+/** Returns inherited and local header schemas in validation and merge order. */
+export function getRequestHeaderSchemas(
+	declaration: RequestHeadersDeclaration,
+): RequestHeadersSchema[] {
+	return [declaration.inherited, declaration.local].filter(
+		(schema): schema is RequestHeadersSchema => schema !== undefined,
+	);
+}
 
 /**
  * Declares a query string field that carries a JSON-encoded object value.
@@ -68,18 +84,6 @@ export type RequestBodySchema =
 	| MultipartBody
 	| NoBody
 	| undefined;
-
-export const isRequestSchemaRecord = (
-	value: unknown,
-): value is RequestSchemaRecord =>
-	typeof value === "object" &&
-	value !== null &&
-	!isStandardSchema(value) &&
-	!isJsonQuery(value) &&
-	!isCustomBody(value) &&
-	!isFormBody(value) &&
-	!isMultipartBody(value) &&
-	!isNoBody(value);
 
 type InferRequestBody<
 	TBody,
@@ -145,45 +149,32 @@ type InferGroupedJsonQuery<TQuery, TIO extends "input" | "output"> =
 			: StandardSchemaV1.InferOutput<TSchema>
 		: never;
 
-type InferSchemaValue<
-	TSchema,
+type InferRequestHeaders<
+	THeaders extends RequestHeadersDeclaration,
 	TIO extends "input" | "output",
-> = TSchema extends StandardSchemaV1
+> = THeaders extends {
+	inherited?: infer TInherited;
+	local?: infer TLocal;
+}
 	? TIO extends "input"
-		? StandardSchemaV1.InferInput<TSchema>
-		: StandardSchemaV1.InferOutput<TSchema>
+		? (TInherited extends RequestHeadersSchema
+				? StandardSchemaV1.InferInput<TInherited>
+				: unknown) &
+				(TLocal extends RequestHeadersSchema
+					? StandardSchemaV1.InferInput<TLocal>
+					: unknown)
+		: Omit<
+				TInherited extends RequestHeadersSchema
+					? StandardSchemaV1.InferOutput<TInherited>
+					: Record<never, never>,
+				keyof (TLocal extends RequestHeadersSchema
+					? StandardSchemaV1.InferOutput<TLocal>
+					: Record<never, never>)
+			> &
+				(TLocal extends RequestHeadersSchema
+					? StandardSchemaV1.InferOutput<TLocal>
+					: Record<never, never>)
 	: never;
-
-type OptionalSchemaRecordKeys<
-	TRecord extends RequestSchemaRecord,
-	TIO extends "input" | "output",
-> = {
-	[K in keyof TRecord]: undefined extends InferSchemaValue<TRecord[K], TIO>
-		? K
-		: never;
-}[keyof TRecord];
-
-type RequiredSchemaRecordKeys<
-	TRecord extends RequestSchemaRecord,
-	TIO extends "input" | "output",
-> = Exclude<keyof TRecord, OptionalSchemaRecordKeys<TRecord, TIO>>;
-
-type InferRequestSchemaRecord<
-	TRecord extends RequestSchemaRecord,
-	TIO extends "input" | "output",
-> = Merge<
-	{
-		[K in RequiredSchemaRecordKeys<TRecord, TIO>]: InferSchemaValue<
-			TRecord[K],
-			TIO
-		>;
-	} & {
-		[K in OptionalSchemaRecordKeys<TRecord, TIO>]?: InferSchemaValue<
-			TRecord[K],
-			TIO
-		>;
-	}
->;
 
 type InferRequestObjectSegment<
 	TSegment,
@@ -212,8 +203,8 @@ type InferRequestSegments<R, TIO extends "input" | "output"> = {
 		? InferRequestObjectSegment<Tparams, TIO>
 		: never;
 	headers: R extends { headers: infer THeaders }
-		? THeaders extends RequestSchemaRecord
-			? InferRequestSchemaRecord<THeaders, TIO>
+		? THeaders extends RequestHeadersDeclaration
+			? InferRequestHeaders<THeaders, TIO>
 			: never
 		: never;
 };
@@ -229,8 +220,8 @@ type InferGroupedRequestSegments<R, TIO extends "input" | "output"> = {
 		? InferGroupedRequestObjectSegment<Tparams, TIO>
 		: never;
 	headers: R extends { headers: infer THeaders }
-		? THeaders extends RequestSchemaRecord
-			? InferRequestSchemaRecord<THeaders, TIO>
+		? THeaders extends RequestHeadersDeclaration
+			? InferRequestHeaders<THeaders, TIO>
 			: never
 		: never;
 };

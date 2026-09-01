@@ -157,9 +157,7 @@ const api = {
 	todos: {
 		list: route
 			.get("/todos")
-			.headers({
-				authorization: z.string(),
-			})
+			.headers(z.object({ authorization: z.string() }))
 			.response(200, z.array(todoSchema)),
 	},
 };

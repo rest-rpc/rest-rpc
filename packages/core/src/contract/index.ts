@@ -53,7 +53,9 @@ export type {
 	JsonQuery,
 	RequestBodySchema,
 	RequestKeys,
-	RequestSchemaRecord,
+	RequestHeadersDeclaration,
+	RequestHeadersSchema,
+	RequestScalar,
 	RequestSegment,
 	ServerReceived,
 	ServerRequest,
@@ -61,7 +63,7 @@ export type {
 } from "./request.ts";
 export {
 	isJsonQuery,
-	isRequestSchemaRecord,
+	getRequestHeaderSchemas,
 	jsonQuery,
 	REQUEST_CONTEXT_KEY,
 } from "./request.ts";

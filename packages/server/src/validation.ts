@@ -7,13 +7,14 @@ import {
 	isJsonQuery,
 	isMultipartBody,
 	isNoBody,
-	isRequestSchemaRecord,
+	getRequestHeaderSchemas,
 	isStream,
 	type JsonQuery,
 	type MultipartBody,
 	type ResponseBodySchema,
 	type ResponseDeclaration,
 	type RouteDeclaration,
+	type RequestHeadersDeclaration,
 } from "@rest-rpc/core/contract";
 import {
 	isStandardSchema,
@@ -83,29 +84,6 @@ export const getHeaderValue = (
 	return undefined;
 };
 
-const validateSchemaRecord = async (
-	schemas: Record<string, StandardSchemaV1>,
-	input: unknown,
-): Promise<SegmentValidationResult> => {
-	const data: Record<string, unknown> = {};
-	const errors: StandardSchemaV1.Issue[] = [];
-	const objectInput =
-		typeof input === "object" && input !== null
-			? (input as Record<string, unknown>)
-			: undefined;
-
-	for (const [key, schema] of Object.entries(schemas)) {
-		const result = await validateStandardSchema(schema, objectInput?.[key]);
-		if (result.issues) {
-			errors.push(...result.issues);
-			continue;
-		}
-		data[key] = result.value;
-	}
-
-	return { data, errors };
-};
-
 const validateObjectSchema = async (
 	schema: RequestObjectSchema,
 	input: unknown,
@@ -126,11 +104,24 @@ const validateRequestObject = async (
 		return validateObjectSchema(declaration as RequestObjectSchema, input);
 	}
 
-	if (isRequestSchemaRecord(declaration)) {
-		return validateSchemaRecord(declaration, input);
+	return { data: {}, errors: [] };
+};
+
+const validateHeaders = async (
+	declaration: RequestHeadersDeclaration | undefined,
+	input: unknown,
+): Promise<SegmentValidationResult> => {
+	if (!declaration) return { data: {}, errors: [] };
+
+	const data: Record<string, unknown> = {};
+	const errors: StandardSchemaV1.Issue[] = [];
+	for (const schema of getRequestHeaderSchemas(declaration)) {
+		const result = await validateStandardSchema(schema, input);
+		if (result.issues) errors.push(...result.issues);
+		else Object.assign(data, result.value);
 	}
 
-	return { data: {}, errors: [] };
+	return { data, errors };
 };
 
 const normalizeContentType = (contentType: string) =>
@@ -343,10 +334,7 @@ export async function validateRequest(
 		? await validateJsonQuery(request.query, segments.query)
 		: await validateRequestObject(request?.query, segments.query);
 	const params = await validateRequestObject(request?.params, segments.params);
-	const headers = await validateRequestObject(
-		request?.headers,
-		segments.headers,
-	);
+	const headers = await validateHeaders(request?.headers, segments.headers);
 	const errors = [
 		...body.errors,
 		...query.errors,
@@ -393,13 +381,6 @@ export const validateResponseBody = async (
 	return validation.value;
 };
 
-type DeclaredResponseHeaderValue = string | number;
-
-const isDeclaredResponseHeaderValue = (
-	value: unknown,
-): value is DeclaredResponseHeaderValue =>
-	typeof value === "string" || typeof value === "number";
-
 export const validateResponseHeaders = async (
 	schema: ResponseDeclaration | undefined,
 	headers: Record<string, unknown> | undefined,
@@ -409,22 +390,14 @@ export const validateResponseHeaders = async (
 	const declaredHeaders = getResponseHeaders(schema);
 	if (!declaredHeaders) return undefined;
 
-	const normalized: HttpHeaders = {};
-	for (const [name, headerSchema] of Object.entries(declaredHeaders)) {
-		const result = await validateStandardSchema(headerSchema, headers?.[name]);
-		if (result.issues) throw result.issues;
-		if (result.value === undefined) continue;
+	const result = await validateStandardSchema(declaredHeaders, headers ?? {});
+	if (result.issues) throw result.issues;
 
-		if (!isDeclaredResponseHeaderValue(result.value)) {
-			throw new Error(
-				`Declared response header "${name}" must resolve to a string or number.`,
-			);
-		}
-
-		normalized[name] = result.value;
-	}
-
-	return normalized;
+	return Object.fromEntries(
+		Object.entries(result.value).flatMap(([name, value]) =>
+			value === undefined ? [] : [[name, String(value)]],
+		),
+	);
 };
 
 export const resolveCustomResponseBody = (

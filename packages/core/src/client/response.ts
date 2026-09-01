@@ -120,9 +120,6 @@ const declaredResponseMetadata = (
 	return {};
 };
 
-const readHeaderValue = (headers: Headers, name: string) =>
-	headers.get(name) ?? undefined;
-
 const readDeclaredHeaders = async (
 	schema: ResponseDeclaration,
 	rawResponse: Response,
@@ -131,20 +128,12 @@ const readDeclaredHeaders = async (
 	const headers = getResponseHeaders(schema);
 	if (!headers) return {};
 
-	const responseHeaders: Record<string, unknown> = {};
-	for (const [name, headerSchema] of Object.entries(headers)) {
-		const value = readHeaderValue(rawResponse.headers, name);
-		if (!validate) {
-			if (value !== undefined) responseHeaders[name] = value;
-			continue;
-		}
+	const rawHeaders = Object.fromEntries(rawResponse.headers.entries());
+	if (!validate) return { responseHeaders: rawHeaders };
 
-		const result = await validateStandardSchema(headerSchema, value);
-		if (result.issues) throw result.issues;
-		if (result.value !== undefined) responseHeaders[name] = result.value;
-	}
-
-	return { responseHeaders };
+	const result = await validateStandardSchema(headers, rawHeaders);
+	if (result.issues) throw result.issues;
+	return { responseHeaders: result.value };
 };
 
 export type RouteRequestFn = <E extends RouteDeclaration>(

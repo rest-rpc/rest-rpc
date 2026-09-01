@@ -50,15 +50,36 @@ const createApi = {
 			responses: {
 				201: {
 					body: todoSchema,
-					headers: {
+					headers: z.object({
 						location: z.string(),
 						"x-next-cursor": z.string().optional(),
-					},
+					}),
 				},
 			},
 		},
 	},
 } as const;
+
+const transformedResponseHeadersApi = {
+	todos: {
+		get: {
+			method: "GET",
+			path: "/todos/transformed-headers",
+			responses: {
+				200: {
+					body: todoSchema,
+					headers: z.string().transform((value) => ({ etag: value })),
+				},
+			},
+		},
+	},
+} as const;
+
+type TransformedResponseHeaders = RouteResponse<
+	typeof transformedResponseHeadersApi.todos.get
+>;
+declare const transformedResponse: TransformedResponseHeaders;
+expectType<string>(transformedResponse.responseHeaders);
 
 type CreateTodoRequest = RouteRequest<
 	typeof createApi.todos.create,
@@ -71,6 +92,33 @@ expectType<TestRouteHandlerContext>(createTodoRequest.context);
 type CreateTodoRequestData = RouteRequestData<typeof createApi.todos.create>;
 declare const createTodoRequestData: CreateTodoRequestData;
 expectType<string>(createTodoRequestData.title);
+
+const composedHeadersApi = {
+	items: {
+		get: {
+			method: "GET",
+			path: "/items",
+			request: {
+				headers: {
+					inherited: z
+						.object({ authorization: z.string() })
+						.transform(() => ({ authenticated: true as const })),
+					local: z
+						.object({ "x-request-id": z.string() })
+						.transform(() => ({ traceId: "request-1" as const })),
+				},
+			},
+			responses: { 204: noBody() },
+		},
+	},
+} as const;
+
+type ComposedHeadersRequest = RouteRequestData<
+	typeof composedHeadersApi.items.get
+>;
+declare const composedHeadersRequest: ComposedHeadersRequest;
+expectType<true>(composedHeadersRequest.authenticated);
+expectType<"request-1">(composedHeadersRequest.traceId);
 
 type CreateTodoResponse = RouteResponse<typeof createApi.todos.create>;
 declare const createTodoResponse: CreateTodoResponse;

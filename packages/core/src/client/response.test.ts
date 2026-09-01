@@ -89,10 +89,10 @@ describe("ApiClient responses", () => {
 					.params(z.object({ id: z.string() }))
 					.response(200, {
 						body: z.object({ id: z.string() }),
-						headers: {
+						headers: z.object({
 							etag: z.string(),
 							"x-count": z.coerce.number(),
-						},
+						}),
 					}),
 			},
 		};
