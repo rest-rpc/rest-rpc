@@ -1,8 +1,8 @@
 import {
 	type Contract,
 	flattenContractRoutes,
-	getparamsegmentName,
-	isparamsegment,
+	getPathParamSegmentName,
+	isPathParamSegment,
 	type RouteDeclaration,
 } from "@rest-rpc/core/contract";
 
@@ -24,8 +24,8 @@ export const compareRouteSpecificity = (
 		if (leftSegment === undefined) return 1;
 		if (rightSegment === undefined) return -1;
 
-		const leftIsParam = isparamsegment(leftSegment);
-		const rightIsParam = isparamsegment(rightSegment);
+		const leftIsParam = isPathParamSegment(leftSegment);
+		const rightIsParam = isPathParamSegment(rightSegment);
 
 		if (leftIsParam !== rightIsParam) {
 			return leftIsParam ? 1 : -1;
@@ -48,7 +48,7 @@ const createPathMatcher = (path: string) => {
 			? "/"
 			: `/${segments
 					.map((segment) => {
-						const paramName = getparamsegmentName(segment);
+						const paramName = getPathParamSegmentName(segment);
 						if (!paramName) return escapeRegExp(segment);
 						keys.push(paramName);
 						return "([^/]+)";

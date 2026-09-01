@@ -1,4 +1,4 @@
-const paramsegmentPattern = /^(?::([^/]+)|\{([^/]+)\})$/;
+const pathParamSegmentPattern = /^(?::([^/]+)|\{([^/]+)\})$/;
 
 const pathParamNameFromCaptures = (
 	colonName: string | undefined,
@@ -14,32 +14,32 @@ const pathParamNameFromCaptures = (
 export const getPathParamNames = (path: string) =>
 	path
 		.split("/")
-		.map(getparamsegmentName)
+		.map(getPathParamSegmentName)
 		.filter((name): name is string => name !== undefined);
 
-export const getparamsegmentName = (segment: string) => {
-	const match = paramsegmentPattern.exec(segment);
+export const getPathParamSegmentName = (segment: string) => {
+	const match = pathParamSegmentPattern.exec(segment);
 	if (!match) return undefined;
 	return pathParamNameFromCaptures(match[1], match[2]);
 };
 
-export const isparamsegment = (segment: string) =>
-	getparamsegmentName(segment) !== undefined;
+export const isPathParamSegment = (segment: string) =>
+	getPathParamSegmentName(segment) !== undefined;
 
-export const replaceparams = (
+export const replacePathParams = (
 	path: string,
 	replace: (name: string) => string,
 ) =>
 	path
 		.split("/")
 		.map((segment) => {
-			const name = getparamsegmentName(segment);
+			const name = getPathParamSegmentName(segment);
 			return name === undefined ? segment : replace(name);
 		})
 		.join("/");
 
 export const toColonPath = (path: string) =>
-	replaceparams(path, (name) => `:${name}`);
+	replacePathParams(path, (name) => `:${name}`);
 
 export const toOpenApiPath = (path: string) =>
-	replaceparams(path, (name) => `{${name}}`);
+	replacePathParams(path, (name) => `{${name}}`);

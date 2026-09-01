@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	getPathParamNames,
-	getparamsegmentName,
-	isparamsegment,
-	replaceparams,
+	getPathParamSegmentName,
+	isPathParamSegment,
+	replacePathParams,
 	toColonPath,
 	toOpenApiPath,
 } from "./path.ts";
@@ -21,12 +21,12 @@ describe("path helpers", () => {
 	});
 
 	it("recognizes full dynamic path segments", () => {
-		assert.equal(getparamsegmentName(":id"), "id");
-		assert.equal(getparamsegmentName("{id}"), "id");
-		assert.equal(getparamsegmentName("todos-{id}"), undefined);
-		assert.equal(isparamsegment(":id"), true);
-		assert.equal(isparamsegment("{id}"), true);
-		assert.equal(isparamsegment("todos"), false);
+		assert.equal(getPathParamSegmentName(":id"), "id");
+		assert.equal(getPathParamSegmentName("{id}"), "id");
+		assert.equal(getPathParamSegmentName("todos-{id}"), undefined);
+		assert.equal(isPathParamSegment(":id"), true);
+		assert.equal(isPathParamSegment("{id}"), true);
+		assert.equal(isPathParamSegment("todos"), false);
 	});
 
 	it("normalizes path params for external route formats", () => {
@@ -42,7 +42,7 @@ describe("path helpers", () => {
 
 	it("replaces path params without exposing marker syntax to callers", () => {
 		assert.equal(
-			replaceparams("/orgs/:orgId/todos/{todo_id}", (name) =>
+			replacePathParams("/orgs/:orgId/todos/{todo_id}", (name) =>
 				name.toUpperCase(),
 			),
 			"/orgs/ORGID/todos/TODO_ID",

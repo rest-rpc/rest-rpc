@@ -40,9 +40,9 @@ export { isRouteDeclaration } from "./contract.ts";
 export { route } from "../routebuilder/index.ts";
 export {
 	getPathParamNames,
-	getparamsegmentName,
-	isparamsegment,
-	replaceparams,
+	getPathParamSegmentName,
+	isPathParamSegment,
+	replacePathParams,
 	toColonPath,
 	toOpenApiPath,
 } from "./path.ts";

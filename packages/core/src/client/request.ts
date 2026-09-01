@@ -5,7 +5,7 @@ import {
 	isNoBody,
 } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
-import { replaceparams } from "../contract/path.ts";
+import { replacePathParams } from "../contract/path.ts";
 import { isJsonQuery } from "../contract/request.ts";
 import type {
 	FlatRequestInput,
@@ -218,7 +218,7 @@ const serializeParams = (
 	route: RouteDeclaration,
 	params: Record<string, unknown> | undefined,
 ) => {
-	return replaceparams(route.path, (key) => {
+	return replacePathParams(route.path, (key) => {
 		const value = stringifyRequestValue(route, "params", key, params?.[key]);
 		if (value === undefined) {
 			throw new Error(
