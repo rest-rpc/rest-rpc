@@ -1,5 +1,6 @@
 import type {
 	CommonOpenApiRouteOptions,
+	HttpMethod,
 	OpenApiResponseOptions,
 	OpenApiRouteOptions,
 	RouteFactoryOptions,
@@ -18,11 +19,13 @@ export type RequestFor<TOptions> = (TOptions extends {
 	(TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
 		? { flattenKeys: TFlatten }
 		: EmptyObject);
-export type StrictStatusCodesFor<TOptions> = TOptions extends {
+export type HttpRouteFor<TOptions, TMethod extends HttpMethod> = {
+	readonly method: TMethod;
+} & (TOptions extends {
 	strictStatusCodes: infer TStrictStatusCodes extends boolean;
 }
-	? TStrictStatusCodes
-	: undefined;
+	? { readonly strictStatusCodes: TStrictStatusCodes }
+	: EmptyObject);
 export type ProtocolRequestFor<TOptions> = TOptions extends {
 	flattenRequestKeys: infer TFlatten extends boolean;
 }

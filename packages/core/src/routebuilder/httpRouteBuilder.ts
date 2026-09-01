@@ -33,10 +33,10 @@ import type {
 import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
 import {
 	type EmptyObject,
+	type HttpRouteFor,
 	httpRequestDefaults,
 	type OptionValue,
 	type RequestFor,
-	type StrictStatusCodesFor,
 	type WithRequest,
 } from "./shared.ts";
 
@@ -142,20 +142,14 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 }
 
 type HttpBuilder<
-	TMethod extends HttpMethod,
+	TRoute extends { readonly method: HttpMethod },
 	TRequest,
 	TResponses,
-	TStrictStatusCodes,
 	TUsed extends string = never,
 > = {
-	readonly method: TMethod;
 	readonly path: string;
-} & (keyof TRequest extends never
-	? { request?: never }
-	: { request: TRequest }) &
-	([TStrictStatusCodes] extends [boolean]
-		? { readonly strictStatusCodes: TStrictStatusCodes }
-		: EmptyObject) &
+} & TRoute &
+	(keyof TRequest extends never ? { request?: never } : { request: TRequest }) &
 	(keyof TResponses extends never
 		? { responses?: never }
 		: { responses: TResponses }) & {
@@ -166,14 +160,13 @@ type HttpBuilder<
 			status: TStatus,
 			schema?: TSchema,
 		): HttpBuilder<
-			TMethod,
+			TRoute,
 			TRequest,
 			TResponses &
 				Record<
 					TStatus,
 					TSchema extends RegularResponseDeclaration ? TSchema : NoBody
 				>,
-			TStrictStatusCodes,
 			TUsed | "response"
 		>;
 		customResponse<
@@ -184,10 +177,9 @@ type HttpBuilder<
 			status: TStatus,
 			input: CustomResponseInput<TSchema, TContentType>,
 		): HttpBuilder<
-			TMethod,
+			TRoute,
 			TRequest,
 			TResponses & Record<TStatus, CustomResponseBody<TSchema, TContentType>>,
-			TStrictStatusCodes,
 			TUsed | "response"
 		>;
 		streamResponse<
@@ -197,10 +189,9 @@ type HttpBuilder<
 			status: TStatus,
 			schema: TSchema,
 		): HttpBuilder<
-			TMethod,
+			TRoute,
 			TRequest,
 			TResponses & Record<TStatus, Stream<TSchema>>,
-			TStrictStatusCodes,
 			TUsed | "response"
 		>;
 		customStreamResponse<
@@ -211,11 +202,10 @@ type HttpBuilder<
 			status: TStatus,
 			input: CustomResponseInput<TSchema, TContentType>,
 		): HttpBuilder<
-			TMethod,
+			TRoute,
 			TRequest,
 			TResponses &
 				Record<TStatus, Stream<CustomResponseBody<TSchema, TContentType>>>,
-			TStrictStatusCodes,
 			TUsed | "response"
 		>;
 	} & ("response" extends TUsed
@@ -226,19 +216,17 @@ type HttpBuilder<
 					body<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", TSchema>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					formBody<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", FormBody<TSchema>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					formBody<
@@ -247,19 +235,17 @@ type HttpBuilder<
 					>(
 						input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", FormBody<TSchema, TArrayKeys>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					multipartBody<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", MultipartBody<TSchema>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					multipartBody<
@@ -268,19 +254,17 @@ type HttpBuilder<
 					>(
 						input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", MultipartBody<TSchema, TArrayKeys>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					customBody<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", CustomBody<TSchema, undefined>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 					customBody<
@@ -289,10 +273,9 @@ type HttpBuilder<
 					>(
 						input: CustomResponseInput<TSchema, TContentType>,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "body", CustomBody<TSchema, TContentType>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "body"
 					>;
 				}) &
@@ -304,19 +287,17 @@ type HttpBuilder<
 					query<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "query", TSchema>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "query"
 					>;
 					jsonQuery<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "query", JsonQuery<TSchema>>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "query"
 					>;
 				}) &
@@ -328,10 +309,9 @@ type HttpBuilder<
 					params<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "params", TSchema>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "params"
 					>;
 				}) &
@@ -343,7 +323,7 @@ type HttpBuilder<
 					headers<const THeaders extends RequestSchemaRecord>(
 						headers: THeaders,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<
 							TRequest,
 							"headers",
@@ -353,7 +333,6 @@ type HttpBuilder<
 								THeaders
 						>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "headers"
 					>;
 				}) &
@@ -365,10 +344,9 @@ type HttpBuilder<
 					requestKeys<const TKeys extends RequestKeys>(
 						keys: TKeys,
 					): HttpBuilder<
-						TMethod,
+						TRoute,
 						WithRequest<TRequest, "keys", TKeys>,
 						TResponses,
-						TStrictStatusCodes,
 						TUsed | "requestKeys"
 					>;
 				}) &
@@ -379,13 +357,7 @@ type HttpBuilder<
 			: {
 					withMetadata(
 						metadata: RouteMetadata,
-					): HttpBuilder<
-						TMethod,
-						TRequest,
-						TResponses,
-						TStrictStatusCodes,
-						TUsed | "withMetadata"
-					>;
+					): HttpBuilder<TRoute, TRequest, TResponses, TUsed | "withMetadata">;
 				}) &
 	("withOpenApi" extends TUsed
 		? { openApi: OpenApiRouteOptions }
@@ -394,20 +366,13 @@ type HttpBuilder<
 			: {
 					withOpenApi(
 						openApi: OpenApiRouteOptions,
-					): HttpBuilder<
-						TMethod,
-						TRequest,
-						TResponses,
-						TStrictStatusCodes,
-						TUsed | "withOpenApi"
-					>;
+					): HttpBuilder<TRoute, TRequest, TResponses, TUsed | "withOpenApi">;
 				});
 
 export type HttpBuilderFor<TOptions, TMethod extends HttpMethod> = HttpBuilder<
-	TMethod,
+	HttpRouteFor<TOptions, TMethod>,
 	RequestFor<TOptions>,
-	OptionValue<TOptions, "responses", EmptyObject>,
-	StrictStatusCodesFor<TOptions>
+	OptionValue<TOptions, "responses", EmptyObject>
 >;
 
 export const createHttpRoute = (
