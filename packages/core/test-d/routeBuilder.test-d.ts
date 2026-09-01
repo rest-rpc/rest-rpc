@@ -36,9 +36,9 @@ const create = apiRoute
 	.headers({ trace: schemaType<string>() })
 	.params(schemaType<{ accountId: string }>())
 	.requestKeys({ title: "body", accountId: "params" })
-	.response(201, todo)
 	.metadata({ permission: "todos:create" as const })
-	.openApi({ summary: "Create todo" });
+	.openApi({ summary: "Create todo" })
+	.response(201, todo);
 
 expectType<"POST">(create.method);
 expectType<string>(create.path);

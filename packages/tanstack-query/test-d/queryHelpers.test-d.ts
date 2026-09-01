@@ -38,27 +38,26 @@ const queryTq = createTanstackQueryHelpers(queryApi, {
 	baseUrl: "https://example.test",
 });
 
-const finalizedQueryApi = {
+const validatedQueryApi = {
 	test: route
 		.get("/test/:id")
 		.params(schemaType<{ id: string }>())
-		.response(200, schemaType<{ id: string; title: string }>())
-		.finalize(),
+		.response(200, schemaType<{ id: string; title: string }>()),
 };
-const finalizedQueryTq = createTanstackQueryHelpers(finalizedQueryApi, {
+const validatedQueryTq = createTanstackQueryHelpers(validatedQueryApi, {
 	baseUrl: "https://example.test",
 });
-type FinalizedQueryOptionsParameters = Parameters<
-	typeof finalizedQueryTq.test.queryOptions
+type ValidatedQueryOptionsParameters = Parameters<
+	typeof validatedQueryTq.test.queryOptions
 >;
 expectType<{ id: string }>(
 	undefined as unknown as Extract<
-		FinalizedQueryOptionsParameters[0],
+		ValidatedQueryOptionsParameters[0],
 		{ id: string }
 	>,
 );
 
-type FinalizedQueryData = RouteQueryData<typeof finalizedQueryApi.test>;
+type FinalizedQueryData = RouteQueryData<typeof validatedQueryApi.test>;
 expectType<{
 	status: 200;
 	body: { id: string; title: string };
