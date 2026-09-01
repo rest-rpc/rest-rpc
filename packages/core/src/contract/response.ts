@@ -18,6 +18,13 @@ export type ResponseBodySchema =
  */
 export type ResponseHeaders = Record<string, StandardSchemaV1>;
 
+export type RegularResponseDeclaration =
+	| ResponseSchema
+	| {
+			body: ResponseSchema;
+			headers: ResponseHeaders;
+	  };
+
 /**
  * Declares a route response body, or a body plus typed response headers.
  *

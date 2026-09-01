@@ -42,12 +42,18 @@ export type MultipartBody<
  */
 export type CustomBodyContentType = string | readonly string[];
 
-type BodyWithArrayKeysInput =
-	| StandardSchemaV1
-	| {
-			schema: StandardSchemaV1;
-			arrayKeys: readonly string[];
-	  };
+export type BodyWithArrayKeysOptions<
+	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TArrayKeys extends readonly string[] = readonly string[],
+> = {
+	schema: TSchema;
+	arrayKeys: TArrayKeys;
+};
+
+export type BodyWithArrayKeysInput<
+	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TArrayKeys extends readonly string[] = readonly string[],
+> = TSchema | BodyWithArrayKeysOptions<TSchema, TArrayKeys>;
 
 export function resolveBodyWithArrayKeys(input: BodyWithArrayKeysInput): {
 	schema: StandardSchemaV1;
@@ -93,21 +99,13 @@ export function formBody<const TSchema extends StandardSchemaV1>(
 export function formBody<
 	const TSchema extends StandardSchemaV1,
 	const TArrayKeys extends readonly string[],
->(input: {
-	schema: TSchema;
-	arrayKeys: TArrayKeys;
-}): FormBody<TSchema, TArrayKeys>;
+>(
+	input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
+): FormBody<TSchema, TArrayKeys>;
 export function formBody<
 	const TSchema extends StandardSchemaV1,
 	const TArrayKeys extends readonly string[],
->(
-	input:
-		| TSchema
-		| {
-				schema: TSchema;
-				arrayKeys: TArrayKeys;
-		  },
-): FormBody<TSchema> {
+>(input: BodyWithArrayKeysInput<TSchema, TArrayKeys>): FormBody<TSchema> {
 	const { schema, arrayKeys } = resolveBodyWithArrayKeys(input);
 
 	return {
@@ -135,21 +133,13 @@ export function multipartBody<const TSchema extends StandardSchemaV1>(
 export function multipartBody<
 	const TSchema extends StandardSchemaV1,
 	const TArrayKeys extends readonly string[],
->(input: {
-	schema: TSchema;
-	arrayKeys: TArrayKeys;
-}): MultipartBody<TSchema, TArrayKeys>;
+>(
+	input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
+): MultipartBody<TSchema, TArrayKeys>;
 export function multipartBody<
 	const TSchema extends StandardSchemaV1,
 	const TArrayKeys extends readonly string[],
->(
-	input:
-		| TSchema
-		| {
-				schema: TSchema;
-				arrayKeys: TArrayKeys;
-		  },
-): MultipartBody<TSchema> {
+>(input: BodyWithArrayKeysInput<TSchema, TArrayKeys>): MultipartBody<TSchema> {
 	const { schema, arrayKeys } = resolveBodyWithArrayKeys(input);
 
 	return {
@@ -172,17 +162,34 @@ export type CustomBody<
 > = {
 	kind: "customBody";
 	schema: TSchema;
-} & (TContentType extends undefined
-	? { contentType?: undefined }
-	: { contentType: TContentType });
+} & ([TContentType] extends [CustomBodyContentType]
+	? { contentType: TContentType }
+	: { contentType?: Exclude<TContentType, undefined> });
 
 /**
  * A custom body declaration that is valid for responses.
  */
-export type CustomResponseBody = CustomBody<
-	StandardSchemaV1,
-	CustomBodyContentType
->;
+export type CustomResponseBody<
+	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TContentType extends CustomBodyContentType = CustomBodyContentType,
+> = {
+	kind: "customBody";
+	schema: TSchema;
+	contentType: TContentType;
+};
+
+export type CustomResponseInput<
+	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TContentType extends CustomBodyContentType = CustomBodyContentType,
+> = {
+	schema: TSchema;
+	contentType: TContentType;
+};
+
+export type CustomBodyInput<
+	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TContentType extends CustomBodyContentType = CustomBodyContentType,
+> = TSchema | CustomResponseInput<TSchema, TContentType>;
 
 /**
  * Declares a streaming response body.
@@ -228,17 +235,11 @@ export function customBody<const TSchema extends StandardSchemaV1>(
 export function customBody<
 	const TSchema extends StandardSchemaV1,
 	const TContentType extends CustomBodyContentType,
->(input: {
-	schema: TSchema;
-	contentType: TContentType;
-}): CustomBody<TSchema, TContentType>;
+>(
+	input: CustomResponseInput<TSchema, TContentType>,
+): CustomBody<TSchema, TContentType>;
 export function customBody<const TSchema extends StandardSchemaV1>(
-	input:
-		| TSchema
-		| {
-				schema: TSchema;
-				contentType: CustomBodyContentType;
-		  },
+	input: CustomBodyInput<TSchema>,
 ): CustomBody<TSchema, CustomBodyContentType | undefined> {
 	const schema = "~standard" in input ? input : input.schema;
 	const contentType = "~standard" in input ? undefined : input.contentType;

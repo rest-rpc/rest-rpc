@@ -1,13 +1,13 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import {
-	customBody as declareCustomBody,
-	formBody as declareFormBody,
-	multipartBody as declareMultipartBody,
-	noBody,
-	stream as declareStream,
+	resolveBodyWithArrayKeys,
+	type BodyWithArrayKeysInput,
+	type BodyWithArrayKeysOptions,
 	type CustomBody,
+	type CustomBodyInput,
 	type CustomBodyContentType,
 	type CustomResponseBody,
+	type CustomResponseInput,
 	type FormBody,
 	type MultipartBody,
 	type NoBody,
@@ -26,8 +26,8 @@ import type {
 	RequestSchemaRecord,
 } from "../contract/request.ts";
 import type {
+	RegularResponseDeclaration,
 	ResponseDeclaration,
-	ResponseHeaders,
 	RouteResponses,
 } from "../contract/response.ts";
 import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
@@ -39,47 +39,6 @@ import {
 	type StrictStatusCodesFor,
 	type WithRequest,
 } from "./shared.ts";
-
-type RegularResponseDeclaration =
-	| StandardSchemaV1
-	| {
-			body: StandardSchemaV1;
-			headers: ResponseHeaders;
-	  };
-
-type BodyWithArrayKeysInput =
-	| StandardSchemaV1
-	| {
-			schema: StandardSchemaV1;
-			arrayKeys: readonly string[];
-	  };
-
-type CustomBodyInput =
-	| StandardSchemaV1
-	| {
-			schema: StandardSchemaV1;
-			contentType: CustomBodyContentType;
-	  };
-
-type CustomResponseInput = {
-	schema: StandardSchemaV1;
-	contentType: CustomBodyContentType;
-};
-
-type CustomResponseBodyFor<
-	TSchema extends StandardSchemaV1,
-	TContentType extends CustomBodyContentType,
-> = Extract<CustomBody<TSchema, TContentType>, CustomResponseBody>;
-
-const toFormBody = declareFormBody as (
-	input: BodyWithArrayKeysInput,
-) => FormBody;
-const toMultipartBody = declareMultipartBody as (
-	input: BodyWithArrayKeysInput,
-) => MultipartBody;
-const toCustomBody = declareCustomBody as (
-	input: CustomBodyInput,
-) => CustomBody;
 
 class HttpRouteBuilder extends BaseRouteBuilder {
 	#localResponseStatuses = new Set<number>();
@@ -109,19 +68,28 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 	}
 
 	formBody(input: BodyWithArrayKeysInput) {
-		this.requestForWrite().body = toFormBody(input);
+		this.requestForWrite().body = {
+			kind: "formBody",
+			...resolveBodyWithArrayKeys(input),
+		};
 		this.recalculateRequestKeys();
 		return this;
 	}
 
 	multipartBody(input: BodyWithArrayKeysInput) {
-		this.requestForWrite().body = toMultipartBody(input);
+		this.requestForWrite().body = {
+			kind: "multipartBody",
+			...resolveBodyWithArrayKeys(input),
+		};
 		this.recalculateRequestKeys();
 		return this;
 	}
 
 	customBody(input: CustomBodyInput) {
-		this.requestForWrite().body = toCustomBody(input);
+		this.requestForWrite().body =
+			"~standard" in input
+				? { kind: "customBody", schema: input }
+				: { kind: "customBody", ...input };
 		this.recalculateRequestKeys();
 		return this;
 	}
@@ -154,19 +122,22 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 	}
 
 	response(status: number, schema?: RegularResponseDeclaration) {
-		return this.addResponse(status, schema ?? noBody());
+		return this.addResponse(status, schema ?? { kind: "noBody" });
 	}
 
 	customResponse(status: number, input: CustomResponseInput) {
-		return this.addResponse(status, declareCustomBody(input));
+		return this.addResponse(status, { kind: "customBody", ...input });
 	}
 
 	streamResponse(status: number, schema: StandardSchemaV1) {
-		return this.addResponse(status, declareStream(schema));
+		return this.addResponse(status, { kind: "stream", schema });
 	}
 
 	customStreamResponse(status: number, input: CustomResponseInput) {
-		return this.addResponse(status, declareStream(declareCustomBody(input)));
+		return this.addResponse(status, {
+			kind: "stream",
+			schema: { kind: "customBody", ...input },
+		});
 	}
 }
 
@@ -211,12 +182,11 @@ type HttpBuilder<
 			const TContentType extends CustomBodyContentType,
 		>(
 			status: TStatus,
-			input: { schema: TSchema; contentType: TContentType },
+			input: CustomResponseInput<TSchema, TContentType>,
 		): HttpBuilder<
 			TMethod,
 			TRequest,
-			TResponses &
-				Record<TStatus, CustomResponseBodyFor<TSchema, TContentType>>,
+			TResponses & Record<TStatus, CustomResponseBody<TSchema, TContentType>>,
 			TStrictStatusCodes,
 			TUsed | "response"
 		>;
@@ -239,12 +209,12 @@ type HttpBuilder<
 			const TContentType extends CustomBodyContentType,
 		>(
 			status: TStatus,
-			input: { schema: TSchema; contentType: TContentType },
+			input: CustomResponseInput<TSchema, TContentType>,
 		): HttpBuilder<
 			TMethod,
 			TRequest,
 			TResponses &
-				Record<TStatus, Stream<CustomResponseBodyFor<TSchema, TContentType>>>,
+				Record<TStatus, Stream<CustomResponseBody<TSchema, TContentType>>>,
 			TStrictStatusCodes,
 			TUsed | "response"
 		>;
@@ -274,10 +244,9 @@ type HttpBuilder<
 					formBody<
 						const TSchema extends StandardSchemaV1,
 						const TArrayKeys extends readonly string[],
-					>(input: {
-						schema: TSchema;
-						arrayKeys: TArrayKeys;
-					}): HttpBuilder<
+					>(
+						input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
+					): HttpBuilder<
 						TMethod,
 						WithRequest<TRequest, "body", FormBody<TSchema, TArrayKeys>>,
 						TResponses,
@@ -296,10 +265,9 @@ type HttpBuilder<
 					multipartBody<
 						const TSchema extends StandardSchemaV1,
 						const TArrayKeys extends readonly string[],
-					>(input: {
-						schema: TSchema;
-						arrayKeys: TArrayKeys;
-					}): HttpBuilder<
+					>(
+						input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
+					): HttpBuilder<
 						TMethod,
 						WithRequest<TRequest, "body", MultipartBody<TSchema, TArrayKeys>>,
 						TResponses,
@@ -318,10 +286,9 @@ type HttpBuilder<
 					customBody<
 						const TSchema extends StandardSchemaV1,
 						const TContentType extends CustomBodyContentType,
-					>(input: {
-						schema: TSchema;
-						contentType: TContentType;
-					}): HttpBuilder<
+					>(
+						input: CustomResponseInput<TSchema, TContentType>,
+					): HttpBuilder<
 						TMethod,
 						WithRequest<TRequest, "body", CustomBody<TSchema, TContentType>>,
 						TResponses,
