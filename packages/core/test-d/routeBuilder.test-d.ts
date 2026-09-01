@@ -1,7 +1,9 @@
 import {
 	type Contract,
 	type HttpRouteDeclaration,
+	type OpenApiRouteOptions,
 	route,
+	type RouteMetadata,
 	type SseRouteDeclaration,
 	type as schemaType,
 	type WebSocketRouteDeclaration,
@@ -19,17 +21,24 @@ const unauthorized = schemaType<{ message: string }>();
 const event = schemaType<{ id: string }>();
 const clientMessage = schemaType<{ command: string }>();
 const serverMessage = schemaType<{ event: string }>();
+const typedResponseHeaders = {
+	"x-total": schemaType<number>(),
+};
+const factoryHeaders = { authorization: schemaType<string>() };
+const localRequestHeader = schemaType<number>();
 
 const apiRoute = route.with({
 	pathPrefix: "/api",
-	headers: { authorization: schemaType<string>() },
+	headers: factoryHeaders,
 	responses: { 401: unauthorized },
 	metadata: { auth: true as const },
 	openApi: { tags: ["API"] },
 	flattenRequestKeys: true,
 });
 
-// HTTP routes build ordinary request/response route declarations.
+// HTTP route builders
+
+// Builds an ordinary request/response route declaration.
 const create = apiRoute
 	.post("/todos")
 	.body(input)
@@ -42,25 +51,103 @@ const create = apiRoute
 
 expectType<"POST">(create.method);
 expectType<string>(create.path);
-expectType<unknown>(create.metadata.auth);
-expectType<unknown>(create.metadata.permission);
+expectType<RouteMetadata>(create.metadata);
+expectType<OpenApiRouteOptions>(create.openApi);
 expectType<typeof input>(create.request.body);
 expectType<typeof todo>(create.responses[201]);
 expectType<typeof unauthorized>(create.responses[401]);
 expectAssignable<HttpRouteDeclaration>(create);
 expectAssignable<Contract>(create);
 
+// Requires a local or factory-provided response before completion.
+const incompleteHttp = route.get("/incomplete");
+expectNotAssignable<HttpRouteDeclaration>(incompleteHttp);
+expectNotAssignable<Contract>(incompleteHttp);
+
+// Accepts a response supplied by the route factory.
+const factoryResponse = apiRoute.get("/factory-response");
+expectAssignable<HttpRouteDeclaration>(factoryResponse);
+expectAssignable<Contract>(factoryResponse);
+expectType<typeof factoryHeaders>(factoryResponse.request.headers);
+expectType<true>(factoryResponse.request.flattenKeys);
+
+// Preserves factory boolean options as literal route properties.
+const strictRoute = route.with({ strictStatusCodes: true }).get("/strict");
+expectType<true>(strictRoute.strictStatusCodes);
+const nonStrictRoute = route
+	.with({ strictStatusCodes: false })
+	.get("/non-strict");
+expectType<false>(nonStrictRoute.strictStatusCodes);
+
+// Preserves schema and array-key inference for form and multipart bodies.
 const importRoute = route
 	.post("/imports")
 	.formBody({ schema: input, arrayKeys: ["title"] })
 	.customResponse(201, { contentType: "text/csv", schema: todo });
 
 expectType<"formBody">(importRoute.request.body.kind);
+expectType<typeof input>(importRoute.request.body.schema);
+expectType<readonly ["title"]>(importRoute.request.body.arrayKeys);
 expectType<"customBody">(importRoute.responses[201].kind);
 
+// Supports the schema overload for form bodies.
+const formSchema = route.post("/form-schema").formBody(input).response(201);
+expectType<typeof input>(formSchema.request.body.schema);
+// Supports both multipart body overloads.
+const multipartSchema = route
+	.post("/multipart-schema")
+	.multipartBody(input)
+	.response(201);
+expectType<typeof input>(multipartSchema.request.body.schema);
+const multipartObject = route
+	.post("/multipart-object")
+	.multipartBody({ schema: input, arrayKeys: ["title"] })
+	.response(201);
+expectType<typeof input>(multipartObject.request.body.schema);
+expectType<readonly ["title"]>(multipartObject.request.body.arrayKeys);
+
+// Preserves schema and content-type inference for custom request bodies.
+const customRequestBody = route
+	.post("/custom-body")
+	.customBody({ schema: input, contentType: "application/xml" })
+	.response(201);
+expectType<typeof input>(customRequestBody.request.body.schema);
+expectType<"application/xml">(customRequestBody.request.body.contentType);
+
+const customRequestBodySchema = route
+	.post("/custom-body-schema")
+	.customBody(input)
+	.response(201);
+expectType<typeof input>(customRequestBodySchema.request.body.schema);
+
+// Preserves query and streaming response inference.
 const search = route.get("/search").jsonQuery(input).streamResponse(200, todo);
 expectType<"jsonQuery">(search.request.query.kind);
 expectType<"stream">(search.responses[200].kind);
+
+// Preserves response body, custom stream, and typed response-header inference.
+const typedResponses = route
+	.get("/typed-responses")
+	.response(200, { body: todo, headers: typedResponseHeaders })
+	.customStreamResponse(201, {
+		contentType: "application/octet-stream",
+		schema: input,
+	});
+expectType<typeof todo>(typedResponses.responses[200].body);
+expectType<typeof typedResponseHeaders>(typedResponses.responses[200].headers);
+expectType<typeof input>(typedResponses.responses[201].schema.schema);
+
+// Merges factory request headers with route-local request headers.
+const factoryAndLocalHeaders = apiRoute
+	.get("/merged-headers")
+	.headers({ trace: localRequestHeader })
+	.response(200);
+expectType<typeof factoryHeaders.authorization>(
+	factoryAndLocalHeaders.request.headers.authorization,
+);
+expectType<typeof localRequestHeader>(
+	factoryAndLocalHeaders.request.headers.trace,
+);
 
 expectAssignable<HttpRouteDeclaration>(route.get("/health").response(204));
 expectAssignable<HttpRouteDeclaration>(
@@ -78,6 +165,7 @@ const duplicateResponseStatus = route
 
 expectAssignable<HttpRouteDeclaration>(duplicateResponseStatus);
 
+// Supports mixed ordinary, custom, streaming, and custom-stream responses.
 const mixedResponses = route
 	.get("/responses")
 	.response(200, todo)
@@ -98,6 +186,7 @@ expectType<"customBody">(mixedResponses.responses[203].schema.kind);
 expectType<typeof unauthorized>(mixedResponses.responses[203].schema.schema);
 expectAssignable<HttpRouteDeclaration>(mixedResponses);
 
+// Disables request configuration after an HTTP response is declared.
 const responseOnly = route.get("/response-only").customResponse(200, {
 	contentType: "text/plain",
 	schema: todo,
@@ -112,16 +201,90 @@ expectError(responseOnly.requestKeys({ id: "params" }));
 expectError(responseOnly.withMetadata({ auth: true }));
 expectError(responseOnly.withOpenApi({ summary: "Response only" }));
 
+// Keeps HTTP body variants and query variants mutually exclusive.
+const bodyUsed = route.post("/body-used").body(input);
+expectError(bodyUsed.formBody(input));
+expectError(bodyUsed.multipartBody(input));
+expectError(bodyUsed.customBody(input));
+expectError(route.post("/body-variants").formBody(input).body(input));
+expectError(
+	route.post("/body-variants-2").multipartBody(input).customBody(input),
+);
+expectError(route.get("/query-used").query(input).jsonQuery(input));
+expectError(route.get("/json-query-used").jsonQuery(input).query(input));
+
+// Allows each HTTP request setter only once before response completion.
+const singleUseHttpConfigured = route
+	.get("/single-use-http")
+	.query(input)
+	.params(input)
+	.headers({ trace: input })
+	.requestKeys({ title: "query" })
+	.withMetadata({ auth: true })
+	.withOpenApi({ summary: "single use" });
+expectError(singleUseHttpConfigured.params(input));
+expectError(singleUseHttpConfigured.headers({ trace: input }));
+expectError(singleUseHttpConfigured.requestKeys({ title: "query" }));
+expectError(singleUseHttpConfigured.withMetadata({ auth: true }));
+expectError(singleUseHttpConfigured.withOpenApi({ summary: "again" }));
+expectAssignable<HttpRouteDeclaration>(singleUseHttpConfigured.response(200));
+
 expectError(route.get("/health").response(todo));
 expectError(apiRoute.post("/todos").responses({ 201: todo }));
 
-// SSE routes build GET event-stream declarations with request metadata and one event schema.
+// SSE route builders
+
+// Requires one event response before SSE completion and excludes HTTP APIs.
 const incompleteSse = route.sse("/events");
 expectNotAssignable<SseRouteDeclaration>(incompleteSse);
 expectNotAssignable<Contract>(incompleteSse);
 expectError(incompleteSse.body(event));
 expectError(incompleteSse.headers({ authorization: schemaType<string>() }));
+expectError(incompleteSse.response(event).response(event));
 
+// Allows each SSE request setter once and remains configurable until response().
+const sseConfiguredBeforeResponse = route
+	.with({ flattenRequestKeys: false })
+	.sse("/configured-events")
+	.query(input)
+	.params(schemaType<{ roomId: string }>())
+	.requestKeys({ title: "query", roomId: "params" })
+	.withMetadata({ public: true })
+	.withOpenApi({ summary: "events" });
+expectError(sseConfiguredBeforeResponse.query(input));
+expectError(sseConfiguredBeforeResponse.jsonQuery(input));
+expectError(sseConfiguredBeforeResponse.params(input));
+expectError(sseConfiguredBeforeResponse.requestKeys({ title: "query" }));
+expectError(sseConfiguredBeforeResponse.withMetadata({ public: false }));
+expectError(sseConfiguredBeforeResponse.withOpenApi({ summary: "again" }));
+// Preserves protocol request configuration after response().
+const sseConfigured = sseConfiguredBeforeResponse.response(event);
+expectType<false>(sseConfigured.request.flattenKeys);
+expectType<typeof input>(sseConfigured.request.query);
+expectType<typeof event>(sseConfigured.responses[200]);
+expectError(sseConfigured.body(event));
+expectError(sseConfigured.headers({ authorization: input }));
+expectError(sseConfigured.response(event));
+expectError(sseConfigured.streamResponse(200, event));
+expectError(sseConfigured.clientMessages(clientMessage));
+
+// Supports JSON query and unused route configuration after response().
+const sseConfiguredAfterResponse = route
+	.sse("/configured-after-response")
+	.response(event)
+	.jsonQuery(input)
+	.params(schemaType<{ roomId: string }>())
+	.requestKeys({ query: "query", roomId: "params" })
+	.withMetadata({ public: true })
+	.withOpenApi({ summary: "events" });
+expectType<"jsonQuery">(sseConfiguredAfterResponse.request.query.kind);
+expectType<typeof input>(sseConfiguredAfterResponse.request.query.schema);
+expectType<RouteMetadata>(sseConfiguredAfterResponse.metadata);
+expectType<OpenApiRouteOptions>(sseConfiguredAfterResponse.openApi);
+expectAssignable<SseRouteDeclaration>(sseConfiguredAfterResponse);
+expectAssignable<Contract>(sseConfiguredAfterResponse);
+
+// Builds a complete SSE declaration with query and route metadata.
 const sse = incompleteSse
 	.query(schemaType<{ cursor: string }>())
 	.response(event)
@@ -130,11 +293,13 @@ const sse = incompleteSse
 expectType<"GET">(sse.method);
 expectType<"sse">(sse.mode);
 expectType<typeof event>(sse.responses[200]);
-expectType<unknown>(sse.metadata.public);
+expectType<RouteMetadata>(sse.metadata);
 expectAssignable<SseRouteDeclaration>(sse);
 expectAssignable<Contract>(sse);
 
-// WebSocket routes build GET socket declarations after both message directions are declared.
+// WebSocket route builders
+
+// Requires both message directions and excludes HTTP/SSE APIs.
 const incompleteSocket = route.ws("/socket").clientMessages(clientMessage);
 expectNotAssignable<WebSocketRouteDeclaration>(incompleteSocket);
 expectNotAssignable<Contract>(incompleteSocket);
@@ -142,16 +307,63 @@ expectError(incompleteSocket.body(event));
 expectError(incompleteSocket.headers({ authorization: schemaType<string>() }));
 expectError(incompleteSocket.response(event));
 expectError(incompleteSocket.responses({ 200: event }));
+expectError(incompleteSocket.clientMessages(clientMessage));
 
+// Preserves WebSocket message inference and widens route metadata.
 const socket = incompleteSocket
 	.params(schemaType<{ roomId: string }>())
 	.serverMessages(serverMessage)
-	.withOpenApi({ summary: "Join socket" });
+	.withMetadata({ public: true });
 
 expectType<"GET">(socket.method);
 expectType<"webSocket">(socket.mode);
 expectType<typeof clientMessage>(socket.messages.client);
 expectType<typeof serverMessage>(socket.messages.server);
-expectType<string | undefined>(socket.openApi.summary);
+expectType<RouteMetadata>(socket.metadata);
 expectAssignable<WebSocketRouteDeclaration>(socket);
 expectAssignable<Contract>(socket);
+expectError(incompleteSocket.withOpenApi({ summary: "Join socket" }));
+
+// Supports either message declaration order.
+const socketServerFirst = route
+	.ws("/socket-server-first")
+	.serverMessages(serverMessage)
+	.clientMessages(clientMessage)
+	.jsonQuery(input);
+expectAssignable<WebSocketRouteDeclaration>(socketServerFirst);
+expectError(socketServerFirst.query(input));
+
+// Rejects duplicate server message declarations.
+const socketServerDuplicate = route
+	.ws("/socket-server-duplicate")
+	.serverMessages(serverMessage);
+expectError(socketServerDuplicate.serverMessages(serverMessage));
+
+// Allows each WebSocket request setter and message direction only once.
+const completeSocket = route
+	.ws("/complete-socket")
+	.query(input)
+	.params(schemaType<{ roomId: string }>())
+	.requestKeys({ title: "query", roomId: "params" })
+	.withMetadata({ public: true })
+	.clientMessages(clientMessage)
+	.serverMessages(serverMessage);
+expectAssignable<WebSocketRouteDeclaration>(completeSocket);
+expectAssignable<Contract>(completeSocket);
+expectError(completeSocket.query(input));
+expectError(completeSocket.jsonQuery(input));
+expectError(completeSocket.params(input));
+expectError(completeSocket.requestKeys({ title: "query" }));
+expectError(completeSocket.withMetadata({ public: false }));
+expectError(completeSocket.withOpenApi({ summary: "socket" }));
+expectError(completeSocket.clientMessages(clientMessage));
+expectError(completeSocket.serverMessages(serverMessage));
+expectError(completeSocket.response(event));
+expectError(completeSocket.streamResponse(200, event));
+expectError(completeSocket.body(event));
+expectError(completeSocket.headers({ authorization: input }));
+
+// Client-only and server-only builders remain incomplete.
+const serverOnlySocket = route.ws("/server-only").serverMessages(serverMessage);
+expectNotAssignable<WebSocketRouteDeclaration>(serverOnlySocket);
+expectNotAssignable<Contract>(serverOnlySocket);

@@ -1,6 +1,5 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type {
-	OpenApiRouteOptions,
 	RouteFactoryOptions,
 	RouteMetadata,
 } from "../contract/contract.ts";
@@ -100,13 +99,6 @@ type WebSocketRequestSetters<
 				withMetadata(
 					metadata: RouteMetadata,
 				): WebSocketBuilder<TRequest, TUsed | "withMetadata", TMessages>;
-			}) &
-	("withOpenApi" extends TUsed
-		? { openApi: OpenApiRouteOptions }
-		: {
-				withOpenApi(
-					openApi: OpenApiRouteOptions,
-				): WebSocketBuilder<TRequest, TUsed | "withOpenApi", TMessages>;
 			});
 
 export type WebSocketBuilder<
