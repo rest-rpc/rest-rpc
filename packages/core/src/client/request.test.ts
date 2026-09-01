@@ -873,10 +873,20 @@ describe("ApiClient requests", () => {
 		);
 	});
 
-	it("rejects flat input when route keys could not be resolved", () => {
-		assert.throws(
-			() => route.post("/opaque").body(type<{ title: string }>()).response(204),
-			/Could not resolve request keys for body schema on POST \/opaque/,
+	it("rejects flat input when route keys could not be resolved", async () => {
+		const client = initClient(
+			{
+				opaque: route
+					.post("/opaque")
+					.body(type<{ title: string }>())
+					.response(204),
+			},
+			{ baseUrl: "https://api.test" },
+		);
+
+		await assert.rejects(
+			() => client.opaque.fetch({ title: "created" }),
+			/Unknown request key "title" for POST \/opaque/,
 		);
 	});
 

@@ -188,20 +188,25 @@ expectType<"customBody">(mixedResponses.responses[203].schema.kind);
 expectType<typeof unauthorized>(mixedResponses.responses[203].schema.schema);
 expectAssignable<HttpRouteDeclaration>(mixedResponses);
 
-// Disables request configuration after an HTTP response is declared.
-const responseOnly = route.get("/response-only").customResponse(200, {
-	contentType: "text/plain",
-	schema: todo,
-});
-
-expectError(responseOnly.body(input));
-expectError(responseOnly.query(input));
-expectError(responseOnly.jsonQuery(input));
-expectError(responseOnly.params(input));
-expectError(responseOnly.headers({ authorization: input }));
-expectError(responseOnly.requestKeys({ id: "params" }));
-expectError(responseOnly.withMetadata({ auth: true }));
-expectError(responseOnly.withOpenApi({ summary: "Response only" }));
+// Keeps unused request and route configuration available after a response.
+const configuredAfterResponse = route
+	.post("/configured-after-response")
+	.customResponse(200, { contentType: "text/plain", schema: todo })
+	.body(input)
+	.jsonQuery(schemaType<{ search: string }>())
+	.params(schemaType<{ id: string }>())
+	.headers({ authorization: input })
+	.requestKeys({ title: "body", id: "params" })
+	.withMetadata({ auth: true })
+	.withOpenApi({ summary: "Configured after response" })
+	.streamResponse(201, event);
+expectType<typeof input>(configuredAfterResponse.request.body);
+expectType<"jsonQuery">(configuredAfterResponse.request.query.kind);
+expectType<typeof todo>(configuredAfterResponse.responses[200].schema);
+expectType<typeof event>(configuredAfterResponse.responses[201].schema);
+expectType<RouteMetadata>(configuredAfterResponse.metadata);
+expectType<OpenApiRouteOptions>(configuredAfterResponse.openApi);
+expectAssignable<HttpRouteDeclaration>(configuredAfterResponse);
 
 // Keeps HTTP body variants and query variants mutually exclusive.
 const bodyUsed = route.post("/body-used").body(input);
@@ -215,7 +220,7 @@ expectError(
 expectError(route.get("/query-used").query(input).jsonQuery(input));
 expectError(route.get("/json-query-used").jsonQuery(input).query(input));
 
-// Allows each HTTP request setter only once before response completion.
+// Allows each HTTP request setter only once regardless of response order.
 const singleUseHttpConfigured = route
 	.get("/single-use-http")
 	.query(input)

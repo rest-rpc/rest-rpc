@@ -37,12 +37,10 @@ describe("HTTP route builder runtime", () => {
 		assert.equal(declaration.responses?.[201], schema);
 	});
 
-	it("allows opaque flattened request schemas until their keys are declared", () => {
+	it("allows opaque request schemas and preserves explicitly declared keys", () => {
 		const opaque = route.post("/items").body(type<{ title: string }>());
-		assert.throws(
-			() => opaque.response(201, type<{ id: string }>()),
-			/requestKeys before finalizing this route/,
-		);
+		assert.doesNotThrow(() => opaque.response(201, type<{ id: string }>()));
+		assert.deepEqual(opaque.request?.keys, {});
 
 		const declaration = route
 			.post("/items")
@@ -52,6 +50,13 @@ describe("HTTP route builder runtime", () => {
 
 		assert.doesNotThrow(() => declaration.response(204));
 		assert.deepEqual(declaration.request?.keys, { title: "body" });
+
+		const responseFirst = route
+			.post("/response-first")
+			.response(200)
+			.body(type<{ title: string }>());
+		assert.doesNotThrow(() => responseFirst.response(201));
+		assert.deepEqual(responseFirst.request?.keys, {});
 	});
 
 	it("resolves flattened request keys while building routes", () => {

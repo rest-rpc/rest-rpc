@@ -233,28 +233,6 @@ export class BaseRouteBuilder {
 		}
 	}
 
-	protected assertRequestKeysComplete() {
-		const request = this.request;
-		if (!request || request.flattenKeys === false) return;
-
-		for (const { segment, keys } of this.requestKeyDeclarations()) {
-			if (
-				keys === undefined &&
-				this.explicitRequestKeysFor(segment).length === 0
-			) {
-				throw new Error(
-					`Could not resolve request keys for ${segment} schema on ${this.method} ${this.path}. Disable flattened request keys or call requestKeys before finalizing this route.`,
-				);
-			}
-		}
-	}
-
-	protected explicitRequestKeysFor(segment: RequestSegment) {
-		return Object.entries(this.#explicitRequestKeys ?? {}).filter(
-			([, value]) => value === segment,
-		);
-	}
-
 	protected recalculateRequestKeys() {
 		const request = this.request;
 		if (!request || request.flattenKeys === false) return;
