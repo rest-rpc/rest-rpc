@@ -24,6 +24,8 @@ import type {
 import type {
 	JsonQuery,
 	RequestKeys,
+	RequestParamsSchema,
+	RequestQuerySchema,
 	RequestSchemaRecord,
 } from "../contract/request.ts";
 import type {
@@ -306,7 +308,7 @@ type HttpBuilder<
 	("query" extends TUsed
 		? EmptyObject
 		: {
-				query<const TSchema extends StandardSchemaV1>(
+				query<const TSchema extends RequestQuerySchema>(
 					schema: TSchema,
 				): HttpBuilder<
 					TRoute,
@@ -326,7 +328,7 @@ type HttpBuilder<
 	("params" extends TUsed
 		? EmptyObject
 		: {
-				params<const TSchema extends StandardSchemaV1>(
+				params<const TSchema extends RequestParamsSchema>(
 					schema: TSchema,
 				): HttpBuilder<
 					TRoute,

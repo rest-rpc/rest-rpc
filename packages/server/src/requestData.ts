@@ -6,8 +6,18 @@ import {
 	isMultipartBody,
 } from "@rest-rpc/core/contract";
 
-const flattenObjectSegment = (value: unknown) =>
-	value as Record<string, unknown> | undefined;
+const flattenObjectSegment = (
+	route: RouteDeclaration,
+	segment: "body" | "query" | "params" | "headers",
+	value: unknown,
+) => {
+	if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+		return value as Record<string, unknown>;
+	}
+	throw new Error(
+		`Cannot flatten ${segment} output for ${route.method} ${route.path}: expected a non-null object, received ${Array.isArray(value) ? "an array" : typeof value}.`,
+	);
+};
 
 const flattenQuerySegment = (
 	route: RouteDeclaration,
@@ -15,11 +25,20 @@ const flattenQuerySegment = (
 ) =>
 	isJsonQuery(route.request?.query)
 		? { query: request.query }
-		: flattenObjectSegment(request.query);
+		: route.request?.query
+			? { ...flattenObjectSegment(route, "query", request.query) }
+			: undefined;
 
-const flattenPathAndHeaders = (request: Record<string, unknown>) => ({
-	...flattenObjectSegment(request.params),
-	...flattenObjectSegment(request.headers),
+const flattenPathAndHeaders = (
+	route: RouteDeclaration,
+	request: Record<string, unknown>,
+) => ({
+	...(route.request?.params
+		? flattenObjectSegment(route, "params", request.params)
+		: {}),
+	...(route.request?.headers
+		? flattenObjectSegment(route, "headers", request.headers)
+		: {}),
 });
 
 export const flattenRequestData = (
@@ -34,9 +53,11 @@ export const flattenRequestData = (
 				isFormBody(route.request?.body) ||
 				isMultipartBody(route.request?.body)
 				? { body: request.body }
-				: flattenObjectSegment(request.body)
+				: route.request?.body
+					? flattenObjectSegment(route, "body", request.body)
+					: undefined
 			: {}),
 		...flattenQuerySegment(route, request),
-		...flattenPathAndHeaders(request),
+		...flattenPathAndHeaders(route, request),
 	};
 };

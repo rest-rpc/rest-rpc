@@ -1,6 +1,8 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type {
 	JsonQuery,
+	RequestParamsSchema,
+	RequestQuerySchema,
 	RequestBodySchema,
 	RequestKeys,
 	RequestSchemaRecord,
@@ -50,8 +52,8 @@ export type RouteMode = "http" | "sse" | "webSocket";
 /** Canonical request declaration nested on a route. */
 export type RouteRequestDeclaration = {
 	body?: RequestBodySchema;
-	query?: StandardSchemaV1 | JsonQuery;
-	params?: StandardSchemaV1;
+	query?: RequestQuerySchema | JsonQuery;
+	params?: RequestParamsSchema;
 	headers?: RequestSchemaRecord;
 	keys?: RequestKeys;
 	flattenKeys?: boolean;

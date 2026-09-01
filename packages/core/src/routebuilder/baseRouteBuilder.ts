@@ -15,7 +15,12 @@ import type {
 	RouteRequestDeclaration,
 } from "../contract/contract.ts";
 import { getPathParamNames } from "../contract/path.ts";
-import type { RequestKeys, RequestSegment } from "../contract/request.ts";
+import type {
+	RequestKeys,
+	RequestParamsSchema,
+	RequestQuerySchema,
+	RequestSegment,
+} from "../contract/request.ts";
 import {
 	isJsonQuery,
 	jsonQuery as declareJsonQuery,
@@ -262,7 +267,7 @@ export class BaseRouteBuilder {
 		request.keys = keys;
 	}
 
-	query(schema: StandardSchemaV1) {
+	query(schema: RequestQuerySchema) {
 		this.requestForWrite().query = schema;
 		this.recalculateRequestKeys();
 		return this;
@@ -274,7 +279,7 @@ export class BaseRouteBuilder {
 		return this;
 	}
 
-	params(schema: StandardSchemaV1) {
+	params(schema: RequestParamsSchema) {
 		this.requestForWrite().params = schema;
 		this.recalculateRequestKeys();
 		return this;

@@ -5,6 +5,10 @@ import type {
 	RouteMetadata,
 } from "../contract/contract.ts";
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
+import type {
+	RequestParamsSchema,
+	RequestQuerySchema,
+} from "../contract/request.ts";
 import {
 	BaseRouteBuilder,
 	type EmptyObject,
@@ -39,7 +43,7 @@ type SseRequestSetters<
 > = ("query" extends TUsed
 	? EmptyObject
 	: {
-			query<const TSchema extends StandardSchemaV1>(
+			query<const TSchema extends RequestQuerySchema>(
 				schema: TSchema,
 			): SseBuilder<
 				WithRequest<TRequest, "query", TSchema>,
@@ -57,7 +61,7 @@ type SseRequestSetters<
 	("params" extends TUsed
 		? EmptyObject
 		: {
-				params<const TSchema extends StandardSchemaV1>(
+				params<const TSchema extends RequestParamsSchema>(
 					schema: TSchema,
 				): SseBuilder<
 					WithRequest<TRequest, "params", TSchema>,

@@ -12,6 +12,20 @@ export type RequestSegment = "body" | "query" | "params" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
 export const REQUEST_CONTEXT_KEY = "context";
 
+type RequestScalar = string | number | boolean;
+
+/** An ordinary query schema whose wire input contains scalar values. */
+export type RequestQuerySchema = StandardSchemaV1<
+	Record<string, RequestScalar | undefined>,
+	unknown
+>;
+
+/** An ordinary params schema whose wire input contains scalar values. */
+export type RequestParamsSchema = StandardSchemaV1<
+	Record<string, RequestScalar>,
+	unknown
+>;
+
 export type RequestSchemaRecord = Record<string, StandardSchemaV1>;
 
 /**

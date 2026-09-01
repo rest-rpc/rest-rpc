@@ -54,11 +54,11 @@ export type RequestSegments = {
 };
 
 type SegmentValidationResult = {
-	data: Record<string, unknown>;
+	data: unknown;
 	errors: readonly StandardSchemaV1.Issue[];
 };
 
-type RequestObjectSchema = StandardSchemaV1<unknown, Record<string, unknown>>;
+type RequestObjectSchema = StandardSchemaV1<unknown, unknown>;
 
 const parseJsonQuery = (value: unknown) => {
 	if (Array.isArray(value)) value = value[0];
@@ -311,12 +311,16 @@ const getValidatedRequestData = (
 						isCustomBody(request.body) ||
 						isFormBody(request.body) ||
 						isMultipartBody(request.body)
-							? body.data.body
+							? (body.data as Record<string, unknown>).body
 							: body.data,
 				}
 			: {}),
 		...(request?.query
-			? { query: isJsonQuery(request.query) ? query.data.query : query.data }
+			? {
+					query: isJsonQuery(request.query)
+						? (query.data as Record<string, unknown>).query
+						: query.data,
+				}
 			: {}),
 		...(request?.params ? { params: params.data } : {}),
 		...(request?.headers ? { headers: headers.data } : {}),

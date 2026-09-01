@@ -3,7 +3,12 @@ import type {
 	RouteFactoryOptions,
 	RouteMetadata,
 } from "../contract/contract.ts";
-import type { JsonQuery, RequestKeys } from "../contract/request.ts";
+import type {
+	JsonQuery,
+	RequestKeys,
+	RequestParamsSchema,
+	RequestQuerySchema,
+} from "../contract/request.ts";
 import type { WebSocketMessageSchemas } from "../contract/websocketMessages.ts";
 import {
 	BaseRouteBuilder,
@@ -108,7 +113,7 @@ type WebSocketRequestSetters<
 > = ("query" extends TUsed
 	? EmptyObject
 	: {
-			query<const TSchema extends StandardSchemaV1>(
+			query<const TSchema extends RequestQuerySchema>(
 				schema: TSchema,
 			): WebSocketBuilder<
 				WithRequest<TRequest, "query", TSchema>,
@@ -126,7 +131,7 @@ type WebSocketRequestSetters<
 	("params" extends TUsed
 		? EmptyObject
 		: {
-				params<const TSchema extends StandardSchemaV1>(
+				params<const TSchema extends RequestParamsSchema>(
 					schema: TSchema,
 				): WebSocketBuilder<
 					WithRequest<TRequest, "params", TSchema>,

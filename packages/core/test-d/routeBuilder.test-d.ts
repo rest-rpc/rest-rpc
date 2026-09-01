@@ -28,6 +28,12 @@ const typedResponseHeaders = {
 };
 const factoryHeaders = { authorization: schemaType<string>() };
 const localRequestHeader = schemaType<number>();
+const scalarQuery = schemaType<{
+	search?: string;
+	page: number;
+	enabled: boolean;
+}>();
+const scalarParams = schemaType<{ accountId: string; version: number }>();
 
 const apiRoute = route.with({
 	pathPrefix: "/api",
@@ -126,6 +132,25 @@ expectType<typeof input>(customRequestBodySchema.request.body.schema);
 const search = route.get("/search").jsonQuery(input).streamResponse(200, todo);
 expectType<"jsonQuery">(search.request.query.kind);
 expectType<"stream">(search.responses[200].kind);
+
+// Ordinary params and query schemas accept scalar wire inputs.
+const scalarRequest = route
+	.get("/scalar/:accountId")
+	.query(scalarQuery)
+	.params(scalarParams)
+	.response(200, todo);
+expectType<typeof scalarQuery>(scalarRequest.request.query);
+expectType<typeof scalarParams>(scalarRequest.request.params);
+
+// Structured ordinary wire inputs must use jsonQuery instead.
+expectError(
+	route
+		.get("/nested-query")
+		.query(schemaType<{ filters: { tags: string[] } }>()),
+);
+expectError(
+	route.get("/array-param/:ids").params(schemaType<{ ids: string[] }>()),
+);
 
 // Preserves response body, custom stream, and typed response-header inference.
 const typedResponses = route

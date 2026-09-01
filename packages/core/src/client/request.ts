@@ -219,12 +219,7 @@ const serializeParams = (
 	params: Record<string, unknown> | undefined,
 ) => {
 	return replacePathParams(route.path, (key) => {
-		const value = stringifyRequestValue(route, "params", key, params?.[key]);
-		if (value === undefined) {
-			throw new Error(
-				`Invalid params key "${key}" for ${route.method} ${route.path}. Expected string, number, or boolean.`,
-			);
-		}
+		const value = String(params?.[key]);
 		return encodeURIComponent(value);
 	});
 };
@@ -233,7 +228,9 @@ const serializeQuery = (route: RouteDeclaration, query: unknown) => {
 	const entries = Object.entries(query ?? {}).flatMap(([key, value]) => {
 		const stringValue = isJsonQuery(route.request?.query)
 			? stringifyJsonQueryValue(route, value)
-			: stringifyRequestValue(route, "query", key, value, true);
+			: value === undefined
+				? undefined
+				: String(value);
 		return stringValue === undefined ? [] : [[key, stringValue]];
 	});
 

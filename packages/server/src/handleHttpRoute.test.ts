@@ -79,7 +79,7 @@ describe("handleHttpRoute", () => {
 				path: "/todos",
 				request: {
 					flattenKeys: false,
-					query: z.object({ q: z.string() }),
+					query: z.object({ q: z.string() }).transform(() => ["todo"]),
 				},
 				responses: {
 					204: noBody(),
@@ -87,7 +87,7 @@ describe("handleHttpRoute", () => {
 			},
 			(request) => {
 				assert.deepEqual(request, {
-					query: { q: "todos" },
+					query: ["todo"],
 					context: {},
 				});
 			},
