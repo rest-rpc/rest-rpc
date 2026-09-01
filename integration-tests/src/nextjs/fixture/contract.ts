@@ -1,4 +1,4 @@
-import { noBody } from "@rest-rpc/core";
+import { route } from "@rest-rpc/core";
 import z from "zod";
 
 const itemSchema = z.object({
@@ -7,45 +7,21 @@ const itemSchema = z.object({
 });
 
 export const nextFixtureContract = {
-	health: {
-		method: "GET",
-		path: "/api/health",
-		responses: {
-			204: noBody(),
-		},
-	},
+	health: route.get("/api/health").response(204),
 	items: {
-		get: {
-			method: "GET",
-			path: "/api/items/:id",
-			request: {
-				params: z.object({ id: z.string() }),
-			},
-			responses: {
-				200: itemSchema,
-			},
-		},
-		create: {
-			method: "POST",
-			path: "/api/items",
-			request: {
-				body: z.object({ title: z.string() }),
-			},
-			responses: {
-				201: itemSchema,
-			},
-		},
+		get: route
+			.get("/api/items/:id")
+			.params(z.object({ id: z.string() }))
+			.response(200, itemSchema),
+		create: route
+			.post("/api/items")
+			.body(z.object({ title: z.string() }))
+			.response(201, itemSchema),
 	},
 	targeted: {
-		get: {
-			method: "GET",
-			path: "/api/targeted/items/:id",
-			request: {
-				params: z.object({ id: z.string() }),
-			},
-			responses: {
-				200: itemSchema,
-			},
-		},
+		get: route
+			.get("/api/targeted/items/:id")
+			.params(z.object({ id: z.string() }))
+			.response(200, itemSchema),
 	},
 } as const;

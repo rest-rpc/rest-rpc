@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { initClient } from "@rest-rpc/core";
-import { REQUEST_CONTEXT_KEY, router } from "@rest-rpc/core/contract";
+import { REQUEST_CONTEXT_KEY } from "@rest-rpc/core/contract";
 import type { ImplementationShape } from "@rest-rpc/server";
 import { router as createFetchRouter } from "@rest-rpc/fetch";
 import z from "zod";
