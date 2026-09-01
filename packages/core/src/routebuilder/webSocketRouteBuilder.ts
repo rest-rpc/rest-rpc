@@ -11,7 +11,6 @@ import type {
 	EmptyObject,
 	Merge,
 	OptionValue,
-	PathFor,
 	ProtocolRequestFor,
 	Simplify,
 	WithRequest,
@@ -59,7 +58,6 @@ export type WebSocketCompletion = {
 };
 
 type WebSocketRequestSetters<
-	TPath extends string,
 	TRequest,
 	TMetadata,
 	TOpenApi,
@@ -71,7 +69,6 @@ type WebSocketRequestSetters<
 			query<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): WebSocketBuilder<
-				TPath,
 				WithRequest<TRequest, "query", TSchema>,
 				TMetadata,
 				TOpenApi,
@@ -81,7 +78,6 @@ type WebSocketRequestSetters<
 			jsonQuery<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): WebSocketBuilder<
-				TPath,
 				WithRequest<TRequest, "query", JsonQuery<TSchema>>,
 				TMetadata,
 				TOpenApi,
@@ -95,7 +91,6 @@ type WebSocketRequestSetters<
 				pathParams<const TSchema extends StandardSchemaV1>(
 					schema: TSchema,
 				): WebSocketBuilder<
-					TPath,
 					WithRequest<TRequest, "pathParams", TSchema>,
 					TMetadata,
 					TOpenApi,
@@ -109,25 +104,10 @@ type WebSocketRequestSetters<
 				requestKeys<const TKeys extends RequestKeys>(
 					keys: TKeys,
 				): WebSocketBuilder<
-					TPath,
 					WithRequest<TRequest, "keys", TKeys>,
 					TMetadata,
 					TOpenApi,
 					TUsed | "requestKeys",
-					TMessages
-				>;
-			}) &
-	("flattenRequestKeys" extends TUsed
-		? EmptyObject
-		: {
-				flattenRequestKeys<const TFlatten extends boolean>(
-					value: TFlatten,
-				): WebSocketBuilder<
-					TPath,
-					WithRequest<TRequest, "flattenKeys", TFlatten>,
-					TMetadata,
-					TOpenApi,
-					TUsed | "flattenRequestKeys",
 					TMessages
 				>;
 			}) &
@@ -139,9 +119,8 @@ type WebSocketRequestSetters<
 					(<const TLocal extends RouteMetadata>(
 						metadata: TLocal,
 					) => WebSocketBuilder<
-						TPath,
 						TRequest,
-						Merge<TMetadata, TLocal>,
+						RouteMetadata,
 						TOpenApi,
 						TUsed | "metadata",
 						TMessages
@@ -155,7 +134,6 @@ type WebSocketRequestSetters<
 					(<const TLocal extends OpenApiRouteOptions>(
 						openApi: TLocal,
 					) => WebSocketBuilder<
-						TPath,
 						TRequest,
 						TMetadata,
 						Merge<TOpenApi, TLocal>,
@@ -165,7 +143,6 @@ type WebSocketRequestSetters<
 			});
 
 export type WebSocketBuilder<
-	TPath extends string,
 	TRequest,
 	TMetadata,
 	TOpenApi,
@@ -174,7 +151,7 @@ export type WebSocketBuilder<
 > = Simplify<
 	{
 		readonly method: "GET";
-		readonly path: TPath;
+		readonly path: string;
 		readonly mode: "webSocket";
 	} & (keyof TRequest extends never
 		? { request?: never }
@@ -188,7 +165,6 @@ export type WebSocketBuilder<
 					clientMessages<const TSchema extends WebSocketMessageDeclaration>(
 						schema: TSchema,
 					): WebSocketBuilder<
-						TPath,
 						TRequest,
 						TMetadata,
 						TOpenApi,
@@ -202,7 +178,6 @@ export type WebSocketBuilder<
 					serverMessages<const TSchema extends WebSocketMessageDeclaration>(
 						schema: TSchema,
 					): WebSocketBuilder<
-						TPath,
 						TRequest,
 						TMetadata,
 						TOpenApi,
@@ -210,21 +185,10 @@ export type WebSocketBuilder<
 						Merge<TMessages, { server: TSchema }>
 					>;
 				}) &
-		WebSocketRequestSetters<
-			TPath,
-			TRequest,
-			TMetadata,
-			TOpenApi,
-			TUsed,
-			TMessages
-		>
+		WebSocketRequestSetters<TRequest, TMetadata, TOpenApi, TUsed, TMessages>
 >;
 
-export type WebSocketBuilderFor<
-	TOptions,
-	TPath extends string,
-> = WebSocketBuilder<
-	PathFor<TOptions, TPath>,
+export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<
 	ProtocolRequestFor<TOptions>,
 	OptionValue<TOptions, "metadata", EmptyObject>,
 	OptionValue<TOptions, "openApi", EmptyObject>

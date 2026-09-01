@@ -151,10 +151,24 @@ const apiRoute = route.with({
 		responses: {
 			500: errorSchema,
 		},
+		flattenRequestKeys: false,
+		strictStatusCodes: true,
 });
 
 export const api = {
 	${groupEntries}
+};
+
+type BenchmarkRoute = typeof api.group0.route0;
+export type BenchmarkOptionTypes = {
+	request: BenchmarkRoute extends { request: infer TRequest }
+		? TRequest
+		: never;
+	strictStatusCodes: BenchmarkRoute extends {
+		strictStatusCodes: infer TStrictStatusCodes;
+	}
+		? TStrictStatusCodes
+		: never;
 };
 
 export type Api = typeof api;

@@ -8,45 +8,34 @@ import type {
 } from "../contract/contract.ts";
 import type { RequestSchemaRecord } from "../contract/request.ts";
 
-export type Simplify<T> = { [K in keyof T]: T[K] };
+export type Simplify<T> = T;
 export type EmptyObject = Record<never, never>;
-export type Merge<TCommon, TLocal> = Simplify<
-	Omit<TCommon, keyof TLocal> & TLocal
->;
-export type JoinPath<
-	TPrefix extends string,
-	TPath extends string,
-> = `${TPrefix}${TPath}`;
+export type Merge<TCommon, TLocal> = TCommon & TLocal;
 export type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
 	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
-export type PathFor<TOptions, TPath extends string> = TOptions extends {
-	pathPrefix: infer TPrefix extends string;
+export type RequestFor<TOptions> = (TOptions extends {
+	headers: infer THeaders extends RequestSchemaRecord;
 }
-	? JoinPath<TPrefix, TPath>
-	: TPath;
-export type RequestFor<TOptions> = Simplify<
-	(TOptions extends { headers: infer THeaders extends RequestSchemaRecord }
-		? { headers: THeaders }
-		: EmptyObject) &
-		(TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
-			? { flattenKeys: TFlatten }
-			: EmptyObject)
->;
+	? { headers: THeaders }
+	: EmptyObject) &
+	(TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
+		? { flattenKeys: TFlatten }
+		: EmptyObject);
 export type StrictStatusCodesFor<TOptions> = TOptions extends {
 	strictStatusCodes: infer TStrictStatusCodes extends boolean;
 }
 	? TStrictStatusCodes
 	: undefined;
-export type ProtocolRequestFor<TOptions> = Simplify<
-	TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
-		? { flattenKeys: TFlatten }
-		: EmptyObject
->;
+export type ProtocolRequestFor<TOptions> = TOptions extends {
+	flattenRequestKeys: infer TFlatten extends boolean;
+}
+	? { flattenKeys: TFlatten }
+	: EmptyObject;
 export type WithRequest<
 	TRequest,
 	TKey extends keyof RouteRequestDeclaration,
 	TValue,
-> = Simplify<Omit<TRequest, TKey> & Record<TKey, TValue>>;
+> = Omit<TRequest, TKey> & Record<TKey, TValue>;
 
 export const joinPathPrefix = (prefix: string, path: string) =>
 	`${prefix}${path}`;

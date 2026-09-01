@@ -41,9 +41,9 @@ const create = apiRoute
 	.openApi({ summary: "Create todo" });
 
 expectType<"POST">(create.method);
-expectType<"/api/todos">(create.path);
-expectType<true>(create.metadata.auth);
-expectType<"todos:create">(create.metadata.permission);
+expectType<string>(create.path);
+expectType<unknown>(create.metadata.auth);
+expectType<unknown>(create.metadata.permission);
 expectType<typeof input>(create.request.body);
 expectType<typeof todo>(create.responses[201]);
 expectType<typeof unauthorized>(create.responses[401]);
@@ -66,6 +66,17 @@ expectAssignable<HttpRouteDeclaration>(route.get("/health").response(204));
 expectAssignable<HttpRouteDeclaration>(
 	route.get("/health").response(204, undefined),
 );
+
+// Duplicate response status codes are allowed, but will throw at runtime.
+// this is a tradeoff where guarding this at type level is significantly more
+// expensive for tsc, and the rare case where someone accidentally creates a
+// duplicate response status code does not justify increased compile time for all other cases.
+const duplicateResponseStatus = route
+	.get("/health")
+	.response(200, todo)
+	.response(200, event);
+
+expectAssignable<HttpRouteDeclaration>(duplicateResponseStatus);
 expectError(route.get("/health").response(todo));
 expectError(apiRoute.post("/todos").responses({ 201: todo }));
 
@@ -84,7 +95,7 @@ const sse = incompleteSse
 expectType<"GET">(sse.method);
 expectType<"sse">(sse.mode);
 expectType<typeof event>(sse.responses[200]);
-expectType<true>(sse.metadata.public);
+expectType<unknown>(sse.metadata.public);
 expectAssignable<SseRouteDeclaration>(sse);
 expectAssignable<Contract>(sse);
 

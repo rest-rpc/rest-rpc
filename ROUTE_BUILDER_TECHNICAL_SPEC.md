@@ -269,13 +269,13 @@ route
 
 Repeating the same literal status is a type error and a runtime error when types are bypassed.
 
-Every HTTP response status is explicit. `.response(status)` uses the existing `noBody()` representation, while `.response(status, schema)` records the supplied response declaration. Either form may be followed by additional distinct statuses.
+Every HTTP response status is explicit. `.response(status)` uses the existing `noBody()` representation, while `.response(status, schema)` records the supplied response declaration. The type-level builder permits repeated statuses to avoid carrying response-status state through every builder step, but runtime construction rejects repeated local statuses. A local response may still replace a common response at the same status.
 
 The builder never accepts the `noBody()` sentinel: absence of a request body means no body, and `.response(status)` means an empty response body. The sentinel remains only in the produced canonical declaration where a response-map value is required.
 
 Regular builder methods do not accept specialized helper values. Use `.formBody()`, `.multipartBody()`, `.customBody()`, `.jsonQuery()`, `.customResponse()`, `.streamResponse()`, or `.customStreamResponse()` directly. Standalone helpers remain available for canonical inline declarations.
 
-Response maps remain part of the canonical inline declaration format. Every builder response method writes exactly one `status -> declaration` entry. The numeric status remains the sole response discriminator for client types and runtime handling. Two route-local declarations may not use the same status, regardless of response kind. A route-local declaration may replace a common response at the same status because common statuses do not consume the local used-status typestate.
+Response maps remain part of the canonical inline declaration format. Every builder response method writes exactly one `status -> declaration` entry. The numeric status remains the sole response discriminator for client types and runtime handling. Repeated route-local declarations may not use the same status at runtime, regardless of response kind. The type-level builder intentionally does not reject them, keeping response-status tracking out of the builder typestate. A route-local declaration may replace a common response at the same status because common responses are not local duplicates.
 
 Advanced composition belongs in the supplied values:
 

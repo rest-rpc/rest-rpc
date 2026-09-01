@@ -37,6 +37,34 @@ const queryApi = {
 const queryTq = createTanstackQueryHelpers(queryApi, {
 	baseUrl: "https://example.test",
 });
+
+const finalizedQueryApi = {
+	test: route
+		.get("/test/:id")
+		.pathParams(schemaType<{ id: string }>())
+		.response(200, schemaType<{ id: string; title: string }>())
+		.finalize(),
+};
+const finalizedQueryTq = createTanstackQueryHelpers(finalizedQueryApi, {
+	baseUrl: "https://example.test",
+});
+type FinalizedQueryOptionsParameters = Parameters<
+	typeof finalizedQueryTq.test.queryOptions
+>;
+expectType<{ id: string }>(
+	undefined as unknown as Extract<
+		FinalizedQueryOptionsParameters[0],
+		{ id: string }
+	>,
+);
+
+type FinalizedQueryData = RouteQueryData<typeof finalizedQueryApi.test>;
+expectType<{
+	status: 200;
+	body: { id: string; title: string };
+	headers: Headers;
+}>(undefined as unknown as FinalizedQueryData);
+
 expectAssignable<TanstackQueryHelpersFor<typeof queryApi>>(queryTq);
 expectAssignable<CreateTanstackQueryHelpersOptions>({
 	baseUrl: "https://example.test",
@@ -134,9 +162,9 @@ expectAssignable<RouteQueryError<typeof queryApi.todos.get>>({
 const strictStatusApi = {
 	todos: {
 		get: route
+			.with({ strictStatusCodes: true })
 			.get("/todos/:id")
 			.pathParams(schemaType<{ id: string }>())
-			.strictStatusCodes(true)
 			.response(200, schemaType<{ id: string; title: string }>())
 			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
 	},

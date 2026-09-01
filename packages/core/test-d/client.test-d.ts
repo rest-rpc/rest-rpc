@@ -82,8 +82,8 @@ expectType<Promise<Array<{ id: string; title: string }>>>(
 const groupedRequestApi = {
 	todos: {
 		create: route
+			.with({ flattenRequestKeys: false })
 			.post("/todos/:accountId")
-			.flattenRequestKeys(false)
 			.pathParams(z.object({ accountId: z.string() }))
 			.query(z.object({ notify: z.boolean() }))
 			.body(z.object({ title: z.string() }))
@@ -220,9 +220,9 @@ responseClient.todos.create
 const strictResponseApi = {
 	todos: {
 		get: route
+			.with({ strictStatusCodes: true })
 			.get("/todos/:id")
 			.pathParams(z.object({ id: z.string() }))
-			.strictStatusCodes(true)
 			.response(200, todoSchema)
 			.response(404, z.object({ code: z.literal("not_found") })),
 	},

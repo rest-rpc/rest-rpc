@@ -19,25 +19,13 @@ const assertStaticPathPrefix = (pathPrefix: string | undefined) => {
 };
 
 type RouteFactory<TOptions = undefined> = {
-	get<const TPath extends string>(
-		path: TPath,
-	): HttpBuilderFor<TOptions, "GET", TPath>;
-	post<const TPath extends string>(
-		path: TPath,
-	): HttpBuilderFor<TOptions, "POST", TPath>;
-	put<const TPath extends string>(
-		path: TPath,
-	): HttpBuilderFor<TOptions, "PUT", TPath>;
-	patch<const TPath extends string>(
-		path: TPath,
-	): HttpBuilderFor<TOptions, "PATCH", TPath>;
-	delete<const TPath extends string>(
-		path: TPath,
-	): HttpBuilderFor<TOptions, "DELETE", TPath>;
-	sse<const TPath extends string>(path: TPath): SseBuilderFor<TOptions, TPath>;
-	ws<const TPath extends string>(
-		path: TPath,
-	): WebSocketBuilderFor<TOptions, TPath>;
+	get(path: string): HttpBuilderFor<TOptions, "GET">;
+	post(path: string): HttpBuilderFor<TOptions, "POST">;
+	put(path: string): HttpBuilderFor<TOptions, "PUT">;
+	patch(path: string): HttpBuilderFor<TOptions, "PATCH">;
+	delete(path: string): HttpBuilderFor<TOptions, "DELETE">;
+	sse(path: string): SseBuilderFor<TOptions>;
+	ws(path: string): WebSocketBuilderFor<TOptions>;
 };
 
 const createFactory = (options: RouteFactoryOptions = {}) => {

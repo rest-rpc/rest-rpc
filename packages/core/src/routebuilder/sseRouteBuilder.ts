@@ -10,7 +10,6 @@ import type {
 	EmptyObject,
 	Merge,
 	OptionValue,
-	PathFor,
 	ProtocolRequestFor,
 	Simplify,
 	WithRequest,
@@ -37,7 +36,6 @@ class SseRouteBuilder extends BaseRouteBuilder {
 }
 
 type SseRequestSetters<
-	TPath extends string,
 	TRequest,
 	TMetadata,
 	TOpenApi,
@@ -49,7 +47,6 @@ type SseRequestSetters<
 			query<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): SseBuilder<
-				TPath,
 				WithRequest<TRequest, "query", TSchema>,
 				TMetadata,
 				TOpenApi,
@@ -59,7 +56,6 @@ type SseRequestSetters<
 			jsonQuery<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): SseBuilder<
-				TPath,
 				WithRequest<TRequest, "query", JsonQuery<TSchema>>,
 				TMetadata,
 				TOpenApi,
@@ -73,7 +69,6 @@ type SseRequestSetters<
 				pathParams<const TSchema extends StandardSchemaV1>(
 					schema: TSchema,
 				): SseBuilder<
-					TPath,
 					WithRequest<TRequest, "pathParams", TSchema>,
 					TMetadata,
 					TOpenApi,
@@ -87,25 +82,10 @@ type SseRequestSetters<
 				requestKeys<const TKeys extends RequestKeys>(
 					keys: TKeys,
 				): SseBuilder<
-					TPath,
 					WithRequest<TRequest, "keys", TKeys>,
 					TMetadata,
 					TOpenApi,
 					TUsed | "requestKeys",
-					TResponse
-				>;
-			}) &
-	("flattenRequestKeys" extends TUsed
-		? EmptyObject
-		: {
-				flattenRequestKeys<const TFlatten extends boolean>(
-					value: TFlatten,
-				): SseBuilder<
-					TPath,
-					WithRequest<TRequest, "flattenKeys", TFlatten>,
-					TMetadata,
-					TOpenApi,
-					TUsed | "flattenRequestKeys",
 					TResponse
 				>;
 			}) &
@@ -117,9 +97,8 @@ type SseRequestSetters<
 					(<const TLocal extends RouteMetadata>(
 						metadata: TLocal,
 					) => SseBuilder<
-						TPath,
 						TRequest,
-						Merge<TMetadata, TLocal>,
+						RouteMetadata,
 						TOpenApi,
 						TUsed | "metadata",
 						TResponse
@@ -133,7 +112,6 @@ type SseRequestSetters<
 					(<const TLocal extends OpenApiRouteOptions>(
 						openApi: TLocal,
 					) => SseBuilder<
-						TPath,
 						TRequest,
 						TMetadata,
 						Merge<TOpenApi, TLocal>,
@@ -143,7 +121,6 @@ type SseRequestSetters<
 			});
 
 export type SseBuilder<
-	TPath extends string,
 	TRequest,
 	TMetadata,
 	TOpenApi,
@@ -152,7 +129,7 @@ export type SseBuilder<
 > = Simplify<
 	{
 		readonly method: "GET";
-		readonly path: TPath;
+		readonly path: string;
 		readonly mode: "sse";
 	} & (keyof TRequest extends never
 		? { request?: never }
@@ -161,14 +138,13 @@ export type SseBuilder<
 			? {
 					response<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
-					): SseBuilder<TPath, TRequest, TMetadata, TOpenApi, TUsed, TSchema>;
+					): SseBuilder<TRequest, TMetadata, TOpenApi, TUsed, TSchema>;
 				}
 			: { responses: { 200: TResponse } }) &
-		SseRequestSetters<TPath, TRequest, TMetadata, TOpenApi, TUsed, TResponse>
+		SseRequestSetters<TRequest, TMetadata, TOpenApi, TUsed, TResponse>
 >;
 
-export type SseBuilderFor<TOptions, TPath extends string> = SseBuilder<
-	PathFor<TOptions, TPath>,
+export type SseBuilderFor<TOptions> = SseBuilder<
 	ProtocolRequestFor<TOptions>,
 	OptionValue<TOptions, "metadata", EmptyObject>,
 	OptionValue<TOptions, "openApi", EmptyObject>

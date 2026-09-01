@@ -126,6 +126,24 @@ describe("HTTP route builder runtime", () => {
 		);
 	});
 
+	it("rejects duplicate local response statuses at runtime", () => {
+		assert.throws(
+			() =>
+				route
+					.get("/items")
+					.response(200, type<string>())
+					.response(200, type<number>()),
+			/duplicate response status "200"/,
+		);
+
+		assert.doesNotThrow(() =>
+			route
+				.with({ responses: { 200: type<string>() } })
+				.get("/items")
+				.response(200, type<number>()),
+		);
+	});
+
 	it("builds specialized request and response declarations", () => {
 		const formSchema = type<{ title: string; tags: string[] }>();
 		const bytes = type<Uint8Array>();
