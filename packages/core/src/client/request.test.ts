@@ -874,20 +874,9 @@ describe("ApiClient requests", () => {
 	});
 
 	it("rejects flat input when route keys could not be resolved", () => {
-		const opaqueRoute = route
-			.post("/opaque")
-			.body(type<{ title: string }>())
-			.response(204);
-
 		assert.throws(
-			() =>
-				constructBaseRequest(
-					"https://api.test",
-					opaqueRoute,
-					{ title: "created" },
-					true,
-				),
-			/Unknown request key "title" for POST \/opaque/,
+			() => route.post("/opaque").body(type<{ title: string }>()).response(204),
+			/Could not resolve request keys for body schema on POST \/opaque/,
 		);
 	});
 

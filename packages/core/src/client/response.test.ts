@@ -84,6 +84,7 @@ describe("ApiClient responses", () => {
 		const apiContract = {
 			todos: {
 				get: route
+					.with({ strictStatusCodes: true })
 					.get("/todos/:id")
 					.params(z.object({ id: z.string() }))
 					.response(200, {
@@ -141,8 +142,16 @@ describe("ApiClient responses", () => {
 
 	it("rejects undeclared response statuses when strict status codes are enabled", async () => {
 		captureFetch(jsonResponse({ code: "teapot" }, 418));
-		const apiContract = createResponseTestContract();
-		apiContract.todos.get.strictStatusCodes(true);
+		const apiContract = {
+			todos: {
+				get: route
+					.with({ strictStatusCodes: true })
+					.get("/todos/:id")
+					.params(z.object({ id: z.string() }))
+					.response(200, z.object({ id: z.string(), title: z.string() }))
+					.response(404, z.object({ code: z.literal("not_found") })),
+			},
+		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 		});
@@ -157,9 +166,9 @@ describe("ApiClient responses", () => {
 		const apiContract = {
 			todos: {
 				get: route
+					.with({ strictStatusCodes: true })
 					.get("/todos/:id")
 					.params(z.object({ id: z.string() }))
-					.strictStatusCodes(true)
 					.response(
 						200,
 						z.object({

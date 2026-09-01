@@ -120,8 +120,10 @@ describe("HTTP route builder runtime", () => {
 			noBody(),
 		);
 		assert.equal(
-			route.get("/items").strictStatusCodes(true).response(200, schema)
-				.strictStatusCodes,
+			route
+				.with({ strictStatusCodes: true })
+				.get("/items")
+				.response(200, schema).strictStatusCodes,
 			true,
 		);
 	});

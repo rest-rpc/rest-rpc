@@ -231,16 +231,6 @@ export class BaseRouteBuilder {
 		return this;
 	}
 
-	flattenRequestKeys(value: boolean) {
-		this.requestForWrite().flattenKeys = value;
-		return this;
-	}
-
-	strictStatusCodes(value: boolean) {
-		Object.assign(this, { strictStatusCodes: value });
-		return this;
-	}
-
 	withMetadata(metadata: RouteMetadata) {
 		Object.assign(this, {
 			metadata: {
