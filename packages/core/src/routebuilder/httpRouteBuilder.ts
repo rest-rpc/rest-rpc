@@ -205,57 +205,50 @@ type HttpBuilder<
 			TStrictStatusCodes,
 			TUsed | "response"
 		>;
+		customResponse<
+			const TStatus extends number,
+			const TSchema extends StandardSchemaV1,
+			const TContentType extends CustomBodyContentType,
+		>(
+			status: TStatus,
+			input: { schema: TSchema; contentType: TContentType },
+		): HttpBuilder<
+			TMethod,
+			TRequest,
+			TResponses &
+				Record<TStatus, CustomResponseBodyFor<TSchema, TContentType>>,
+			TStrictStatusCodes,
+			TUsed | "response"
+		>;
+		streamResponse<
+			const TStatus extends number,
+			const TSchema extends StandardSchemaV1,
+		>(
+			status: TStatus,
+			schema: TSchema,
+		): HttpBuilder<
+			TMethod,
+			TRequest,
+			TResponses & Record<TStatus, Stream<TSchema>>,
+			TStrictStatusCodes,
+			TUsed | "response"
+		>;
+		customStreamResponse<
+			const TStatus extends number,
+			const TSchema extends StandardSchemaV1,
+			const TContentType extends CustomBodyContentType,
+		>(
+			status: TStatus,
+			input: { schema: TSchema; contentType: TContentType },
+		): HttpBuilder<
+			TMethod,
+			TRequest,
+			TResponses &
+				Record<TStatus, Stream<CustomResponseBodyFor<TSchema, TContentType>>>,
+			TStrictStatusCodes,
+			TUsed | "response"
+		>;
 	} & ("response" extends TUsed
-		? EmptyObject
-		: {
-				customResponse<
-					const TStatus extends number,
-					const TSchema extends StandardSchemaV1,
-					const TContentType extends CustomBodyContentType,
-				>(
-					status: TStatus,
-					input: { schema: TSchema; contentType: TContentType },
-				): HttpBuilder<
-					TMethod,
-					TRequest,
-					TResponses &
-						Record<TStatus, CustomResponseBodyFor<TSchema, TContentType>>,
-					TStrictStatusCodes,
-					TUsed | "response"
-				>;
-				streamResponse<
-					const TStatus extends number,
-					const TSchema extends StandardSchemaV1,
-				>(
-					status: TStatus,
-					schema: TSchema,
-				): HttpBuilder<
-					TMethod,
-					TRequest,
-					TResponses & Record<TStatus, Stream<TSchema>>,
-					TStrictStatusCodes,
-					TUsed | "response"
-				>;
-				customStreamResponse<
-					const TStatus extends number,
-					const TSchema extends StandardSchemaV1,
-					const TContentType extends CustomBodyContentType,
-				>(
-					status: TStatus,
-					input: { schema: TSchema; contentType: TContentType },
-				): HttpBuilder<
-					TMethod,
-					TRequest,
-					TResponses &
-						Record<
-							TStatus,
-							Stream<CustomResponseBodyFor<TSchema, TContentType>>
-						>,
-					TStrictStatusCodes,
-					TUsed | "response"
-				>;
-			}) &
-	("response" extends TUsed
 		? EmptyObject
 		: "body" extends TUsed
 			? EmptyObject

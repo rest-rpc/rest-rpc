@@ -77,6 +77,41 @@ const duplicateResponseStatus = route
 	.response(200, event);
 
 expectAssignable<HttpRouteDeclaration>(duplicateResponseStatus);
+
+const mixedResponses = route
+	.get("/responses")
+	.response(200, todo)
+	.customResponse(201, { contentType: "text/csv", schema: input })
+	.streamResponse(202, event)
+	.customStreamResponse(203, {
+		contentType: "application/octet-stream",
+		schema: unauthorized,
+	});
+
+expectType<typeof todo>(mixedResponses.responses[200]);
+expectType<"customBody">(mixedResponses.responses[201].kind);
+expectType<typeof input>(mixedResponses.responses[201].schema);
+expectType<"stream">(mixedResponses.responses[202].kind);
+expectType<typeof event>(mixedResponses.responses[202].schema);
+expectType<"stream">(mixedResponses.responses[203].kind);
+expectType<"customBody">(mixedResponses.responses[203].schema.kind);
+expectType<typeof unauthorized>(mixedResponses.responses[203].schema.schema);
+expectAssignable<HttpRouteDeclaration>(mixedResponses);
+
+const responseOnly = route.get("/response-only").customResponse(200, {
+	contentType: "text/plain",
+	schema: todo,
+});
+
+expectError(responseOnly.body(input));
+expectError(responseOnly.query(input));
+expectError(responseOnly.jsonQuery(input));
+expectError(responseOnly.params(input));
+expectError(responseOnly.headers({ authorization: input }));
+expectError(responseOnly.requestKeys({ id: "params" }));
+expectError(responseOnly.withMetadata({ auth: true }));
+expectError(responseOnly.withOpenApi({ summary: "Response only" }));
+
 expectError(route.get("/health").response(todo));
 expectError(apiRoute.post("/todos").responses({ 201: todo }));
 
