@@ -10,7 +10,7 @@ import {
 	createWebSocketRoute,
 	type WebSocketBuilderFor,
 } from "./webSocketRouteBuilder.ts";
-export { joinPathPrefix } from "./shared.ts";
+export { joinPathPrefix } from "./baseRouteBuilder.ts";
 
 const assertStaticPathPrefix = (pathPrefix: string | undefined) => {
 	if (pathPrefix && getPathParamNames(pathPrefix).length > 0) {

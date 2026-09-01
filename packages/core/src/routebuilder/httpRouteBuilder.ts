@@ -19,6 +19,7 @@ import type {
 	OpenApiRouteOptions,
 	RouteFactoryOptions,
 	RouteMetadata,
+	RouteRequestDeclaration,
 } from "../contract/contract.ts";
 import type {
 	JsonQuery,
@@ -30,15 +31,43 @@ import type {
 	ResponseDeclaration,
 	RouteResponses,
 } from "../contract/response.ts";
-import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
 import {
+	BaseRouteBuilder,
 	type EmptyObject,
-	type HttpRouteFor,
-	httpRequestDefaults,
-	type OptionValue,
-	type RequestFor,
 	type WithRequest,
-} from "./shared.ts";
+} from "./baseRouteBuilder.ts";
+
+type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
+	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
+
+type RequestFor<TOptions> = (TOptions extends {
+	headers: infer THeaders extends RequestSchemaRecord;
+}
+	? { headers: THeaders }
+	: EmptyObject) &
+	(TOptions extends { flattenRequestKeys: infer TFlatten extends boolean }
+		? { flattenKeys: TFlatten }
+		: EmptyObject);
+
+type HttpRouteFor<TOptions, TMethod extends HttpMethod> = {
+	readonly method: TMethod;
+} & (TOptions extends {
+	strictStatusCodes: infer TStrictStatusCodes extends boolean;
+}
+	? { readonly strictStatusCodes: TStrictStatusCodes }
+	: EmptyObject);
+
+const httpRequestDefaults = (
+	options: RouteFactoryOptions,
+): RouteRequestDeclaration | undefined =>
+	options.headers || typeof options.flattenRequestKeys === "boolean"
+		? {
+				...(options.headers ? { headers: { ...options.headers } } : {}),
+				...(typeof options.flattenRequestKeys === "boolean"
+					? { flattenKeys: options.flattenRequestKeys }
+					: {}),
+			}
+		: undefined;
 
 class HttpRouteBuilder extends BaseRouteBuilder {
 	#localResponseStatuses = new Set<number>();

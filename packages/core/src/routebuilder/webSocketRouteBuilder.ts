@@ -5,9 +5,13 @@ import type {
 } from "../contract/contract.ts";
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
 import type { WebSocketMessageSchemas } from "../contract/websocketMessages.ts";
-import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
-import type { EmptyObject, ProtocolRequestFor, WithRequest } from "./shared.ts";
-import { protocolRequestDefaults } from "./shared.ts";
+import {
+	BaseRouteBuilder,
+	type EmptyObject,
+	type ProtocolRequestFor,
+	protocolRequestDefaults,
+	type WithRequest,
+} from "./baseRouteBuilder.ts";
 
 class WebSocketRouteBuilder extends BaseRouteBuilder {
 	declare messages?: Partial<

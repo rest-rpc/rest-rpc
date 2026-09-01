@@ -5,9 +5,13 @@ import type {
 	RouteMetadata,
 } from "../contract/contract.ts";
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
-import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
-import type { EmptyObject, ProtocolRequestFor, WithRequest } from "./shared.ts";
-import { protocolRequestDefaults } from "./shared.ts";
+import {
+	BaseRouteBuilder,
+	type EmptyObject,
+	type ProtocolRequestFor,
+	protocolRequestDefaults,
+	type WithRequest,
+} from "./baseRouteBuilder.ts";
 
 class SseRouteBuilder extends BaseRouteBuilder {
 	declare responses?: Record<200, StandardSchemaV1>;

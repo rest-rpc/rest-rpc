@@ -6,7 +6,9 @@ import {
 	isNoBody,
 } from "../contract/body.ts";
 import type {
+	CommonOpenApiRouteOptions,
 	HttpMethod,
+	OpenApiResponseOptions,
 	OpenApiRouteOptions,
 	RouteFactoryOptions,
 	RouteMetadata,
@@ -20,7 +22,83 @@ import {
 	REQUEST_CONTEXT_KEY,
 } from "../contract/request.ts";
 import { resolveBuiltInRequestKeys } from "../contract/requestKeys.ts";
-import { mergeOpenApi, pathWithPrefix } from "./shared.ts";
+
+export type EmptyObject = Record<never, never>;
+
+export type ProtocolRequestFor<TOptions> = TOptions extends {
+	flattenRequestKeys: infer TFlatten extends boolean;
+}
+	? { flattenKeys: TFlatten }
+	: EmptyObject;
+
+export type WithRequest<
+	TRequest,
+	TKey extends keyof RouteRequestDeclaration,
+	TValue,
+> = Omit<TRequest, TKey> & Record<TKey, TValue>;
+
+export const joinPathPrefix = (prefix: string, path: string) =>
+	`${prefix}${path}`;
+
+const pathWithPrefix = (path: string, options: RouteFactoryOptions) =>
+	options.pathPrefix ? joinPathPrefix(options.pathPrefix, path) : path;
+
+export const protocolRequestDefaults = (
+	options: RouteFactoryOptions,
+): Omit<RouteRequestDeclaration, "body" | "headers"> | undefined =>
+	typeof options.flattenRequestKeys === "boolean"
+		? { flattenKeys: options.flattenRequestKeys }
+		: undefined;
+
+const mergeUnique = (common: string[] = [], local: string[] = []) => [
+	...new Set([...common, ...local]),
+];
+
+const mergeOpenApiResponse = (
+	common: OpenApiResponseOptions | undefined,
+	local: OpenApiResponseOptions | undefined,
+): OpenApiResponseOptions => ({
+	...common,
+	...local,
+	...(common?.headers || local?.headers
+		? { headers: { ...common?.headers, ...local?.headers } }
+		: {}),
+});
+
+const mergeOpenApi = (
+	common: CommonOpenApiRouteOptions | undefined,
+	local: OpenApiRouteOptions | undefined,
+): OpenApiRouteOptions | undefined => {
+	if (!common && !local) return undefined;
+	const statuses = new Set([
+		...Object.keys(common?.responses ?? {}),
+		...Object.keys(local?.responses ?? {}),
+	]);
+
+	return {
+		...common,
+		...local,
+		...(common?.tags || local?.tags
+			? { tags: mergeUnique(common?.tags, local?.tags) }
+			: {}),
+		...(common?.extensions || local?.extensions
+			? { extensions: { ...common?.extensions, ...local?.extensions } }
+			: {}),
+		...(statuses.size > 0
+			? {
+					responses: Object.fromEntries(
+						[...statuses].map((status) => [
+							status,
+							mergeOpenApiResponse(
+								common?.responses?.[Number(status)],
+								local?.responses?.[Number(status)],
+							),
+						]),
+					),
+				}
+			: {}),
+	};
+};
 
 const resolveSchemaRequestKeyNames = (schema: StandardSchemaV1) => {
 	const keyInfo = resolveBuiltInRequestKeys(schema);
