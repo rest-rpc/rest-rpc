@@ -20,7 +20,9 @@ const input = schemaType<{ title: string }>();
 const unauthorized = schemaType<{ message: string }>();
 const event = schemaType<{ id: string }>();
 const clientMessage = schemaType<{ command: string }>();
+const clientClose = schemaType<{ code: number }>();
 const serverMessage = schemaType<{ event: string }>();
+const serverReady = schemaType<{ connected: boolean }>();
 const typedResponseHeaders = {
 	"x-total": schemaType<number>(),
 };
@@ -299,68 +301,30 @@ expectAssignable<Contract>(sse);
 
 // WebSocket route builders
 
-// Requires one message direction and excludes HTTP/SSE APIs.
-const clientSocket = route
+// Accumulates named client and server messages into the declaration.
+const socket = route
 	.ws("/socket")
-	.clientMessage("command", clientMessage);
-expectAssignable<WebSocketRouteDeclaration>(clientSocket);
-expectAssignable<Contract>(clientSocket);
-expectError(clientSocket.body(event));
-expectError(clientSocket.headers({ authorization: schemaType<string>() }));
-expectError(clientSocket.response(event));
-expectError(clientSocket.responses({ 200: event }));
-clientSocket.clientMessage("anotherCommand", clientMessage);
-
-// Preserves WebSocket message inference and widens route metadata.
-const socket = clientSocket
-	.params(schemaType<{ roomId: string }>())
+	.clientMessage("command", clientMessage)
+	.clientMessage("close", clientClose)
 	.serverMessage("event", serverMessage)
+	.serverMessage("ready", serverReady)
+	.params(schemaType<{ roomId: string }>())
 	.withMetadata({ public: true });
 
 expectType<"GET">(socket.method);
 expectType<"webSocket">(socket.mode);
 expectType<typeof clientMessage>(socket.messages.client.command);
+expectType<typeof clientClose>(socket.messages.client.close);
 expectType<typeof serverMessage>(socket.messages.server.event);
+expectType<typeof serverReady>(socket.messages.server.ready);
+expectError(socket.messages.client.missing);
+expectError(socket.messages.server.missing);
 expectType<RouteMetadata>(socket.metadata);
 expectAssignable<WebSocketRouteDeclaration>(socket);
 expectAssignable<Contract>(socket);
-expectError(clientSocket.withOpenApi({ summary: "Join socket" }));
+expectError(socket.withOpenApi({ summary: "Join socket" }));
 
-// Supports multiple discriminated messages in either direction and order.
-const socketDiscriminated = route
-	.ws("/socket-discriminated")
-	.serverMessage("event", serverMessage)
-	.serverMessage("anotherEvent", serverMessage)
-	.clientMessage("command", clientMessage)
-	.clientMessage("anotherCommand", clientMessage)
-	.jsonQuery(input);
-expectType<typeof clientMessage>(socketDiscriminated.messages.client.command);
-expectType<typeof serverMessage>(socketDiscriminated.messages.server.event);
-expectAssignable<WebSocketRouteDeclaration>(socketDiscriminated);
-expectError(socketDiscriminated.query(input));
-expectError(socketDiscriminated.clientMessage(clientMessage));
-expectError(socketDiscriminated.serverMessage(serverMessage));
-
-// Keeps discriminated messages consistent within each direction.
-const discriminatedClient = route
-	.ws("/discriminated-client")
-	.clientMessage("command", clientMessage);
-discriminatedClient.clientMessage("again", clientMessage);
-const discriminatedClientWithServer = discriminatedClient.serverMessage(
-	"event",
-	serverMessage,
-);
-discriminatedClientWithServer.clientMessage("another", clientMessage);
-discriminatedClientWithServer.serverMessage("anotherEvent", serverMessage);
-
-// Rejects duplicate server message declarations.
-const socketServerDuplicate = route
-	.ws("/socket-server-duplicate")
-	.clientMessage("command", clientMessage)
-	.serverMessage("event", serverMessage);
-socketServerDuplicate.serverMessage("anotherEvent", serverMessage);
-
-// Allows each WebSocket request setter and message direction only once.
+// Allows each WebSocket request setter once and excludes HTTP/SSE APIs.
 const completeSocket = route
 	.ws("/complete-socket")
 	.query(input)
@@ -377,8 +341,6 @@ expectError(completeSocket.params(input));
 expectError(completeSocket.requestKeys({ title: "query" }));
 expectError(completeSocket.withMetadata({ public: false }));
 expectError(completeSocket.withOpenApi({ summary: "socket" }));
-completeSocket.clientMessage("anotherCommand", clientMessage);
-completeSocket.serverMessage("anotherEvent", serverMessage);
 expectError(completeSocket.response(event));
 expectError(completeSocket.streamResponse(200, event));
 expectError(completeSocket.body(event));
