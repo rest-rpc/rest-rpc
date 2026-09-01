@@ -36,8 +36,8 @@ const create = apiRoute
 	.headers({ trace: schemaType<string>() })
 	.params(schemaType<{ accountId: string }>())
 	.requestKeys({ title: "body", accountId: "params" })
-	.metadata({ permission: "todos:create" as const })
-	.openApi({ summary: "Create todo" })
+	.withMetadata({ permission: "todos:create" as const })
+	.withOpenApi({ summary: "Create todo" })
 	.response(201, todo);
 
 expectType<"POST">(create.method);
@@ -90,7 +90,7 @@ expectError(incompleteSse.headers({ authorization: schemaType<string>() }));
 const sse = incompleteSse
 	.query(schemaType<{ cursor: string }>())
 	.response(event)
-	.metadata({ public: true as const });
+	.withMetadata({ public: true as const });
 
 expectType<"GET">(sse.method);
 expectType<"sse">(sse.mode);
@@ -111,7 +111,7 @@ expectError(incompleteSocket.responses({ 200: event }));
 const socket = incompleteSocket
 	.params(schemaType<{ roomId: string }>())
 	.serverMessages(serverMessage)
-	.openApi({ summary: "Join socket" });
+	.withOpenApi({ summary: "Join socket" });
 
 expectType<"GET">(socket.method);
 expectType<"webSocket">(socket.mode);

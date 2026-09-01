@@ -112,7 +112,7 @@ const routeSource = (index) => {
 		".response(200, todoSchema)",
 		".response(400, errorSchema)",
 		".response(404, errorSchema)",
-		`.metadata({ feature: "group-${group}" })`,
+		`.withMetadata({ feature: "group-${group}" })`,
 	);
 
 	return `route${index}: ${builder.join("\n\t\t\t")}`;

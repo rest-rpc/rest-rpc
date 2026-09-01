@@ -34,7 +34,6 @@ import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
 import {
 	type EmptyObject,
 	httpRequestDefaults,
-	mergeOpenApi,
 	type OptionValue,
 	type RequestFor,
 	type StrictStatusCodesFor,
@@ -83,7 +82,6 @@ const toCustomBody = declareCustomBody as (
 ) => CustomBody;
 
 class HttpRouteBuilder extends BaseRouteBuilder {
-	#commonOpenApi?: RouteFactoryOptions["openApi"];
 	#localResponseStatuses = new Set<number>();
 	declare method: HttpMethod;
 	declare path: string;
@@ -96,7 +94,6 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 		options: RouteFactoryOptions = {},
 	) {
 		super(method, path, options, httpRequestDefaults(options));
-		this.#commonOpenApi = options.openApi;
 		if (typeof options.strictStatusCodes === "boolean") {
 			Object.assign(this, { strictStatusCodes: options.strictStatusCodes });
 		}
@@ -170,13 +167,6 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 
 	customStreamResponse(status: number, input: CustomResponseInput) {
 		return this.addResponse(status, declareStream(declareCustomBody(input)));
-	}
-
-	openApi(openApi: OpenApiRouteOptions) {
-		Object.assign(this, {
-			openApi: mergeOpenApi(this.#commonOpenApi, openApi),
-		});
-		return this;
 	}
 }
 
@@ -422,37 +412,35 @@ type HttpBuilder<
 						TUsed | "requestKeys"
 					>;
 				}) &
-	("metadata" extends TUsed
+	("withMetadata" extends TUsed
 		? { metadata: RouteMetadata }
 		: "response" extends TUsed
 			? EmptyObject
 			: {
-					metadata: RouteMetadata &
-						((
-							metadata: RouteMetadata,
-						) => HttpBuilder<
-							TMethod,
-							TRequest,
-							TResponses,
-							TStrictStatusCodes,
-							TUsed | "metadata"
-						>);
+					withMetadata(
+						metadata: RouteMetadata,
+					): HttpBuilder<
+						TMethod,
+						TRequest,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "withMetadata"
+					>;
 				}) &
-	("openApi" extends TUsed
+	("withOpenApi" extends TUsed
 		? { openApi: OpenApiRouteOptions }
 		: "response" extends TUsed
 			? EmptyObject
 			: {
-					openApi: OpenApiRouteOptions &
-						((
-							openApi: OpenApiRouteOptions,
-						) => HttpBuilder<
-							TMethod,
-							TRequest,
-							TResponses,
-							TStrictStatusCodes,
-							TUsed | "openApi"
-						>);
+					withOpenApi(
+						openApi: OpenApiRouteOptions,
+					): HttpBuilder<
+						TMethod,
+						TRequest,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "withOpenApi"
+					>;
 				});
 
 export type HttpBuilderFor<TOptions, TMethod extends HttpMethod> = HttpBuilder<

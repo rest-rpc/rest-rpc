@@ -20,11 +20,7 @@ import {
 	REQUEST_CONTEXT_KEY,
 } from "../contract/request.ts";
 import { resolveBuiltInRequestKeys } from "../contract/requestKeys.ts";
-import {
-	installCallableDefault,
-	mergeOpenApi,
-	pathWithPrefix,
-} from "./shared.ts";
+import { mergeOpenApi, pathWithPrefix } from "./shared.ts";
 
 const resolveSchemaRequestKeyNames = (schema: StandardSchemaV1) => {
 	const keyInfo = resolveBuiltInRequestKeys(schema);
@@ -56,12 +52,13 @@ export class BaseRouteBuilder {
 		this.requestForWrite().keys ??= {};
 		this.#commonMetadata = options.metadata;
 		this.#commonOpenApi = options.openApi;
-		installCallableDefault(this, "metadata", this.#commonMetadata);
-		installCallableDefault(
-			this,
-			"openApi",
-			mergeOpenApi(this.#commonOpenApi, undefined),
-		);
+		if (this.#commonMetadata) {
+			Object.assign(this, { metadata: this.#commonMetadata });
+		}
+		const commonOpenApi = mergeOpenApi(this.#commonOpenApi, undefined);
+		if (commonOpenApi) {
+			Object.assign(this, { openApi: commonOpenApi });
+		}
 		this.recalculateRequestKeys();
 	}
 
@@ -244,7 +241,7 @@ export class BaseRouteBuilder {
 		return this;
 	}
 
-	metadata(metadata: RouteMetadata) {
+	withMetadata(metadata: RouteMetadata) {
 		Object.assign(this, {
 			metadata: {
 				...this.#commonMetadata,
@@ -254,7 +251,7 @@ export class BaseRouteBuilder {
 		return this;
 	}
 
-	openApi(openApi: OpenApiRouteOptions) {
+	withOpenApi(openApi: OpenApiRouteOptions) {
 		Object.assign(this, {
 			openApi: mergeOpenApi(this.#commonOpenApi, openApi),
 		});

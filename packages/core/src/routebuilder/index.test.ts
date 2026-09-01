@@ -31,8 +31,8 @@ describe("HTTP route builder runtime", () => {
 			.body(schema)
 			.query(z.object({ search: z.string() }))
 			.params(type<{ id: string }>())
-			.metadata({ scope: "write" })
-			.openApi({ tags: ["Items"] });
+			.withMetadata({ scope: "write" })
+			.withOpenApi({ tags: ["Items"] });
 		assert.equal(declaration.request?.body, schema);
 		assert.equal(declaration.responses?.[201], schema);
 	});
@@ -89,8 +89,8 @@ describe("HTTP route builder runtime", () => {
 				contentType: "application/problem+json",
 				schema: type<{ message: string }>(),
 			})
-			.metadata({ auth: false })
-			.openApi({
+			.withMetadata({ auth: false })
+			.withOpenApi({
 				tags: ["Items"],
 				responses: { 401: { description: "Local" } },
 			});

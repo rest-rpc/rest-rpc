@@ -278,8 +278,8 @@ export const api = {
 	todos: {
 		list: apiRoute
 			.get("/todos")
-			.response(200, z.object({ items: z.array(todoSchema) }))
-			.openApi({ summary: "List todos" }),
+			.withOpenApi({ summary: "List todos" })
+			.response(200, z.object({ items: z.array(todoSchema) })),
 	},
 };
 ```

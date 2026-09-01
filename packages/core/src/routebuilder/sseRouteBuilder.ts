@@ -72,21 +72,19 @@ type SseRequestSetters<
 					TResponse
 				>;
 			}) &
-	("metadata" extends TUsed
+	("withMetadata" extends TUsed
 		? { metadata: RouteMetadata }
 		: {
-				metadata: RouteMetadata &
-					((
-						metadata: RouteMetadata,
-					) => SseBuilder<TRequest, TUsed | "metadata", TResponse>);
+				withMetadata(
+					metadata: RouteMetadata,
+				): SseBuilder<TRequest, TUsed | "withMetadata", TResponse>;
 			}) &
-	("openApi" extends TUsed
+	("withOpenApi" extends TUsed
 		? { openApi: OpenApiRouteOptions }
 		: {
-				openApi: OpenApiRouteOptions &
-					((
-						openApi: OpenApiRouteOptions,
-					) => SseBuilder<TRequest, TUsed | "openApi", TResponse>);
+				withOpenApi(
+					openApi: OpenApiRouteOptions,
+				): SseBuilder<TRequest, TUsed | "withOpenApi", TResponse>;
 			});
 
 export type SseBuilder<

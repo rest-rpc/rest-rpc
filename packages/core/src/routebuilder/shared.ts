@@ -3,7 +3,6 @@ import type {
 	OpenApiResponseOptions,
 	OpenApiRouteOptions,
 	RouteFactoryOptions,
-	RouteMetadata,
 	RouteRequestDeclaration,
 } from "../contract/contract.ts";
 import type { RequestSchemaRecord } from "../contract/request.ts";
@@ -108,26 +107,4 @@ export const mergeOpenApi = (
 				}
 			: {}),
 	};
-};
-
-export const installCallableDefault = (
-	target: object,
-	setter: "metadata" | "openApi",
-	value: object | undefined,
-) => {
-	if (!value) return;
-	const callable = Object.assign(
-		(
-			(target as Record<string, unknown>)[setter] as (
-				value: RouteMetadata | OpenApiRouteOptions,
-			) => unknown
-		).bind(target),
-		value,
-	);
-	Object.defineProperty(target, setter, {
-		value: callable,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
 };

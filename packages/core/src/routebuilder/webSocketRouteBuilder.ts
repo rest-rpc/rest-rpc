@@ -94,21 +94,19 @@ type WebSocketRequestSetters<
 					TMessages
 				>;
 			}) &
-	("metadata" extends TUsed
+	("withMetadata" extends TUsed
 		? { metadata: RouteMetadata }
 		: {
-				metadata: RouteMetadata &
-					((
-						metadata: RouteMetadata,
-					) => WebSocketBuilder<TRequest, TUsed | "metadata", TMessages>);
+				withMetadata(
+					metadata: RouteMetadata,
+				): WebSocketBuilder<TRequest, TUsed | "withMetadata", TMessages>;
 			}) &
-	("openApi" extends TUsed
+	("withOpenApi" extends TUsed
 		? { openApi: OpenApiRouteOptions }
 		: {
-				openApi: OpenApiRouteOptions &
-					((
-						openApi: OpenApiRouteOptions,
-					) => WebSocketBuilder<TRequest, TUsed | "openApi", TMessages>);
+				withOpenApi(
+					openApi: OpenApiRouteOptions,
+				): WebSocketBuilder<TRequest, TUsed | "withOpenApi", TMessages>;
 			});
 
 export type WebSocketBuilder<
