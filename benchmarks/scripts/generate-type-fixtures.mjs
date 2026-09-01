@@ -109,10 +109,10 @@ const routeSource = (index) => {
 		builder.push(".body(bodySchema)");
 	builder.push(
 		'.headers({ "x-feature": optionalStringSchema })',
+		`.withMetadata({ feature: 'group-${group}' })`,
 		".response(200, todoSchema)",
 		".response(400, errorSchema)",
 		".response(404, errorSchema)",
-		`.withMetadata({ feature: "group-${group}" })`,
 	);
 
 	return `route${index}: ${builder.join("\n\t\t\t")}`;
