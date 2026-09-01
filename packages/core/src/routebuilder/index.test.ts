@@ -31,26 +31,26 @@ describe("HTTP route builder runtime", () => {
 			.body(schema)
 			.query(z.object({ search: z.string() }))
 			.pathParams(type<{ id: string }>())
-			.flattenRequestKeys(false)
 			.metadata({ scope: "write" })
 			.openApi({ tags: ["Items"] });
 		assert.equal(declaration.request?.body, schema);
 		assert.equal(declaration.responses?.[201], schema);
-		assert.equal(declaration.request?.flattenKeys, false);
 	});
 
-	it("requires requestKeys before opaque flattened request schemas", () => {
+	it("allows opaque flattened request schemas until their keys are declared", () => {
+		const opaque = route.post("/items").body(type<{ title: string }>());
 		assert.throws(
-			() => route.post("/items").body(type<{ title: string }>()),
-			/requestKeys before declaring this request segment/,
+			() => opaque.finalize(),
+			/requestKeys before finalizing this route/,
 		);
 
 		const declaration = route
 			.post("/items")
-			.requestKeys({ title: "body" })
 			.body(type<{ title: string }>())
+			.requestKeys({ title: "body" })
 			.response(201, type<{ id: string }>());
 
+		assert.doesNotThrow(() => declaration.finalize());
 		assert.deepEqual(declaration.request?.keys, { title: "body" });
 	});
 

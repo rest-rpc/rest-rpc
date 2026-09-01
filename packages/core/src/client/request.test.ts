@@ -3,6 +3,7 @@ import { afterEach, describe, it } from "node:test";
 import z from "zod";
 import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
+import { type } from "../standard-schema/index.ts";
 import { initClient } from "./index.ts";
 import { constructBaseRequest, createRequestSignal } from "./request.ts";
 
@@ -869,6 +870,24 @@ describe("ApiClient requests", () => {
 					unknown: "drop me",
 				}),
 			/Unknown request key "unknown" for GET \/todos/,
+		);
+	});
+
+	it("rejects flat input when route keys could not be resolved", () => {
+		const opaqueRoute = route
+			.post("/opaque")
+			.body(type<{ title: string }>())
+			.response(204);
+
+		assert.throws(
+			() =>
+				constructBaseRequest(
+					"https://api.test",
+					opaqueRoute,
+					{ title: "created" },
+					true,
+				),
+			/Unknown request key "title" for POST \/opaque/,
 		);
 	});
 

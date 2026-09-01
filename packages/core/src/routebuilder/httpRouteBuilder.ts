@@ -201,6 +201,7 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 	}
 
 	finalize(): HttpRouteDeclaration {
+		this.assertRequestKeysComplete();
 		return this as unknown as HttpRouteDeclaration;
 	}
 }
