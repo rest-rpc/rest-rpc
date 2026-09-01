@@ -117,6 +117,6 @@ expectType<"GET">(socket.method);
 expectType<"webSocket">(socket.mode);
 expectType<typeof clientMessage>(socket.messages.client);
 expectType<typeof serverMessage>(socket.messages.server);
-expectType<"Join socket">(socket.openApi.summary);
+expectType<string | undefined>(socket.openApi.summary);
 expectAssignable<WebSocketRouteDeclaration>(socket);
 expectAssignable<Contract>(socket);

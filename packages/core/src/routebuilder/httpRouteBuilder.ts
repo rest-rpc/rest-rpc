@@ -35,10 +35,8 @@ import {
 	type EmptyObject,
 	httpRequestDefaults,
 	mergeOpenApi,
-	type Merge,
 	type OptionValue,
 	type RequestFor,
-	type Simplify,
 	type StrictStatusCodesFor,
 	type WithRequest,
 } from "./shared.ts";
@@ -186,334 +184,281 @@ type HttpBuilder<
 	TMethod extends HttpMethod,
 	TRequest,
 	TResponses,
-	TMetadata,
-	TOpenApi,
 	TStrictStatusCodes,
 	TUsed extends string = never,
-> = Simplify<
-	{
-		readonly method: TMethod;
-		readonly path: string;
-	} & (keyof TRequest extends never
-		? { request?: never }
-		: { request: TRequest }) &
-		([TStrictStatusCodes] extends [boolean]
-			? { readonly strictStatusCodes: TStrictStatusCodes }
-			: EmptyObject) &
-		(keyof TResponses extends never
-			? { responses?: never }
-			: { responses: TResponses }) & {
-			response<
-				const TStatus extends number,
-				const TSchema extends RegularResponseDeclaration | undefined =
-					undefined,
-			>(
-				status: TStatus,
-				schema?: TSchema,
-			): HttpBuilder<
-				TMethod,
-				TRequest,
-				Merge<
-					TResponses,
-					Record<
-						TStatus,
-						TSchema extends RegularResponseDeclaration ? TSchema : NoBody
-					>
+> = {
+	readonly method: TMethod;
+	readonly path: string;
+} & (keyof TRequest extends never
+	? { request?: never }
+	: { request: TRequest }) &
+	([TStrictStatusCodes] extends [boolean]
+		? { readonly strictStatusCodes: TStrictStatusCodes }
+		: EmptyObject) &
+	(keyof TResponses extends never
+		? { responses?: never }
+		: { responses: TResponses }) & {
+		response<
+			const TStatus extends number,
+			const TSchema extends RegularResponseDeclaration | undefined = undefined,
+		>(
+			status: TStatus,
+			schema?: TSchema,
+		): HttpBuilder<
+			TMethod,
+			TRequest,
+			TResponses &
+				Record<
+					TStatus,
+					TSchema extends RegularResponseDeclaration ? TSchema : NoBody
 				>,
-				TMetadata,
-				TOpenApi,
-				TStrictStatusCodes,
-				TUsed | "response"
-			>;
-		} & ("response" extends TUsed
+			TStrictStatusCodes,
+			TUsed | "response"
+		>;
+	} & ("response" extends TUsed
+		? EmptyObject
+		: {
+				customResponse<
+					const TStatus extends number,
+					const TSchema extends StandardSchemaV1,
+					const TContentType extends CustomBodyContentType,
+				>(
+					status: TStatus,
+					input: { schema: TSchema; contentType: TContentType },
+				): HttpBuilder<
+					TMethod,
+					TRequest,
+					TResponses &
+						Record<TStatus, CustomResponseBodyFor<TSchema, TContentType>>,
+					TStrictStatusCodes,
+					TUsed | "response"
+				>;
+				streamResponse<
+					const TStatus extends number,
+					const TSchema extends StandardSchemaV1,
+				>(
+					status: TStatus,
+					schema: TSchema,
+				): HttpBuilder<
+					TMethod,
+					TRequest,
+					TResponses & Record<TStatus, Stream<TSchema>>,
+					TStrictStatusCodes,
+					TUsed | "response"
+				>;
+				customStreamResponse<
+					const TStatus extends number,
+					const TSchema extends StandardSchemaV1,
+					const TContentType extends CustomBodyContentType,
+				>(
+					status: TStatus,
+					input: { schema: TSchema; contentType: TContentType },
+				): HttpBuilder<
+					TMethod,
+					TRequest,
+					TResponses &
+						Record<
+							TStatus,
+							Stream<CustomResponseBodyFor<TSchema, TContentType>>
+						>,
+					TStrictStatusCodes,
+					TUsed | "response"
+				>;
+			}) &
+	("response" extends TUsed
+		? EmptyObject
+		: "body" extends TUsed
 			? EmptyObject
 			: {
-					customResponse<
-						const TStatus extends number,
-						const TSchema extends StandardSchemaV1,
-						const TContentType extends CustomBodyContentType,
-					>(
-						status: TStatus,
-						input: { schema: TSchema; contentType: TContentType },
-					): HttpBuilder<
-						TMethod,
-						TRequest,
-						Merge<
-							TResponses,
-							Record<TStatus, CustomResponseBodyFor<TSchema, TContentType>>
-						>,
-						TMetadata,
-						TOpenApi,
-						TStrictStatusCodes,
-						TUsed | "response"
-					>;
-					streamResponse<
-						const TStatus extends number,
-						const TSchema extends StandardSchemaV1,
-					>(
-						status: TStatus,
+					body<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
 						TMethod,
-						TRequest,
-						Merge<TResponses, Record<TStatus, Stream<TSchema>>>,
-						TMetadata,
-						TOpenApi,
+						WithRequest<TRequest, "body", TSchema>,
+						TResponses,
 						TStrictStatusCodes,
-						TUsed | "response"
+						TUsed | "body"
 					>;
-					customStreamResponse<
-						const TStatus extends number,
-						const TSchema extends StandardSchemaV1,
-						const TContentType extends CustomBodyContentType,
-					>(
-						status: TStatus,
-						input: { schema: TSchema; contentType: TContentType },
+					formBody<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
 					): HttpBuilder<
 						TMethod,
-						TRequest,
-						Merge<
-							TResponses,
-							Record<
-								TStatus,
-								Stream<CustomResponseBodyFor<TSchema, TContentType>>
-							>
-						>,
-						TMetadata,
-						TOpenApi,
+						WithRequest<TRequest, "body", FormBody<TSchema>>,
+						TResponses,
 						TStrictStatusCodes,
-						TUsed | "response"
+						TUsed | "body"
+					>;
+					formBody<
+						const TSchema extends StandardSchemaV1,
+						const TArrayKeys extends readonly string[],
+					>(input: {
+						schema: TSchema;
+						arrayKeys: TArrayKeys;
+					}): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "body", FormBody<TSchema, TArrayKeys>>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "body"
+					>;
+					multipartBody<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "body", MultipartBody<TSchema>>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "body"
+					>;
+					multipartBody<
+						const TSchema extends StandardSchemaV1,
+						const TArrayKeys extends readonly string[],
+					>(input: {
+						schema: TSchema;
+						arrayKeys: TArrayKeys;
+					}): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "body", MultipartBody<TSchema, TArrayKeys>>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "body"
+					>;
+					customBody<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "body", CustomBody<TSchema, undefined>>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "body"
+					>;
+					customBody<
+						const TSchema extends StandardSchemaV1,
+						const TContentType extends CustomBodyContentType,
+					>(input: {
+						schema: TSchema;
+						contentType: TContentType;
+					}): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "body", CustomBody<TSchema, TContentType>>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "body"
 					>;
 				}) &
-		("response" extends TUsed
+	("response" extends TUsed
+		? EmptyObject
+		: "query" extends TUsed
 			? EmptyObject
-			: "body" extends TUsed
-				? EmptyObject
-				: {
-						body<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", TSchema>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-						formBody<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", FormBody<TSchema>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-						formBody<
-							const TSchema extends StandardSchemaV1,
-							const TArrayKeys extends readonly string[],
-						>(input: {
-							schema: TSchema;
-							arrayKeys: TArrayKeys;
-						}): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", FormBody<TSchema, TArrayKeys>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-						multipartBody<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", MultipartBody<TSchema>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-						multipartBody<
-							const TSchema extends StandardSchemaV1,
-							const TArrayKeys extends readonly string[],
-						>(input: {
-							schema: TSchema;
-							arrayKeys: TArrayKeys;
-						}): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", MultipartBody<TSchema, TArrayKeys>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-						customBody<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", CustomBody<TSchema, undefined>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-						customBody<
-							const TSchema extends StandardSchemaV1,
-							const TContentType extends CustomBodyContentType,
-						>(input: {
-							schema: TSchema;
-							contentType: TContentType;
-						}): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "body", CustomBody<TSchema, TContentType>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "body"
-						>;
-					}) &
-		("response" extends TUsed
+			: {
+					query<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "query", TSchema>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "query"
+					>;
+					jsonQuery<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "query", JsonQuery<TSchema>>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "query"
+					>;
+				}) &
+	("response" extends TUsed
+		? EmptyObject
+		: "params" extends TUsed
 			? EmptyObject
-			: "query" extends TUsed
-				? EmptyObject
-				: {
-						query<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "query", TSchema>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "query"
-						>;
-						jsonQuery<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "query", JsonQuery<TSchema>>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "query"
-						>;
-					}) &
-		("response" extends TUsed
+			: {
+					params<const TSchema extends StandardSchemaV1>(
+						schema: TSchema,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "params", TSchema>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "params"
+					>;
+				}) &
+	("response" extends TUsed
+		? EmptyObject
+		: "headers" extends TUsed
 			? EmptyObject
-			: "params" extends TUsed
-				? EmptyObject
-				: {
-						params<const TSchema extends StandardSchemaV1>(
-							schema: TSchema,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<TRequest, "params", TSchema>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "params"
-						>;
-					}) &
-		("response" extends TUsed
+			: {
+					headers<const THeaders extends RequestSchemaRecord>(
+						headers: THeaders,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<
+							TRequest,
+							"headers",
+							(TRequest extends { headers: infer TCommon }
+								? TCommon
+								: EmptyObject) &
+								THeaders
+						>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "headers"
+					>;
+				}) &
+	("response" extends TUsed
+		? EmptyObject
+		: "requestKeys" extends TUsed
 			? EmptyObject
-			: "headers" extends TUsed
-				? EmptyObject
-				: {
-						headers<const THeaders extends RequestSchemaRecord>(
-							headers: THeaders,
-						): HttpBuilder<
-							TMethod,
-							WithRequest<
-								TRequest,
-								"headers",
-								Merge<
-									TRequest extends { headers: infer TCommon }
-										? TCommon
-										: EmptyObject,
-									THeaders
-								>
-							>,
-							TResponses,
-							TMetadata,
-							TOpenApi,
-							TStrictStatusCodes,
-							TUsed | "headers"
-						>;
-					}) &
-		("response" extends TUsed
+			: {
+					requestKeys<const TKeys extends RequestKeys>(
+						keys: TKeys,
+					): HttpBuilder<
+						TMethod,
+						WithRequest<TRequest, "keys", TKeys>,
+						TResponses,
+						TStrictStatusCodes,
+						TUsed | "requestKeys"
+					>;
+				}) &
+	("metadata" extends TUsed
+		? { metadata: RouteMetadata }
+		: "response" extends TUsed
 			? EmptyObject
-			: "requestKeys" extends TUsed
-				? EmptyObject
-				: {
-						requestKeys<const TKeys extends RequestKeys>(
-							keys: TKeys,
-						): HttpBuilder<
+			: {
+					metadata: RouteMetadata &
+						((
+							metadata: RouteMetadata,
+						) => HttpBuilder<
 							TMethod,
-							WithRequest<TRequest, "keys", TKeys>,
+							TRequest,
 							TResponses,
-							TMetadata,
-							TOpenApi,
 							TStrictStatusCodes,
-							TUsed | "requestKeys"
-						>;
-					}) &
-		("metadata" extends TUsed
-			? { metadata: TMetadata }
-			: "response" extends TUsed
-				? EmptyObject
-				: {
-						metadata: TMetadata &
-							RouteMetadata &
-							(<const TLocal extends RouteMetadata>(
-								metadata: TLocal,
-							) => HttpBuilder<
-								TMethod,
-								TRequest,
-								TResponses,
-								RouteMetadata,
-								TOpenApi,
-								TStrictStatusCodes,
-								TUsed | "metadata"
-							>);
-					}) &
-		("openApi" extends TUsed
-			? { openApi: TOpenApi }
-			: "response" extends TUsed
-				? EmptyObject
-				: {
-						openApi: TOpenApi &
-							OpenApiRouteOptions &
-							(<const TLocal extends OpenApiRouteOptions>(
-								openApi: TLocal,
-							) => HttpBuilder<
-								TMethod,
-								TRequest,
-								TResponses,
-								TMetadata,
-								Merge<TOpenApi, TLocal>,
-								TStrictStatusCodes,
-								TUsed | "openApi"
-							>);
-					}) & {}
->;
+							TUsed | "metadata"
+						>);
+				}) &
+	("openApi" extends TUsed
+		? { openApi: OpenApiRouteOptions }
+		: "response" extends TUsed
+			? EmptyObject
+			: {
+					openApi: OpenApiRouteOptions &
+						((
+							openApi: OpenApiRouteOptions,
+						) => HttpBuilder<
+							TMethod,
+							TRequest,
+							TResponses,
+							TStrictStatusCodes,
+							TUsed | "openApi"
+						>);
+				});
 
 export type HttpBuilderFor<TOptions, TMethod extends HttpMethod> = HttpBuilder<
 	TMethod,
 	RequestFor<TOptions>,
 	OptionValue<TOptions, "responses", EmptyObject>,
-	RouteMetadata,
-	OptionValue<TOptions, "openApi", EmptyObject>,
 	StrictStatusCodesFor<TOptions>
 >;
 

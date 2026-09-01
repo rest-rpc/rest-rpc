@@ -8,9 +8,7 @@ import type {
 } from "../contract/contract.ts";
 import type { RequestSchemaRecord } from "../contract/request.ts";
 
-export type Simplify<T> = T;
 export type EmptyObject = Record<never, never>;
-export type Merge<TCommon, TLocal> = TCommon & TLocal;
 export type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
 	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
 export type RequestFor<TOptions> = (TOptions extends {

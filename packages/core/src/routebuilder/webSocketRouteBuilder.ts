@@ -7,14 +7,7 @@ import type {
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
 import type { WebSocketMessageDeclaration } from "../contract/websocketMessages.ts";
 import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
-import type {
-	EmptyObject,
-	Merge,
-	OptionValue,
-	ProtocolRequestFor,
-	Simplify,
-	WithRequest,
-} from "./shared.ts";
+import type { EmptyObject, ProtocolRequestFor, WithRequest } from "./shared.ts";
 import { protocolRequestDefaults } from "./shared.ts";
 
 class WebSocketRouteBuilder extends BaseRouteBuilder {
@@ -59,8 +52,6 @@ export type WebSocketCompletion = {
 
 type WebSocketRequestSetters<
 	TRequest,
-	TMetadata,
-	TOpenApi,
 	TUsed extends string,
 	TMessages extends WebSocketCompletion,
 > = ("query" extends TUsed
@@ -70,8 +61,6 @@ type WebSocketRequestSetters<
 				schema: TSchema,
 			): WebSocketBuilder<
 				WithRequest<TRequest, "query", TSchema>,
-				TMetadata,
-				TOpenApi,
 				TUsed | "query",
 				TMessages
 			>;
@@ -79,8 +68,6 @@ type WebSocketRequestSetters<
 				schema: TSchema,
 			): WebSocketBuilder<
 				WithRequest<TRequest, "query", JsonQuery<TSchema>>,
-				TMetadata,
-				TOpenApi,
 				TUsed | "query",
 				TMessages
 			>;
@@ -92,8 +79,6 @@ type WebSocketRequestSetters<
 					schema: TSchema,
 				): WebSocketBuilder<
 					WithRequest<TRequest, "params", TSchema>,
-					TMetadata,
-					TOpenApi,
 					TUsed | "params",
 					TMessages
 				>;
@@ -105,93 +90,59 @@ type WebSocketRequestSetters<
 					keys: TKeys,
 				): WebSocketBuilder<
 					WithRequest<TRequest, "keys", TKeys>,
-					TMetadata,
-					TOpenApi,
 					TUsed | "requestKeys",
 					TMessages
 				>;
 			}) &
 	("metadata" extends TUsed
-		? { metadata: TMetadata }
+		? { metadata: RouteMetadata }
 		: {
-				metadata: TMetadata &
-					RouteMetadata &
-					(<const TLocal extends RouteMetadata>(
-						metadata: TLocal,
-					) => WebSocketBuilder<
-						TRequest,
-						RouteMetadata,
-						TOpenApi,
-						TUsed | "metadata",
-						TMessages
-					>);
+				metadata: RouteMetadata &
+					((
+						metadata: RouteMetadata,
+					) => WebSocketBuilder<TRequest, TUsed | "metadata", TMessages>);
 			}) &
 	("openApi" extends TUsed
-		? { openApi: TOpenApi }
+		? { openApi: OpenApiRouteOptions }
 		: {
-				openApi: TOpenApi &
-					OpenApiRouteOptions &
-					(<const TLocal extends OpenApiRouteOptions>(
-						openApi: TLocal,
-					) => WebSocketBuilder<
-						TRequest,
-						TMetadata,
-						Merge<TOpenApi, TLocal>,
-						TUsed | "openApi",
-						TMessages
-					>);
+				openApi: OpenApiRouteOptions &
+					((
+						openApi: OpenApiRouteOptions,
+					) => WebSocketBuilder<TRequest, TUsed | "openApi", TMessages>);
 			});
 
 export type WebSocketBuilder<
 	TRequest,
-	TMetadata,
-	TOpenApi,
 	TUsed extends string = never,
 	TMessages extends WebSocketCompletion = EmptyObject,
-> = Simplify<
-	{
-		readonly method: "GET";
-		readonly path: string;
-		readonly mode: "webSocket";
-	} & (keyof TRequest extends never
-		? { request?: never }
-		: { request: TRequest }) &
-		(keyof TMessages extends never
-			? { messages?: never }
-			: { messages: TMessages }) &
-		(TMessages extends { client: WebSocketMessageDeclaration }
-			? EmptyObject
-			: {
-					clientMessages<const TSchema extends WebSocketMessageDeclaration>(
-						schema: TSchema,
-					): WebSocketBuilder<
-						TRequest,
-						TMetadata,
-						TOpenApi,
-						TUsed,
-						Merge<TMessages, { client: TSchema }>
-					>;
-				}) &
-		(TMessages extends { server: WebSocketMessageDeclaration }
-			? EmptyObject
-			: {
-					serverMessages<const TSchema extends WebSocketMessageDeclaration>(
-						schema: TSchema,
-					): WebSocketBuilder<
-						TRequest,
-						TMetadata,
-						TOpenApi,
-						TUsed,
-						Merge<TMessages, { server: TSchema }>
-					>;
-				}) &
-		WebSocketRequestSetters<TRequest, TMetadata, TOpenApi, TUsed, TMessages>
->;
+> = {
+	readonly method: "GET";
+	readonly path: string;
+	readonly mode: "webSocket";
+} & (keyof TRequest extends never
+	? { request?: never }
+	: { request: TRequest }) &
+	(keyof TMessages extends never
+		? { messages?: never }
+		: { messages: TMessages }) &
+	(TMessages extends { client: WebSocketMessageDeclaration }
+		? EmptyObject
+		: {
+				clientMessages<const TSchema extends WebSocketMessageDeclaration>(
+					schema: TSchema,
+				): WebSocketBuilder<TRequest, TUsed, TMessages & { client: TSchema }>;
+			}) &
+	(TMessages extends { server: WebSocketMessageDeclaration }
+		? EmptyObject
+		: {
+				serverMessages<const TSchema extends WebSocketMessageDeclaration>(
+					schema: TSchema,
+				): WebSocketBuilder<TRequest, TUsed, TMessages & { server: TSchema }>;
+			}) &
+	WebSocketRequestSetters<TRequest, TUsed, TMessages>;
 
 export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<
-	ProtocolRequestFor<TOptions>,
-	OptionValue<TOptions, "metadata", EmptyObject>,
-	OptionValue<TOptions, "openApi", EmptyObject>
+	ProtocolRequestFor<TOptions>
 >;
 
 export const createWebSocketRoute = (
