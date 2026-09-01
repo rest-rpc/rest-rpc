@@ -138,7 +138,7 @@ needs a more specific value.
 ```ts
 get: route
 	.get("/todos/:id")
-	.params(z.object({ id: z.coerce.number().int().positive() }))
+	.params(z.object({ id: z.coerce.number<number>().int().positive() }))
 	.response(200, todoSchema),
 ```
 

@@ -3,7 +3,9 @@ export type {
 	CustomBody,
 	CustomBodyContentType,
 	FormBody,
+	FormBodySchema,
 	MultipartBody,
+	MultipartBodySchema,
 	NoBody,
 	Stream,
 } from "./body.ts";

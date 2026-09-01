@@ -26,7 +26,7 @@ A route builder receives one schema for `params`, `query`, `body`, and
 route
 	.patch("/todos/:id")
 	.params(z.object({ id: z.string().uuid() }))
-	.query(z.object({ includeCompleted: z.coerce.boolean().optional() }))
+	.query(z.object({ includeCompleted: z.coerce.boolean<boolean>().optional() }))
 	.headers(z.object({ "x-request-id": z.string().optional() }))
 	.body(z.object({ title: z.string().min(1) }))
 	.response(200, todoSchema);
@@ -59,7 +59,7 @@ route
 	.query(
 		z.union([
 			z.object({ q: z.string() }),
-			z.object({ page: z.coerce.number() }),
+			z.object({ page: z.coerce.number<number>() }),
 		]),
 	)
 	.body(
@@ -135,6 +135,23 @@ Schemas have an input type and an output type.
 
 Default HTTP bodies and WebSocket messages travel over JSON. Path params, query
 params, and headers travel through HTTP strings.
+
+Request schemas for HTTP string locations and form bodies must declare inputs
+that the generated client can serialize. Zod coercion schemas use `unknown` as
+their input by default, so specify the generated-client input explicitly:
+
+```ts
+route
+	.get("/items")
+	.query(z.object({ page: z.coerce.number<number>() }))
+	.response(204);
+```
+
+The `number` generic describes the value accepted by the generated client.
+The client serializes it as an HTTP string, and Zod still coerces that string
+back to a number when the server validates the request. An unparameterized
+`z.coerce.number()` is rejected because its `unknown` input does not guarantee
+that the client can safely serialize it.
 
 ## Validation
 

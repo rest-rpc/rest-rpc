@@ -235,6 +235,18 @@ describe("ApiClient requests", () => {
 		assert.equal(request.url, "https://api.test/items/one%2Ftwo/three");
 	});
 
+	it("rejects missing path params before sending requests", () => {
+		const declaration = route
+			.get("/items/:id")
+			.params(z.object({ id: z.string() }))
+			.response(204);
+
+		assert.throws(
+			() => constructBaseRequest("https://api.test", declaration, {}, true),
+			/Missing path param "id" for GET \/items\/:id\./,
+		);
+	});
+
 	it("omits undefined query and header values", async () => {
 		const apiContract = {
 			items: {

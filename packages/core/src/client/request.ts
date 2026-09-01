@@ -80,26 +80,6 @@ export const serializeCustomBody = (body: unknown, contentType: string) =>
 		? JSON.stringify(body)
 		: (body as BodyInit | null | undefined);
 
-const isSerializablePrimitive = (value: unknown) =>
-	typeof value === "string" ||
-	typeof value === "boolean" ||
-	(typeof value === "number" && Number.isFinite(value));
-
-const stringifyRequestValue = (
-	route: RouteDeclaration,
-	segment: "body" | "params" | "query" | "headers",
-	key: string,
-	value: unknown,
-	optional = false,
-) => {
-	if (value === undefined && optional) return undefined;
-	if (isSerializablePrimitive(value)) return String(value);
-
-	throw new Error(
-		`Invalid ${segment} key "${key}" for ${route.method} ${route.path}. Expected string, number, or boolean.`,
-	);
-};
-
 const serializeFormBody = (
 	route: RouteDeclaration,
 	body: Record<string, unknown> | undefined,
@@ -117,25 +97,10 @@ const serializeFormBody = (
 					);
 				}
 
-				return value.map((item) => {
-					const stringValue = stringifyRequestValue(route, "body", key, item);
-					if (stringValue === undefined) {
-						throw new Error(
-							`Invalid body key "${key}" for ${route.method} ${route.path}. Expected string, number, boolean, or an array for a declared form array key.`,
-						);
-					}
-					return [key, stringValue];
-				});
+				return value.map((item) => [key, String(item)]);
 			}
 
-			const stringValue = stringifyRequestValue(
-				route,
-				"body",
-				key,
-				value,
-				true,
-			);
-			return stringValue === undefined ? [] : [[key, stringValue]];
+			return value === undefined ? [] : [[key, String(value)]];
 		}),
 	);
 };
@@ -143,19 +108,9 @@ const serializeFormBody = (
 const isMultipartFileValue = (value: unknown): value is Blob =>
 	typeof Blob !== "undefined" && value instanceof Blob;
 
-const stringifyMultipartValue = (
-	route: RouteDeclaration,
-	key: string,
-	value: unknown,
-	optional = false,
-) => {
-	if (value === undefined && optional) return undefined;
+const stringifyMultipartValue = (value: unknown) => {
 	if (isMultipartFileValue(value)) return value;
-	if (isSerializablePrimitive(value)) return String(value);
-
-	throw new Error(
-		`Invalid body key "${key}" for ${route.method} ${route.path}. Expected string, number, boolean, Blob, File, or an array for a declared multipart array key.`,
-	);
+	return String(value);
 };
 
 const serializeMultipartBody = (
@@ -179,19 +134,14 @@ const serializeMultipartBody = (
 			}
 
 			for (const item of value) {
-				const formValue = stringifyMultipartValue(route, key, item);
-				if (formValue === undefined) {
-					throw new Error(
-						`Invalid body key "${key}" for ${route.method} ${route.path}. Expected string, number, boolean, Blob, File, or an array for a declared multipart array key.`,
-					);
-				}
-				formData.append(key, formValue);
+				formData.append(key, stringifyMultipartValue(item));
 			}
 			continue;
 		}
 
-		const formValue = stringifyMultipartValue(route, key, value, true);
-		if (formValue !== undefined) formData.append(key, formValue);
+		if (value !== undefined) {
+			formData.append(key, stringifyMultipartValue(value));
+		}
 	}
 
 	return formData;
@@ -213,8 +163,13 @@ const serializeParams = (
 	params: Record<string, unknown> | undefined,
 ) => {
 	return replacePathParams(route.path, (key) => {
-		const value = String(params?.[key]);
-		return encodeURIComponent(value);
+		const value = params?.[key];
+		if (value === undefined) {
+			throw new Error(
+				`Missing path param "${key}" for ${route.method} ${route.path}.`,
+			);
+		}
+		return encodeURIComponent(String(value));
 	});
 };
 

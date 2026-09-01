@@ -4,6 +4,27 @@ import {
 } from "../standard-schema/index.ts";
 import { resolveBuiltInRequestKeys } from "./requestKeys.ts";
 
+type BodyScalar = string | number | boolean;
+
+/** A form body schema whose input can be serialized as URL-encoded fields. */
+export type FormBodySchema = StandardSchemaV1<
+	Record<string, BodyScalar | readonly BodyScalar[] | undefined>,
+	unknown
+>;
+
+type MultipartBodyValue = BodyScalar | Blob;
+
+/** A multipart body schema whose input can be serialized as form-data fields. */
+export type MultipartBodySchema = StandardSchemaV1<
+	Record<
+		string,
+		MultipartBodyValue | readonly MultipartBodyValue[] | undefined
+	>,
+	unknown
+>;
+
+type BodyWithArrayKeysSchema = FormBodySchema | MultipartBodySchema;
+
 /**
  * Marks a request or response body as intentionally empty.
  *
@@ -17,7 +38,7 @@ export type NoBody = {
  * Declares an `application/x-www-form-urlencoded` request body.
  */
 export type FormBody<
-	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TSchema extends FormBodySchema = FormBodySchema,
 	TArrayKeys extends readonly string[] = readonly string[],
 > = {
 	kind: "formBody";
@@ -29,7 +50,7 @@ export type FormBody<
  * Declares a `multipart/form-data` request body.
  */
 export type MultipartBody<
-	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TSchema extends MultipartBodySchema = MultipartBodySchema,
 	TArrayKeys extends readonly string[] = readonly string[],
 > = {
 	kind: "multipartBody";
@@ -43,7 +64,7 @@ export type MultipartBody<
 export type CustomBodyContentType = string | readonly string[];
 
 export type BodyWithArrayKeysOptions<
-	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TSchema extends BodyWithArrayKeysSchema = BodyWithArrayKeysSchema,
 	TArrayKeys extends readonly string[] = readonly string[],
 > = {
 	schema: TSchema;
@@ -51,12 +72,17 @@ export type BodyWithArrayKeysOptions<
 };
 
 export type BodyWithArrayKeysInput<
-	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+	TSchema extends BodyWithArrayKeysSchema = BodyWithArrayKeysSchema,
 	TArrayKeys extends readonly string[] = readonly string[],
 > = TSchema | BodyWithArrayKeysOptions<TSchema, TArrayKeys>;
 
-export function resolveBodyWithArrayKeys(input: BodyWithArrayKeysInput): {
-	schema: StandardSchemaV1;
+export function resolveBodyWithArrayKeys<
+	const TSchema extends BodyWithArrayKeysSchema,
+	const TArrayKeys extends readonly string[] = readonly string[],
+>(
+	input: BodyWithArrayKeysInput<TSchema, TArrayKeys>,
+): {
+	schema: TSchema;
 	arrayKeys: readonly string[];
 } {
 	if (!isStandardSchema(input)) {
@@ -93,17 +119,17 @@ export function noBody(): NoBody {
  *
  * @see {@link https://rest-rpc.dev/docs/http-requests#request-with-form-body}
  */
-export function formBody<const TSchema extends StandardSchemaV1>(
+export function formBody<const TSchema extends FormBodySchema>(
 	schema: TSchema,
 ): FormBody<TSchema>;
 export function formBody<
-	const TSchema extends StandardSchemaV1,
+	const TSchema extends FormBodySchema,
 	const TArrayKeys extends readonly string[],
 >(
 	input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
 ): FormBody<TSchema, TArrayKeys>;
 export function formBody<
-	const TSchema extends StandardSchemaV1,
+	const TSchema extends FormBodySchema,
 	const TArrayKeys extends readonly string[],
 >(input: BodyWithArrayKeysInput<TSchema, TArrayKeys>): FormBody<TSchema> {
 	const { schema, arrayKeys } = resolveBodyWithArrayKeys(input);
@@ -127,17 +153,17 @@ export function formBody<
  *
  * @see {@link https://rest-rpc.dev/docs/http-requests#request-with-multipart-body}
  */
-export function multipartBody<const TSchema extends StandardSchemaV1>(
+export function multipartBody<const TSchema extends MultipartBodySchema>(
 	schema: TSchema,
 ): MultipartBody<TSchema>;
 export function multipartBody<
-	const TSchema extends StandardSchemaV1,
+	const TSchema extends MultipartBodySchema,
 	const TArrayKeys extends readonly string[],
 >(
 	input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
 ): MultipartBody<TSchema, TArrayKeys>;
 export function multipartBody<
-	const TSchema extends StandardSchemaV1,
+	const TSchema extends MultipartBodySchema,
 	const TArrayKeys extends readonly string[],
 >(input: BodyWithArrayKeysInput<TSchema, TArrayKeys>): MultipartBody<TSchema> {
 	const { schema, arrayKeys } = resolveBodyWithArrayKeys(input);

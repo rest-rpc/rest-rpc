@@ -46,7 +46,7 @@ Request data is declared by HTTP location on the route builder.
 route
 	.patch("/todos/:id")
 	.params(z.object({ id: z.string() }))
-	.query(z.object({ includeCompleted: z.coerce.boolean().optional() }))
+	.query(z.object({ includeCompleted: z.coerce.boolean<boolean>().optional() }))
 	.headers(z.object({ "x-request-id": z.string().optional() }))
 	.body(z.object({ title: z.string() }))
 	.response(200, todoSchema);

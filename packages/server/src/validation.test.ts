@@ -138,7 +138,7 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: z.object({ id: z.coerce.number() }),
+					params: z.object({ id: z.coerce.number<number>() }),
 					query: z.object({
 						published: z
 							.enum(["true", "false"])
@@ -315,7 +315,7 @@ describe("validateRequest", () => {
 					body: formBody(
 						z.object({
 							title: z.string(),
-							count: z.coerce.number(),
+							count: z.coerce.number<number>(),
 							remember: z.string().optional(),
 						}),
 					),
@@ -402,7 +402,7 @@ describe("validateRequest", () => {
 					body: multipartBody({
 						schema: z.object({
 							title: z.string(),
-							count: z.coerce.number(),
+							count: z.coerce.number<number>(),
 							file: z.instanceof(Blob),
 							tags: z.array(z.string()),
 						}),

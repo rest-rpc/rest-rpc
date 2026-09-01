@@ -103,6 +103,36 @@ expectError(
 	route.get("/items").query(schemaType<{ filters: { tag: string } }>()),
 );
 expectError(route.get("/items/:id").params(schemaType<{ id: string[] }>()));
+expectError(route.get("/items").query(z.object({ page: z.coerce.number() })));
+expectError(
+	route.get("/items/:id").params(z.object({ id: z.coerce.number() })),
+);
+expectError(
+	route.get("/items").headers(z.object({ "x-page": z.coerce.number() })),
+);
+expectError(
+	route.post("/forms").formBody(z.object({ count: z.coerce.number() })),
+);
+expectError(
+	route.post("/uploads").multipartBody(z.object({ count: z.coerce.number() })),
+);
+expectError(
+	route.post("/forms").formBody(schemaType<{ nested: { value: string } }>()),
+);
+expectError(
+	route
+		.post("/uploads")
+		.multipartBody(schemaType<{ metadata: { title: string } }>()),
+);
+
+route.post("/forms").formBody(z.object({ count: z.coerce.number<number>() }));
+route.post("/uploads").multipartBody(
+	schemaType<{
+		file: Blob;
+		parts?: Array<Blob | string>;
+		title: string;
+	}>(),
+);
 
 const groupedRequestApi = {
 	todos: {

@@ -524,7 +524,7 @@ const formRequestApi = {
 				body: formBody(
 					z.object({
 						title: z.string(),
-						count: z.coerce.number(),
+						count: z.coerce.number<number>(),
 					}),
 				),
 			},

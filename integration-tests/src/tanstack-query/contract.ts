@@ -68,7 +68,10 @@ export const tanstackQueryContract = {
 		page: route
 			.get("/project-page")
 			.query(
-				z.object({ cursor: z.string().optional(), limit: z.coerce.number() }),
+				z.object({
+					cursor: z.string().optional(),
+					limit: z.coerce.number<number>(),
+				}),
 			)
 			.response(
 				200,

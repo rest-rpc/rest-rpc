@@ -9,7 +9,9 @@ import {
 	type CustomResponseBody,
 	type CustomResponseInput,
 	type FormBody,
+	type FormBodySchema,
 	type MultipartBody,
+	type MultipartBodySchema,
 	type NoBody,
 	type Stream,
 } from "../contract/body.ts";
@@ -99,7 +101,7 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 		return this;
 	}
 
-	formBody(input: BodyWithArrayKeysInput) {
+	formBody(input: BodyWithArrayKeysInput<FormBodySchema>) {
 		this.requestForWrite().body = {
 			kind: "formBody",
 			...resolveBodyWithArrayKeys(input),
@@ -108,7 +110,7 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 		return this;
 	}
 
-	multipartBody(input: BodyWithArrayKeysInput) {
+	multipartBody(input: BodyWithArrayKeysInput<MultipartBodySchema>) {
 		this.requestForWrite().body = {
 			kind: "multipartBody",
 			...resolveBodyWithArrayKeys(input),
@@ -245,7 +247,7 @@ type HttpBuilder<
 					TResponses,
 					TUsed | "body"
 				>;
-				formBody<const TSchema extends StandardSchemaV1>(
+				formBody<const TSchema extends FormBodySchema>(
 					schema: TSchema,
 				): HttpBuilder<
 					TRoute,
@@ -254,7 +256,7 @@ type HttpBuilder<
 					TUsed | "body"
 				>;
 				formBody<
-					const TSchema extends StandardSchemaV1,
+					const TSchema extends FormBodySchema,
 					const TArrayKeys extends readonly string[],
 				>(
 					input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
@@ -264,7 +266,7 @@ type HttpBuilder<
 					TResponses,
 					TUsed | "body"
 				>;
-				multipartBody<const TSchema extends StandardSchemaV1>(
+				multipartBody<const TSchema extends MultipartBodySchema>(
 					schema: TSchema,
 				): HttpBuilder<
 					TRoute,
@@ -273,7 +275,7 @@ type HttpBuilder<
 					TUsed | "body"
 				>;
 				multipartBody<
-					const TSchema extends StandardSchemaV1,
+					const TSchema extends MultipartBodySchema,
 					const TArrayKeys extends readonly string[],
 				>(
 					input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,

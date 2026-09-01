@@ -74,7 +74,7 @@ export const api = {
 			.params(z.object({ id: z.string() }))
 			.query(
 				z.object({
-					notify: z.coerce.boolean().optional(),
+					notify: z.coerce.boolean<boolean>().optional(),
 				}),
 			)
 			.headers(z.object({ "x-request-id": z.string().optional() }))

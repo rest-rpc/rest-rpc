@@ -4,7 +4,7 @@ import z from "zod";
 export const requestValidationContract = {
 	coerce: route
 		.get("/request-validation/coerce/:id")
-		.params(z.object({ id: z.coerce.number() }))
+		.params(z.object({ id: z.coerce.number<number>() }))
 		.query(
 			z.object({
 				published: z
@@ -12,7 +12,7 @@ export const requestValidationContract = {
 					.transform((value) => value === "true"),
 			}),
 		)
-		.headers(z.object({ "x-page": z.string().pipe(z.coerce.number()) }))
+		.headers(z.object({ "x-page": z.string().pipe(z.coerce.number<string>()) }))
 		.response(
 			200,
 			z.object({ id: z.number(), published: z.boolean(), page: z.number() }),

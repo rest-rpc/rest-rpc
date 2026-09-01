@@ -19,7 +19,7 @@ export const integrationContract = {
 			.query(
 				z.object({
 					search: z.string().optional(),
-					limit: z.coerce.number().optional(),
+					limit: z.coerce.number<number>().optional(),
 				}),
 			)
 			.headers(z.object({ "x-test-token": z.string().optional() }))

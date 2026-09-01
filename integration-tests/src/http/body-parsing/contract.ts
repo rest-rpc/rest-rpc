@@ -36,7 +36,7 @@ export const bodyParsingContract = {
 		),
 	formUrlEncoded: route
 		.post("/body-parsing/form-url-encoded")
-		.formBody(z.object({ count: z.coerce.number(), title: z.string() }))
+		.formBody(z.object({ count: z.coerce.number<number>(), title: z.string() }))
 		.response(200, z.object({ count: z.number(), title: z.string() })),
 	binary: route
 		.post("/body-parsing/binary")

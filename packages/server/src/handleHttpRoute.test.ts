@@ -37,7 +37,7 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					params: z.object({ id: z.coerce.number() }),
+					params: z.object({ id: z.coerce.number<number>() }),
 					keys: {
 						id: "params",
 					},

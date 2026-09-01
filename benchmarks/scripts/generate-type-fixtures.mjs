@@ -9,8 +9,8 @@ const routeCounts = [10, 100, 500, 1000];
 const schemaLibraries = {
 	"type-only": {
 		importSource: `import { route, type as schema } from "@rest-rpc/core";`,
-		schemas: `const stringSchema = schema<string>();
-const optionalStringSchema = schema<string | undefined>();
+		schemas: `const requestHeadersSchema = schema<{ "x-request-id": string }>();
+const routeHeadersSchema = schema<{ "x-feature": string | undefined }>();
 const numberSchema = schema<number>();
 const booleanSchema = schema<boolean>();
 const querySchema = schema<{ search: string | undefined; limit: number }>();
@@ -30,8 +30,8 @@ const errorSchema = schema<{
 	zod: {
 		importSource: `import { route } from "@rest-rpc/core";
 import z from "zod";`,
-		schemas: `const stringSchema = z.string();
-const optionalStringSchema = z.string().optional();
+		schemas: `const requestHeadersSchema = z.object({ "x-request-id": z.string() });
+const routeHeadersSchema = z.object({ "x-feature": z.string().optional() });
 const numberSchema = z.number();
 const booleanSchema = z.boolean();
 const querySchema = z.object({ search: z.string().optional(), limit: z.number() });
@@ -51,8 +51,8 @@ const errorSchema = z.object({
 	valibot: {
 		importSource: `import { route } from "@rest-rpc/core";
 import * as v from "valibot";`,
-		schemas: `const stringSchema = v.string();
-const optionalStringSchema = v.optional(v.string());
+		schemas: `const requestHeadersSchema = v.object({ "x-request-id": v.string() });
+const routeHeadersSchema = v.object({ "x-feature": v.optional(v.string()) });
 const numberSchema = v.number();
 const booleanSchema = v.boolean();
 const querySchema = v.object({ search: v.optional(v.string()), limit: v.number() });
@@ -72,8 +72,8 @@ const errorSchema = v.object({
 	arktype: {
 		importSource: `import { route } from "@rest-rpc/core";
 import { type } from "arktype";`,
-		schemas: `const stringSchema = type("string");
-const optionalStringSchema = type("string | undefined");
+		schemas: `const requestHeadersSchema = type({ "x-request-id": "string" });
+const routeHeadersSchema = type({ "x-feature": "string | undefined" });
 const numberSchema = type("number");
 const booleanSchema = type("boolean");
 const querySchema = type({ search: "string | undefined", limit: "number" });
@@ -108,7 +108,7 @@ const routeSource = (index) => {
 	if (method !== "GET" && method !== "DELETE")
 		builder.push(".body(bodySchema)");
 	builder.push(
-		'.headers({ "x-feature": optionalStringSchema })',
+		".headers(routeHeadersSchema)",
 		`.withMetadata({ feature: 'group-${group}' })`,
 		".response(200, todoSchema)",
 		".response(400, errorSchema)",
@@ -145,9 +145,7 @@ const apiRoute = route.with({
 			benchmark: "contract-only",
 			schemaLibrary: "${schemaLibrary.name}",
 		},
-		headers: {
-			"x-request-id": stringSchema,
-		},
+		headers: requestHeadersSchema,
 		responses: {
 			500: errorSchema,
 		},
