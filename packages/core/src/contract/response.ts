@@ -1,7 +1,6 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { CustomBody, CustomResponseBody, NoBody, Stream } from "./body.ts";
-import { noBody } from "./body.ts";
-import type { HttpMethod, RouteDeclaration } from "./contract.ts";
+import type { RouteDeclaration } from "./contract.ts";
 
 export type ResponseSchema = StandardSchemaV1;
 
@@ -39,12 +38,6 @@ export type ResponseDeclaration =
 
 export type RouteResponses = Record<number, ResponseDeclaration>;
 
-export type DefaultBodyResponseStatusForMethod<TMethod extends HttpMethod> =
-	TMethod extends "POST" ? 201 : 200;
-
-export type DefaultNoBodyResponseStatusForMethod<TMethod extends HttpMethod> =
-	TMethod extends "POST" ? 201 : TMethod extends "DELETE" ? 204 : 200;
-
 export type RouteResponseInput =
 	| { responses: RouteResponses; response?: never }
 	| { response: ResponseDeclaration; responses?: never }
@@ -65,30 +58,6 @@ export const getResponseHeaders = (
 ): ResponseHeaders | undefined =>
 	hasResponseParts(response) ? response.headers : undefined;
 
-export const defaultBodyResponseStatusForMethod = (
-	method: HttpMethod,
-): DefaultBodyResponseStatusForMethod<typeof method> => {
-	switch (method) {
-		case "POST":
-			return 201;
-		default:
-			return 200;
-	}
-};
-
-export const defaultNoBodyResponseStatusForMethod = (
-	method: HttpMethod,
-): DefaultNoBodyResponseStatusForMethod<typeof method> => {
-	switch (method) {
-		case "POST":
-			return 201;
-		case "DELETE":
-			return 204;
-		default:
-			return 200;
-	}
-};
-
 export const getRouteResponses = (route: {
 	path: string;
 	responses?: RouteResponses;
@@ -106,27 +75,6 @@ export const getRouteResponses = (route: {
 	}
 
 	return route.responses;
-};
-
-export const resolveRouteResponses = (route: {
-	method: HttpMethod;
-	path: string;
-	response?: ResponseDeclaration;
-	responses?: RouteResponses;
-}): RouteResponses => {
-	if (route.responses !== undefined) {
-		return route.responses;
-	}
-
-	if (route.response !== undefined) {
-		return {
-			[defaultBodyResponseStatusForMethod(route.method)]: route.response,
-		};
-	}
-
-	return {
-		[defaultNoBodyResponseStatusForMethod(route.method)]: noBody(),
-	};
 };
 
 type InferCustomBodyPayload<
