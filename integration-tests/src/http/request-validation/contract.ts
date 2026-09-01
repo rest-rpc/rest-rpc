@@ -6,7 +6,7 @@ export const requestValidationContract = {
 		method: "GET",
 		path: "/request-validation/coerce/:id",
 		request: {
-			pathParams: z.object({ id: z.coerce.number() }),
+			params: z.object({ id: z.coerce.number() }),
 			query: z.object({
 				published: z
 					.enum(["true", "false"])
@@ -28,7 +28,7 @@ export const requestValidationContract = {
 		method: "GET",
 		path: "/request-validation/params/:id",
 		request: {
-			pathParams: z.object({ id: z.number() }),
+			params: z.object({ id: z.number() }),
 		},
 		responses: {
 			200: z.object({ reached: z.literal(true) }),

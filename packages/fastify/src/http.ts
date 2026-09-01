@@ -83,7 +83,7 @@ export const registerFastifyHttpRoutes = (
 					request: {
 						body: req.body,
 						query: req.query,
-						pathParams: req.params,
+						params: req.params,
 						headers: req.headers,
 					},
 					context: { req, signal },

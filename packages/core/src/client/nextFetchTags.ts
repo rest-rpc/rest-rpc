@@ -55,7 +55,7 @@ const getNextFetchTagRequest = (
 
 	if (route.request?.flattenKeys === false) {
 		return {
-			pathParams: request.pathParams,
+			params: request.params,
 			query: request.query,
 		};
 	}
@@ -65,7 +65,7 @@ const getNextFetchTagRequest = (
 	});
 
 	return {
-		...(grouped.pathParams as Record<string, unknown> | undefined),
+		...(grouped.params as Record<string, unknown> | undefined),
 		...(grouped.query as Record<string, unknown> | undefined),
 	};
 };

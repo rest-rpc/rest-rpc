@@ -44,7 +44,7 @@ const apiContract = {
 	socket: {
 		join: route
 			.ws("/rooms/:roomId")
-			.pathParams(z.object({ roomId: z.string() }))
+			.params(z.object({ roomId: z.string() }))
 			.clientMessages(z.object({ text: z.string() }))
 			.serverMessages(z.object({ text: z.string() })),
 	},
@@ -203,7 +203,7 @@ describe("ApiClient websockets", () => {
 			socket: {
 				join: route
 					.ws("/rooms/:roomId")
-					.pathParams(z.object({ roomId: z.string() }))
+					.params(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages(serverMessageSchema),
 			},
@@ -239,7 +239,7 @@ describe("ApiClient websockets", () => {
 			socket: {
 				join: route
 					.ws("/rooms/:roomId")
-					.pathParams(z.object({ roomId: z.string() }))
+					.params(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages(serverMessageSchema),
 			},
@@ -276,7 +276,7 @@ describe("ApiClient websockets", () => {
 			socket: {
 				join: route
 					.ws("/rooms/:roomId")
-					.pathParams(z.object({ roomId: z.string() }))
+					.params(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages(serverMessageSchema),
 			},
@@ -310,7 +310,7 @@ describe("ApiClient websockets", () => {
 			socket: {
 				join: route
 					.ws("/rooms/:roomId")
-					.pathParams(z.object({ roomId: z.string() }))
+					.params(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages(serverMessageSchema),
 			},
@@ -343,7 +343,7 @@ describe("ApiClient websockets", () => {
 			socket: {
 				join: route
 					.ws("/rooms/:roomId")
-					.pathParams(z.object({ roomId: z.string() }))
+					.params(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages({
 						discriminator: "type",
@@ -378,7 +378,7 @@ describe("ApiClient websockets", () => {
 			socket: {
 				join: route
 					.ws("/rooms/:roomId")
-					.pathParams(z.object({ roomId: z.string() }))
+					.params(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages(
 						webSocketMessages("type", {

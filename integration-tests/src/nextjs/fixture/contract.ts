@@ -19,7 +19,7 @@ export const nextFixtureContract = {
 			method: "GET",
 			path: "/api/items/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 			},
 			responses: {
 				200: itemSchema,
@@ -41,7 +41,7 @@ export const nextFixtureContract = {
 			method: "GET",
 			path: "/api/targeted/items/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 			},
 			responses: {
 				200: itemSchema,

@@ -27,14 +27,14 @@ const apiContract = {
 			.response(200, z.array(z.object({ id: z.string() }))),
 		publish: route
 			.post("/todos/:id/publish")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(200, z.object({ id: z.string() }))
 			.response(202, z.object({ queued: z.literal(true) })),
 	},
 	socket: {
 		join: route
 			.ws("/rooms/:roomId")
-			.pathParams(z.object({ roomId: z.string() }))
+			.params(z.object({ roomId: z.string() }))
 			.clientMessages(z.object({ text: z.string() }))
 			.serverMessages(z.object({ text: z.string() })),
 	},

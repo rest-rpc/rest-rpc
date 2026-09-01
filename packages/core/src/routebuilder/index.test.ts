@@ -30,7 +30,7 @@ describe("HTTP route builder runtime", () => {
 			.headers({ authorization: type<string>() })
 			.body(schema)
 			.query(z.object({ search: z.string() }))
-			.pathParams(type<{ id: string }>())
+			.params(type<{ id: string }>())
 			.metadata({ scope: "write" })
 			.openApi({ tags: ["Items"] });
 		assert.equal(declaration.request?.body, schema);
@@ -59,12 +59,12 @@ describe("HTTP route builder runtime", () => {
 			.post("/items/:id")
 			.body(z.object({ title: z.string() }))
 			.headers({ authorization: type<string>() })
-			.pathParams(type<{ id: string }>())
+			.params(type<{ id: string }>())
 			.response(201, type<{ id: string }>());
 
 		assert.deepEqual(declaration.request?.keys, {
 			authorization: "headers",
-			id: "pathParams",
+			id: "params",
 			title: "body",
 		});
 	});
@@ -220,7 +220,7 @@ describe("protocol route builder runtime", () => {
 		const declaration = route
 			.sse("/events/:id")
 			.query(z.object({ cursor: z.string() }))
-			.pathParams(type<{ id: string }>())
+			.params(type<{ id: string }>())
 			.response(event);
 		assert.equal(declaration.mode, "sse");
 		assert.equal(declaration.responses?.[200], event);

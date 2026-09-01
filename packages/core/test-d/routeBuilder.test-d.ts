@@ -34,8 +34,8 @@ const create = apiRoute
 	.post("/todos")
 	.body(input)
 	.headers({ trace: schemaType<string>() })
-	.pathParams(schemaType<{ accountId: string }>())
-	.requestKeys({ title: "body", accountId: "pathParams" })
+	.params(schemaType<{ accountId: string }>())
+	.requestKeys({ title: "body", accountId: "params" })
 	.response(201, todo)
 	.metadata({ permission: "todos:create" as const })
 	.openApi({ summary: "Create todo" });
@@ -109,7 +109,7 @@ expectError(incompleteSocket.response(event));
 expectError(incompleteSocket.responses({ 200: event }));
 
 const socket = incompleteSocket
-	.pathParams(schemaType<{ roomId: string }>())
+	.params(schemaType<{ roomId: string }>())
 	.serverMessages(serverMessage)
 	.openApi({ summary: "Join socket" });
 

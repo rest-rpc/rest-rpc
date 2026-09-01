@@ -26,7 +26,7 @@ export const hoverApi = {
 	todos: {
 		get: route
 			.get("/todos/:id")
-			.pathParams(schemaType<{ id: string }>())
+			.params(schemaType<{ id: string }>())
 			.query(schemaType<{ includeDone?: boolean }>())
 			.response(200, schemaType<{ id: string; title: string }>())
 			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
@@ -59,7 +59,7 @@ export const hoverApi = {
 			.response(400, schemaType<{ code: "INVALID_TODO" }>()),
 		download: route
 			.get("/todos/:id/export")
-			.pathParams(schemaType<{ id: string }>())
+			.params(schemaType<{ id: string }>())
 			.customResponse(200, {
 				schema: schemaType<Blob>(),
 				contentType: ["text/csv", "application/json"] as const,
@@ -69,7 +69,7 @@ export const hoverApi = {
 			.streamResponse(200, schemaType<{ id: string; message: string }>()),
 		remove: route
 			.delete("/todos/:id")
-			.pathParams(schemaType<{ id: string }>())
+			.params(schemaType<{ id: string }>())
 			.response(204)
 			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
 	},

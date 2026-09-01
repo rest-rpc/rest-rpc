@@ -28,7 +28,7 @@ export const tanstackQueryContract = {
 			method: "GET",
 			path: "/projects/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 			},
 			responses: {
 				200: projectSchema,
@@ -75,7 +75,7 @@ export const tanstackQueryContract = {
 			method: "PATCH",
 			path: "/projects/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				body: z.object({ name: z.string() }),
 			},
 			responses: {
@@ -106,7 +106,7 @@ export const tanstackQueryContract = {
 			method: "GET",
 			path: "/slow-projects/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 			},
 			responses: {
 				200: projectSchema,

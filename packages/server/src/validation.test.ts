@@ -79,7 +79,7 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					pathParams: {
+					params: {
 						id: z.coerce.number(),
 					},
 					query: {
@@ -88,14 +88,14 @@ describe("validateRequest", () => {
 							.transform((value) => value === "true"),
 					},
 					keys: {
-						id: "pathParams",
+						id: "params",
 						published: "query",
 					},
 				},
 				responses: {},
 			},
 			{
-				pathParams: { id: "123" },
+				params: { id: "123" },
 				query: { published: "false" },
 			},
 		);
@@ -103,7 +103,7 @@ describe("validateRequest", () => {
 		assert.equal(result.success, true);
 		if (result.success) {
 			assert.deepEqual(result.data, {
-				pathParams: { id: 123 },
+				params: { id: 123 },
 				query: { published: false },
 			});
 		}
@@ -115,21 +115,21 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					pathParams: {
+					params: {
 						id: z.number(),
 					},
 					query: {
 						published: z.boolean(),
 					},
 					keys: {
-						id: "pathParams",
+						id: "params",
 						published: "query",
 					},
 				},
 				responses: {},
 			},
 			{
-				pathParams: { id: "123" },
+				params: { id: "123" },
 				query: { published: "true" },
 			},
 		);

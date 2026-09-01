@@ -101,16 +101,16 @@ export class BaseRouteBuilder {
 						},
 					]
 				: []),
-			...(request?.pathParams
+			...(request?.params
 				? (() => {
 						const pathParamKeys = getPathParamNames(this.path);
 						return [
 							{
-								segment: "pathParams" as const,
+								segment: "params" as const,
 								keys:
 									pathParamKeys.length > 0
 										? pathParamKeys
-										: resolveSchemaRequestKeyNames(request.pathParams),
+										: resolveSchemaRequestKeyNames(request.params),
 							},
 						];
 					})()
@@ -199,7 +199,7 @@ export class BaseRouteBuilder {
 				const existing = keys[key];
 				if (existing && existing !== segment) {
 					throw new Error(
-						`Route declaration at path "${this.path}" has duplicate request key "${key}" across its "body", "query", "pathParams" and "headers" definitions.`,
+						`Route declaration at path "${this.path}" has duplicate request key "${key}" across its "body", "query", "params" and "headers" definitions.`,
 					);
 				}
 				keys[key] = segment;
@@ -221,8 +221,8 @@ export class BaseRouteBuilder {
 		return this;
 	}
 
-	pathParams(schema: StandardSchemaV1) {
-		this.requestForWrite().pathParams = schema;
+	params(schema: StandardSchemaV1) {
+		this.requestForWrite().params = schema;
 		this.recalculateRequestKeys();
 		return this;
 	}

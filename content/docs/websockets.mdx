@@ -12,7 +12,7 @@ export const api = {
 	chat: {
 		room: route
 			.ws("/rooms/:roomId")
-			.pathParams(
+			.params(
 				z.object({
 					roomId: z.string().min(1),
 				}),

@@ -5,7 +5,7 @@ export type FlatRequestInput = Record<string, unknown>;
 export type GroupedRequestInput = {
 	body?: unknown;
 	query?: unknown;
-	pathParams?: Record<string, unknown>;
+	params?: Record<string, unknown>;
 	headers?: Record<string, unknown>;
 };
 

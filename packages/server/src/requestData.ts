@@ -18,7 +18,7 @@ const flattenQuerySegment = (
 		: flattenObjectSegment(request.query);
 
 const flattenPathAndHeaders = (request: Record<string, unknown>) => ({
-	...flattenObjectSegment(request.pathParams),
+	...flattenObjectSegment(request.params),
 	...flattenObjectSegment(request.headers),
 });
 

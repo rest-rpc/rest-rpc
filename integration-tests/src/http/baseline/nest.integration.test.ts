@@ -220,7 +220,7 @@ it("supports async routers that close over values from Nest parameter decorators
 			method: "GET",
 			path: "/async-items/:id",
 			request: {
-				pathParams: { id: schemaType<string>() },
+				params: { id: schemaType<string>() },
 				headers: { "x-test-source": schemaType<string>() },
 			},
 			response: schemaType<{ id: string; title: string }>(),

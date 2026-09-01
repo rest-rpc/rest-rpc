@@ -37,11 +37,11 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					pathParams: {
+					params: {
 						id: z.coerce.number(),
 					},
 					keys: {
-						id: "pathParams",
+						id: "params",
 					},
 				},
 				responses: {
@@ -58,7 +58,7 @@ describe("handleHttpRoute", () => {
 			},
 			{
 				request: {
-					pathParams: { id: "123" },
+					params: { id: "123" },
 				},
 				context: { requestId: "request-1" },
 			},
@@ -113,11 +113,11 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					pathParams: {
+					params: {
 						id: z.number(),
 					},
 					keys: {
-						id: "pathParams",
+						id: "params",
 					},
 				},
 				responses: {
@@ -129,7 +129,7 @@ describe("handleHttpRoute", () => {
 			},
 			{
 				request: {
-					pathParams: { id: "123" },
+					params: { id: "123" },
 				},
 				context: {},
 			},
@@ -146,11 +146,11 @@ describe("handleHttpRoute", () => {
 				method: "GET",
 				path: "/todos/:id",
 				request: {
-					pathParams: {
+					params: {
 						id: z.number(),
 					},
 					keys: {
-						id: "pathParams",
+						id: "params",
 					},
 				},
 				responses: {
@@ -160,13 +160,13 @@ describe("handleHttpRoute", () => {
 			() => undefined,
 			{
 				request: {
-					pathParams: { id: "123" },
+					params: { id: "123" },
 				},
 				context: { requestId: "request-1" },
 				errorHandlers: {
 					onRequestValidationError({ context, issues, request, route }) {
 						assert.equal(context.requestId, "request-1");
-						assert.deepEqual(request.pathParams, { id: "123" });
+						assert.deepEqual(request.params, { id: "123" });
 						assert.equal(route.path, "/todos/:id");
 
 						return {

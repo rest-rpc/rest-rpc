@@ -203,7 +203,7 @@ describe("OpenAPI operations", () => {
 			path: "/todos/:id",
 			method: "GET",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				query: {
 					search: z
 						.string()
@@ -654,7 +654,7 @@ describe("OpenAPI operations", () => {
 			path: "/todos/:id",
 			method: "POST",
 			request: {
-				pathParams: { id: z.string() },
+				params: { id: z.string() },
 				headers: { "x-api-key": z.string() },
 				body: { title: z.string() },
 			},

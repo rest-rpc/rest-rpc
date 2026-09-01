@@ -9,7 +9,7 @@ export const takesRequestInput = (route: RouteDeclaration) =>
 	Boolean(
 		route.request?.body ||
 		route.request?.query ||
-		route.request?.pathParams ||
+		route.request?.params ||
 		route.request?.headers,
 	);
 

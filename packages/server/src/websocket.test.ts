@@ -58,11 +58,11 @@ const websocketRoute = (
 		method: "GET",
 		path: "/rooms/:roomId",
 		request: {
-			pathParams: {
+			params: {
 				roomId: z.string(),
 			},
 			keys: {
-				roomId: "pathParams",
+				roomId: "params",
 			},
 		},
 		mode: "webSocket",
@@ -300,7 +300,7 @@ describe("prepareWebSocketUpgrade", () => {
 		const result = await prepareWebSocketUpgrade({
 			implementation,
 			request: {
-				pathParams: { roomId: "room-1" },
+				params: { roomId: "room-1" },
 			},
 			context: {},
 		});
@@ -375,7 +375,7 @@ describe("prepareWebSocketUpgrade", () => {
 		const result = await prepareWebSocketUpgrade({
 			implementation,
 			request: {
-				pathParams: { roomId: "room-1" },
+				params: { roomId: "room-1" },
 			},
 			context: { req: "request" },
 			beforeUpgrade: ({ request, context }) => {
@@ -410,7 +410,7 @@ describe("prepareWebSocketUpgrade", () => {
 		const result = await prepareWebSocketUpgrade({
 			implementation,
 			request: {
-				pathParams: { roomId: "room-1" },
+				params: { roomId: "room-1" },
 			},
 			context: {},
 			beforeUpgrade: () => {
@@ -439,7 +439,7 @@ describe("prepareWebSocketUpgrade", () => {
 		const result = await prepareWebSocketUpgrade({
 			implementation,
 			request: {
-				pathParams: { roomId: "room-1" },
+				params: { roomId: "room-1" },
 			},
 			context: { req: "request" },
 			beforeUpgrade: () => {

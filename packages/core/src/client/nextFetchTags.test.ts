@@ -11,7 +11,7 @@ describe("Next fetch tags", () => {
 				list: route
 					.get("/items/:id")
 					.requestKeys({
-						id: "pathParams",
+						id: "params",
 						filter: "query",
 						page: "query",
 						authorization: "headers",
@@ -21,7 +21,7 @@ describe("Next fetch tags", () => {
 					.headers({
 						authorization: type<string>(),
 					})
-					.pathParams(type<{ id: string }>())
+					.params(type<{ id: string }>())
 					.query(type<{ filter: string; page: number }>())
 					.response(204),
 			},
@@ -51,9 +51,9 @@ describe("Next fetch tags", () => {
 			items: {
 				get: route
 					.get("/items/:id")
-					.pathParams(type<{ id: string }>())
+					.params(type<{ id: string }>())
 					.requestKeys({
-						id: "pathParams",
+						id: "params",
 					})
 					.response(204),
 			},
@@ -76,7 +76,7 @@ describe("Next fetch tags", () => {
 			items: {
 				list: groupedRoute
 					.get("/items/:id")
-					.pathParams(type<{ id: string }>())
+					.params(type<{ id: string }>())
 					.query(type<{ filter: string }>())
 					.response(204),
 			},
@@ -84,11 +84,11 @@ describe("Next fetch tags", () => {
 
 		assert.deepEqual(
 			getNextFetchTags(apiContract.items.list, ["items", "list"], {
-				pathParams: { id: "one", unused: undefined },
+				params: { id: "one", unused: undefined },
 				query: { filter: "open" },
 			}),
 			[
-				"rest-rpc:items.list:pathParams:%7B%22id%22%3A%22one%22%7D:query:%7B%22filter%22%3A%22open%22%7D",
+				"rest-rpc:items.list:params:%7B%22id%22%3A%22one%22%7D:query:%7B%22filter%22%3A%22open%22%7D",
 				"rest-rpc:items.list",
 			],
 		);

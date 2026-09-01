@@ -39,7 +39,7 @@ const pathParamApi = {
 	todos: {
 		get: route
 			.get("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(200, todoSchema),
 	},
 };
@@ -84,7 +84,7 @@ const groupedRequestApi = {
 		create: route
 			.with({ flattenRequestKeys: false })
 			.post("/todos/:accountId")
-			.pathParams(z.object({ accountId: z.string() }))
+			.params(z.object({ accountId: z.string() }))
 			.query(z.object({ notify: z.boolean() }))
 			.body(z.object({ title: z.string() }))
 			.headers({ authorization: z.string() })
@@ -100,7 +100,7 @@ expectType<Promise<{ id: string; title: string }>>(
 	groupedRequestClient.todos.create.fetch({
 		body: { title: "Write type tests" },
 		headers: { authorization: "Bearer token" },
-		pathParams: { accountId: "account-1" },
+		params: { accountId: "account-1" },
 		query: { notify: true },
 	}),
 );
@@ -118,7 +118,7 @@ const groupedRequestWithApi = {
 	todos: {
 		create: groupedRequestFactory
 			.post("/todos/:accountId")
-			.pathParams(z.object({ accountId: z.string() }))
+			.params(z.object({ accountId: z.string() }))
 			.query(z.object({ notify: z.boolean() }))
 			.body(z.object({ title: z.string() }))
 			.response(201, todoSchema),
@@ -132,7 +132,7 @@ const groupedRequestWithClient = initClient(groupedRequestWithApi, {
 expectType<Promise<{ id: string; title: string }>>(
 	groupedRequestWithClient.todos.create.fetch({
 		body: { title: "Write type tests" },
-		pathParams: { accountId: "account-1" },
+		params: { accountId: "account-1" },
 		query: { notify: true },
 	}),
 );
@@ -222,7 +222,7 @@ const strictResponseApi = {
 		get: route
 			.with({ strictStatusCodes: true })
 			.get("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(200, todoSchema)
 			.response(404, z.object({ code: z.literal("not_found") })),
 	},
@@ -259,7 +259,7 @@ const transformedApi = {
 	todos: {
 		transform: route
 			.post("/todos/:id/transform")
-			.pathParams(
+			.params(
 				z.object({ id: z.string() }).transform(({ id }) => ({
 					id: Number(id),
 				})),
@@ -373,7 +373,7 @@ const customRequestApi = {
 	todos: {
 		uploadImage: route
 			.post("/todos/:id/image")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.customBody({
 				contentType: ["image/png", "image/jpeg"],
 				schema: z.instanceof(Uint8Array),
@@ -434,7 +434,7 @@ const requestArgumentApi = {
 		list: route.get("/todos").response(200, z.array(todoSchema)),
 		get: route
 			.get("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(200, todoSchema),
 		create: route
 			.post("/todos")
@@ -555,7 +555,7 @@ const sseApi = {
 	todos: {
 		events: route
 			.sse("/todos/:id/events")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.query(z.object({ includeDone: z.boolean().optional() }))
 			.response(
 				z.object({

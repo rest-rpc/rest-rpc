@@ -31,7 +31,7 @@ export const websocketContract = {
 		path: "/ws/:roomId",
 		mode: "webSocket",
 		request: {
-			pathParams: z.object({
+			params: z.object({
 				roomId: z.string().min(1),
 			}),
 			query: z.object({

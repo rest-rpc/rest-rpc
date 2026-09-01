@@ -14,7 +14,7 @@ export const api = {
 	todos: {
 		get: route
 			.get("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.query(z.object({ includeDone: z.boolean().optional() }))
 			.response(200, z.object({ id: z.string(), title: z.string() }))
 			.response(404, z.object({ code: z.literal("NOT_FOUND") })),
@@ -46,7 +46,7 @@ export const api = {
 			.streamResponse(200, z.object({ id: z.string(), message: z.string() })),
 		watch: route
 			.ws("/todos/:id/watch")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.clientMessages(
 				webSocketMessages("action", {
 					typing: z.object({ active: z.boolean() }),

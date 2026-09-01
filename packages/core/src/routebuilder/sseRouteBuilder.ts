@@ -63,16 +63,16 @@ type SseRequestSetters<
 				TResponse
 			>;
 		}) &
-	("pathParams" extends TUsed
+	("params" extends TUsed
 		? EmptyObject
 		: {
-				pathParams<const TSchema extends StandardSchemaV1>(
+				params<const TSchema extends StandardSchemaV1>(
 					schema: TSchema,
 				): SseBuilder<
-					WithRequest<TRequest, "pathParams", TSchema>,
+					WithRequest<TRequest, "params", TSchema>,
 					TMetadata,
 					TOpenApi,
-					TUsed | "pathParams",
+					TUsed | "params",
 					TResponse
 				>;
 			}) &

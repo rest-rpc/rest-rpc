@@ -421,19 +421,19 @@ type HttpBuilder<
 						TUsed | "query"
 					>;
 				}) &
-		("pathParams" extends TUsed
+		("params" extends TUsed
 			? EmptyObject
 			: {
-					pathParams<const TSchema extends StandardSchemaV1>(
+					params<const TSchema extends StandardSchemaV1>(
 						schema: TSchema,
 					): HttpBuilder<
 						TMethod,
-						WithRequest<TRequest, "pathParams", TSchema>,
+						WithRequest<TRequest, "params", TSchema>,
 						TResponses,
 						TMetadata,
 						TOpenApi,
 						TStrictStatusCodes,
-						TUsed | "pathParams"
+						TUsed | "params"
 					>;
 				}) &
 		("headers" extends TUsed

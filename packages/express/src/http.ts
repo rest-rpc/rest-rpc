@@ -132,7 +132,7 @@ export const registerExpressHttpRoutes = (
 				request: {
 					body: req.body,
 					query: req.query,
-					pathParams: req.params,
+					params: req.params,
 					headers: req.headers,
 				},
 				context: { kind: "http", req, signal },

@@ -13,7 +13,7 @@ const routeWithRequest = {
 	method: "GET",
 	path: "/items/:id",
 	request: {
-		pathParams: {},
+		params: {},
 	},
 	responses: { 200: {} },
 } as any;

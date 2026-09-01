@@ -130,7 +130,7 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 					request: {
 						body,
 						query: c.req.query(),
-						pathParams: c.req.param(),
+						params: c.req.param(),
 						headers: c.req.header(),
 					},
 					context: { c, signal: c.req.raw.signal },

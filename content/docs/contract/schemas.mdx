@@ -22,7 +22,7 @@ segments, so whole-location schemas do not need flattened key metadata.
 A schema record maps flattened request keys to individual schemas.
 
 ```ts
-pathParams: {
+params: {
 	id: z.string().uuid(),
 },
 query: {
@@ -47,7 +47,7 @@ await client.todos.update.fetch({
 });
 ```
 
-A whole-location schema validates the whole `body`, `query`, or `pathParams`
+A whole-location schema validates the whole `body`, `query`, or `params`
 object as one value.
 
 For Zod, Valibot, and ArkType, `rest-rpc` can resolve flattened request keys
@@ -56,7 +56,7 @@ from object schemas and object-like unions directly.
 Zod supports object, union, and discriminated union schemas.
 
 ```ts
-pathParams: z.object({
+params: z.object({
 	id: z.string().uuid(),
 }),
 query: z.union([
@@ -72,7 +72,7 @@ body: z.discriminatedUnion("kind", [
 Valibot supports object, union, and variant schemas.
 
 ```ts
-pathParams: v.object({
+params: v.object({
 	id: v.pipe(v.string(), v.uuid()),
 }),
 query: v.union([
@@ -88,7 +88,7 @@ body: v.variant("kind", [
 ArkType supports object and union schemas.
 
 ```ts
-pathParams: type({
+params: type({
 	id: "string",
 }),
 query: type({ q: "string" }).or({ page: "string" }),

@@ -23,7 +23,7 @@ const createResponseTestContract = () => ({
 			.response(201, z.object({ id: z.string(), title: z.string() })),
 		get: route
 			.get("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(200, z.object({ id: z.string(), title: z.string() }))
 			.response(404, z.object({ code: z.literal("not_found") })),
 	},
@@ -85,7 +85,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, {
 						body: z.object({ id: z.string() }),
 						headers: {
@@ -158,7 +158,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.strictStatusCodes(true)
 					.response(
 						200,
@@ -242,7 +242,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, responseSchema),
 			},
 		};
@@ -282,7 +282,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, responseSchema),
 			},
 		};
@@ -315,7 +315,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, responseSchema),
 			},
 		};
@@ -344,7 +344,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, responseSchema),
 			},
 		};
@@ -373,7 +373,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, responseSchema),
 			},
 		};
@@ -401,7 +401,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				get: route
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(200, responseSchema),
 			},
 		};
@@ -434,7 +434,7 @@ describe("ApiClient responses", () => {
 			todos: {
 				remove: route
 					.delete("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(204),
 			},
 		};

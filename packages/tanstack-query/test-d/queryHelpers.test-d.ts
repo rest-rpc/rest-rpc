@@ -29,7 +29,7 @@ const queryApi = {
 			.response(200, schemaType<Array<{ id: string; title: string }>>()),
 		get: route
 			.get("/todos/:id")
-			.pathParams(schemaType<{ id: string }>())
+			.params(schemaType<{ id: string }>())
 			.response(200, schemaType<{ id: string; title: string }>()),
 	},
 };
@@ -41,7 +41,7 @@ const queryTq = createTanstackQueryHelpers(queryApi, {
 const finalizedQueryApi = {
 	test: route
 		.get("/test/:id")
-		.pathParams(schemaType<{ id: string }>())
+		.params(schemaType<{ id: string }>())
 		.response(200, schemaType<{ id: string; title: string }>())
 		.finalize(),
 };
@@ -164,7 +164,7 @@ const strictStatusApi = {
 		get: route
 			.with({ strictStatusCodes: true })
 			.get("/todos/:id")
-			.pathParams(schemaType<{ id: string }>())
+			.params(schemaType<{ id: string }>())
 			.response(200, schemaType<{ id: string; title: string }>())
 			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
 	},

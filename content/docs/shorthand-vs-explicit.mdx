@@ -14,7 +14,7 @@ shape is clearer for a route or codebase, rest-rpc supports that too.
 
 ## Request Shape
 
-By default, request fields from `pathParams`, `query`, JSON `body`, and
+By default, request fields from `params`, `query`, JSON `body`, and
 `headers` are flattened into one request object.
 
 ```ts
@@ -22,7 +22,7 @@ const api = {
 	todos: {
 		update: route
 			.patch("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.query(z.object({ notify: z.boolean().optional() }))
 			.body(z.object({ title: z.string() }))
 			.headers({
@@ -52,7 +52,7 @@ const api = router(
 			update: {
 				method: "PATCH",
 				path: "/todos/:id",
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				query: z.object({ notify: z.boolean().optional() }),
 				body: z.object({ title: z.string() }),
 				headers: {
@@ -70,7 +70,7 @@ const api = router(
 
 ```ts
 await client.todos.update.fetch({
-	pathParams: { id: "todo_1" },
+	params: { id: "todo_1" },
 	query: { notify: true },
 	body: { title: "Write docs" },
 	headers: { "x-request-id": "req_1" },
@@ -88,9 +88,9 @@ update({ id, notify, title, "x-request-id": requestId }) {
 
 ```ts
 // Explicit request segments
-update({ pathParams, query, body, headers }) {
+update({ params, query, body, headers }) {
 	return updateTodo({
-		id: pathParams.id,
+		id: params.id,
 		notify: query.notify,
 		title: body.title,
 		requestId: headers["x-request-id"],
@@ -141,14 +141,14 @@ get: {
 await client.todos.get.fetch({ id: "todo_1" });
 ```
 
-Declare `pathParams` explicitly when you want a schema other than the inferred
+Declare `params` explicitly when you want a schema other than the inferred
 string schema.
 
 ```ts
 get: {
 	method: "GET",
 	path: "/todos/:id",
-	pathParams: z.object({
+	params: z.object({
 		id: z.coerce.number().int().positive(),
 	}),
 	response: todoSchema,

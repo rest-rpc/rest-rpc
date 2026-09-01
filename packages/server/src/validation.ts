@@ -49,7 +49,7 @@ export type RequestValidationResponse =
 export type RequestSegments = {
 	body?: unknown;
 	query?: unknown;
-	pathParams?: unknown;
+	params?: unknown;
 	headers?: unknown;
 };
 
@@ -300,7 +300,7 @@ const getValidatedRequestData = (
 	route: RouteDeclaration,
 	body: SegmentValidationResult,
 	query: SegmentValidationResult,
-	pathParams: SegmentValidationResult,
+	params: SegmentValidationResult,
 	headers: SegmentValidationResult,
 ) => {
 	const request = route.request;
@@ -318,7 +318,7 @@ const getValidatedRequestData = (
 		...(request?.query
 			? { query: isJsonQuery(request.query) ? query.data.query : query.data }
 			: {}),
-		...(request?.pathParams ? { pathParams: pathParams.data } : {}),
+		...(request?.params ? { params: params.data } : {}),
 		...(request?.headers ? { headers: headers.data } : {}),
 	};
 };
@@ -338,10 +338,7 @@ export async function validateRequest(
 	const query = isJsonQuery(request?.query)
 		? await validateJsonQuery(request.query, segments.query)
 		: await validateRequestObject(request?.query, segments.query);
-	const pathParams = await validateRequestObject(
-		request?.pathParams,
-		segments.pathParams,
-	);
+	const params = await validateRequestObject(request?.params, segments.params);
 	const headers = await validateRequestObject(
 		request?.headers,
 		segments.headers,
@@ -349,14 +346,14 @@ export async function validateRequest(
 	const errors = [
 		...body.errors,
 		...query.errors,
-		...pathParams.errors,
+		...params.errors,
 		...headers.errors,
 	];
 
 	if (errors.length === 0) {
 		return {
 			success: true,
-			data: getValidatedRequestData(route, body, query, pathParams, headers),
+			data: getValidatedRequestData(route, body, query, params, headers),
 		};
 	}
 

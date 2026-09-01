@@ -14,7 +14,7 @@ const optionalStringSchema = schema<string | undefined>();
 const numberSchema = schema<number>();
 const booleanSchema = schema<boolean>();
 const querySchema = schema<{ search: string | undefined; limit: number }>();
-const pathParamsSchema = schema<{ id: string }>();
+const paramsSchema = schema<{ id: string }>();
 const bodySchema = schema<{ title: string; done: boolean }>();
 const todoSchema = schema<{
 	id: string;
@@ -35,7 +35,7 @@ const optionalStringSchema = z.string().optional();
 const numberSchema = z.number();
 const booleanSchema = z.boolean();
 const querySchema = z.object({ search: z.string().optional(), limit: z.number() });
-const pathParamsSchema = z.object({ id: z.string() });
+const paramsSchema = z.object({ id: z.string() });
 const bodySchema = z.object({ title: z.string(), done: z.boolean() });
 const todoSchema = z.object({
 	id: z.string(),
@@ -56,7 +56,7 @@ const optionalStringSchema = v.optional(v.string());
 const numberSchema = v.number();
 const booleanSchema = v.boolean();
 const querySchema = v.object({ search: v.optional(v.string()), limit: v.number() });
-const pathParamsSchema = v.object({ id: v.string() });
+const paramsSchema = v.object({ id: v.string() });
 const bodySchema = v.object({ title: v.string(), done: v.boolean() });
 const todoSchema = v.object({
 	id: v.string(),
@@ -77,7 +77,7 @@ const optionalStringSchema = type("string | undefined");
 const numberSchema = type("number");
 const booleanSchema = type("boolean");
 const querySchema = type({ search: "string | undefined", limit: "number" });
-const pathParamsSchema = type({ id: "string" });
+const paramsSchema = type({ id: "string" });
 const bodySchema = type({ title: "string", done: "boolean" });
 const todoSchema = type({
 	id: "string",
@@ -103,7 +103,7 @@ const routeSource = (index) => {
 			? `/groups/${group}/items/:id/route-${index}`
 			: `/groups/${group}/items/route-${index}`;
 	const builder = [`apiRoute.${method.toLowerCase()}("${path}")`];
-	if (path.includes(":id")) builder.push(".pathParams(pathParamsSchema)");
+	if (path.includes(":id")) builder.push(".params(paramsSchema)");
 	builder.push(".query(querySchema)");
 	if (method !== "GET" && method !== "DELETE")
 		builder.push(".body(bodySchema)");

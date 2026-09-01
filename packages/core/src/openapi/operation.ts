@@ -402,7 +402,7 @@ export const createOperation = (
 ): OpenApiOperation => {
 	const request = route.request;
 	const parameters = [
-		...createParameters(request?.pathParams, "path", options),
+		...createParameters(request?.params, "path", options),
 		...createParameters(request?.query, "query", options),
 		...createHeaderParameters(request?.headers, options),
 	].map(

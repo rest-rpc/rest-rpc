@@ -31,7 +31,7 @@ const api = {
 	todos: {
 		get: defineRoute
 			.get("/todos/:id")
-			.pathParams(schemaType<{ id: string }>())
+			.params(schemaType<{ id: string }>())
 			.response(200, todoSchema),
 	},
 } as const;

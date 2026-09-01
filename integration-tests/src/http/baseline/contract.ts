@@ -29,7 +29,7 @@ export const integrationContract = {
 			method: "POST",
 			path: "/echo/json/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				query: z.object({
 					search: z.string().optional(),
 					limit: z.coerce.number().optional(),
@@ -50,7 +50,7 @@ export const integrationContract = {
 			method: "POST",
 			path: "/echo/text/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				body: customBody({
 					contentType: "text/plain",
 					schema: z.string(),
@@ -82,7 +82,7 @@ export const integrationContract = {
 			method: "GET",
 			path: "/items/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 			},
 			responses: {
 				200: itemSchema,
@@ -103,7 +103,7 @@ export const integrationContract = {
 			method: "POST",
 			path: "/items/:id/publish",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				body: z.object({ async: z.boolean().optional() }),
 			},
 			responses: {
@@ -115,7 +115,7 @@ export const integrationContract = {
 			method: "DELETE",
 			path: "/items/:id",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 			},
 			responses: {
 				204: noBody(),

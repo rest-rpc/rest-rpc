@@ -35,13 +35,13 @@ const createRequestTestContract = () => ({
 			.response(201, z.object({ id: z.string(), title: z.string() })),
 		get: route
 			.get("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(200, z.object({ id: z.string(), title: z.string() })),
 	},
 	uploads: {
 		create: route
 			.post("/uploads/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.customBody({
 				schema: z.string(),
 				contentType: "text/plain",
@@ -104,7 +104,7 @@ describe("ApiClient requests", () => {
 			todos: {
 				update: route
 					.post("/todos/:id")
-					.pathParams(
+					.params(
 						z.object({
 							id: z.string(),
 						}),
@@ -149,7 +149,7 @@ describe("ApiClient requests", () => {
 			todos: {
 				get: groupedRoute
 					.get("/todos/:id")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.response(204),
 			},
 		};
@@ -157,7 +157,7 @@ describe("ApiClient requests", () => {
 			"https://api.test",
 			apiContract.todos.get,
 			{
-				pathParams: { id: "todo 1" },
+				params: { id: "todo 1" },
 			},
 			true,
 		);
@@ -170,7 +170,7 @@ describe("ApiClient requests", () => {
 			items: {
 				get: route
 					.get("/items/:id/:visible")
-					.pathParams(
+					.params(
 						z.object({
 							id: z.number(),
 							visible: z.boolean(),
@@ -218,7 +218,7 @@ describe("ApiClient requests", () => {
 			items: {
 				get: route
 					.get("/items/:id/:id2")
-					.pathParams(
+					.params(
 						z.object({
 							id: z.string(),
 							id2: z.string(),
@@ -338,7 +338,7 @@ describe("ApiClient requests", () => {
 					{} as never,
 					"throw",
 				),
-			/Invalid pathParams key "id" for GET \/todos\/:id/,
+			/Invalid params key "id" for GET \/todos\/:id/,
 		);
 		assert.throws(
 			() =>
@@ -348,7 +348,7 @@ describe("ApiClient requests", () => {
 					{ id: undefined } as never,
 					"throw",
 				),
-			/Invalid pathParams key "id" for GET \/todos\/:id/,
+			/Invalid params key "id" for GET \/todos\/:id/,
 		);
 	});
 
@@ -651,7 +651,7 @@ describe("ApiClient requests", () => {
 			uploads: {
 				image: route
 					.post("/uploads/:id/image")
-					.pathParams(z.object({ id: z.string() }))
+					.params(z.object({ id: z.string() }))
 					.customBody({
 						contentType: ["image/png", "image/jpeg"],
 						schema: z.string(),

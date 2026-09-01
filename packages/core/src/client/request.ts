@@ -5,7 +5,7 @@ import {
 	isNoBody,
 } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
-import { replacePathParams } from "../contract/path.ts";
+import { replaceparams } from "../contract/path.ts";
 import { isJsonQuery } from "../contract/request.ts";
 import type {
 	FlatRequestInput,
@@ -41,7 +41,7 @@ export const createRequestSignal = (
 
 export const takesRequestInput = (route: RouteDeclaration) => {
 	const request = route.request;
-	if (request?.query || request?.pathParams || request?.headers) {
+	if (request?.query || request?.params || request?.headers) {
 		return true;
 	}
 	if (isFormBody(request?.body)) return true;
@@ -87,7 +87,7 @@ const isSerializablePrimitive = (value: unknown) =>
 
 const stringifyRequestValue = (
 	route: RouteDeclaration,
-	segment: "body" | "pathParams" | "query" | "headers",
+	segment: "body" | "params" | "query" | "headers",
 	key: string,
 	value: unknown,
 	optional = false,
@@ -216,18 +216,13 @@ const stringifyHeaders = (
 
 const serializeParams = (
 	route: RouteDeclaration,
-	pathParams: Record<string, unknown> | undefined,
+	params: Record<string, unknown> | undefined,
 ) => {
-	return replacePathParams(route.path, (key) => {
-		const value = stringifyRequestValue(
-			route,
-			"pathParams",
-			key,
-			pathParams?.[key],
-		);
+	return replaceparams(route.path, (key) => {
+		const value = stringifyRequestValue(route, "params", key, params?.[key]);
 		if (value === undefined) {
 			throw new Error(
-				`Invalid pathParams key "${key}" for ${route.method} ${route.path}. Expected string, number, or boolean.`,
+				`Invalid params key "${key}" for ${route.method} ${route.path}. Expected string, number, or boolean.`,
 			);
 		}
 		return encodeURIComponent(value);
@@ -278,10 +273,10 @@ export const constructBaseRequest = (
 		route.request?.flattenKeys === false
 			? (args as GroupedRequestInput)
 			: groupRequestInput(route, args, { strictRequestKeys });
-	const { body, query, pathParams, headers } = request;
+	const { body, query, params, headers } = request;
 	const routeBody = route.request?.body;
 
-	urlBase = `${baseUrl}${serializeParams(route, pathParams)}${serializeQuery(route, query)}`;
+	urlBase = `${baseUrl}${serializeParams(route, params)}${serializeQuery(route, query)}`;
 
 	if (isFormBody(routeBody)) {
 		return {

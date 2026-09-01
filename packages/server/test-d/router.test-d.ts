@@ -228,7 +228,7 @@ const socketApi = {
 			method: "GET",
 			path: "/rooms/:roomId",
 			request: {
-				pathParams: z.object({ roomId: z.string() }),
+				params: z.object({ roomId: z.string() }),
 			},
 			mode: "webSocket",
 			messages: {
@@ -283,7 +283,7 @@ const sseApi = {
 			path: "/events/:projectId",
 			mode: "sse",
 			request: {
-				pathParams: z.object({ projectId: z.string() }),
+				params: z.object({ projectId: z.string() }),
 				query: z.object({ includeDone: z.boolean().optional() }),
 			},
 			responses: {
@@ -389,7 +389,7 @@ const transformedApi = {
 			method: "POST",
 			path: "/todos/:id/transform",
 			request: {
-				pathParams: z.object({ id: z.string() }).transform(({ id }) => ({
+				params: z.object({ id: z.string() }).transform(({ id }) => ({
 					id: Number(id),
 				})),
 				body: z.object({ title: z.string() }).transform(({ title }) => ({
@@ -507,7 +507,7 @@ const customRequestApi = {
 			method: "POST",
 			path: "/todos/:id/image",
 			request: {
-				pathParams: z.object({ id: z.string() }),
+				params: z.object({ id: z.string() }),
 				body: customBody({
 					contentType: ["image/png", "image/jpeg"],
 					schema: z.instanceof(Uint8Array),

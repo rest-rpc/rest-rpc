@@ -111,7 +111,7 @@ export const handleFetchRoute = async <
 			request: {
 				body,
 				query: readQuery(url),
-				pathParams: params,
+				params: params,
 				headers: readHeaders(request.headers),
 			},
 			context,

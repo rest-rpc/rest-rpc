@@ -32,7 +32,7 @@ const sseContract = {
 	events: {
 		notifications: route
 			.sse("/projects/:projectId/events")
-			.pathParams(z.object({ projectId: z.string() }))
+			.params(z.object({ projectId: z.string() }))
 			.query(z.object({ done: z.coerce.boolean().optional() }))
 			.response(
 				z.object({

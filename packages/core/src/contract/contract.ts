@@ -51,7 +51,7 @@ export type RouteMode = "http" | "sse" | "webSocket";
 export type RouteRequestDeclaration = {
 	body?: RequestBodySchema;
 	query?: StandardSchemaV1 | JsonQuery;
-	pathParams?: StandardSchemaV1;
+	params?: StandardSchemaV1;
 	headers?: RequestSchemaRecord;
 	keys?: RequestKeys;
 	flattenKeys?: boolean;

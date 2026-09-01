@@ -27,7 +27,7 @@ const openApiTestContract = {
 			.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
 		update: route
 			.post("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.body(z.object({ title: z.string().min(1) }))
 			.response(
 				202,
@@ -44,7 +44,7 @@ const openApiTestContract = {
 			),
 		remove: route
 			.delete("/todos/:id")
-			.pathParams(z.object({ id: z.string() }))
+			.params(z.object({ id: z.string() }))
 			.response(204),
 		events: route.get("/todos/events").streamResponse(
 			200,
@@ -122,13 +122,13 @@ describe("createOpenApiDocument", () => {
 					get: {
 						path: "/todos/:id",
 						method: "GET",
-						request: { pathParams: z.object({ id: z.string() }) },
+						request: { params: z.object({ id: z.string() }) },
 						responses: { 200: z.object({ id: z.string() }) },
 					},
 					remove: {
 						path: "/todos/:id",
 						method: "DELETE",
-						request: { pathParams: z.object({ id: z.string() }) },
+						request: { params: z.object({ id: z.string() }) },
 						responses: { 204: noBody() },
 					},
 				},

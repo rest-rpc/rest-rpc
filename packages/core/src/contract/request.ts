@@ -8,7 +8,7 @@ import type { RouteDeclaration } from "./contract.ts";
 import type { InferCustomBody } from "./response.ts";
 import type { WebSocketMessages } from "./websocketMessages.ts";
 
-export type RequestSegment = "body" | "query" | "pathParams" | "headers";
+export type RequestSegment = "body" | "query" | "params" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
 export const REQUEST_CONTEXT_KEY = "context";
 
@@ -194,8 +194,8 @@ type InferRequestSegments<R, TIO extends "input" | "output"> = {
 	query: R extends { query: infer TQuery }
 		? InferRequestObjectSegment<TQuery, TIO>
 		: never;
-	pathParams: R extends { pathParams: infer TPathParams }
-		? InferRequestObjectSegment<TPathParams, TIO>
+	params: R extends { params: infer Tparams }
+		? InferRequestObjectSegment<Tparams, TIO>
 		: never;
 	headers: R extends { headers: infer THeaders }
 		? THeaders extends RequestSchemaRecord
@@ -211,8 +211,8 @@ type InferGroupedRequestSegments<R, TIO extends "input" | "output"> = {
 	query: R extends { query: infer TQuery }
 		? InferGroupedRequestObjectSegment<TQuery, TIO>
 		: never;
-	pathParams: R extends { pathParams: infer TPathParams }
-		? InferGroupedRequestObjectSegment<TPathParams, TIO>
+	params: R extends { params: infer Tparams }
+		? InferGroupedRequestObjectSegment<Tparams, TIO>
 		: never;
 	headers: R extends { headers: infer THeaders }
 		? THeaders extends RequestSchemaRecord
@@ -237,10 +237,10 @@ type HasRequestInput<TRequest> = [
 	TRequest extends {
 		body: infer TBody;
 		query: infer TQuery;
-		pathParams: infer TPathParams;
+		params: infer Tparams;
 		headers: infer THeaders;
 	}
-		? TBody | TQuery | TPathParams | THeaders
+		? TBody | TQuery | Tparams | THeaders
 		: never,
 ] extends [never]
 	? false
@@ -254,7 +254,7 @@ type InferRequestFor<
 		? R extends {
 				body: infer B;
 				query: infer Q;
-				pathParams: infer P;
+				params: infer P;
 				headers: infer H;
 			}
 			? HasRequestInput<R> extends true
@@ -262,7 +262,7 @@ type InferRequestFor<
 					? Merge<
 							([B] extends [never] ? EmptyObject : { body: B }) &
 								([Q] extends [never] ? EmptyObject : { query: Q }) &
-								([P] extends [never] ? EmptyObject : { pathParams: P }) &
+								([P] extends [never] ? EmptyObject : { params: P }) &
 								([H] extends [never] ? EmptyObject : { headers: H })
 						>
 					: Merge<
