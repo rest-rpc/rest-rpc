@@ -53,6 +53,7 @@ export const api = {
 	todos: {
 		get: route
 			.get("/todos/:id")
+			.params(z.object({ id: z.string() }))
 			.response(200, todoSchema)
 			.response(
 				404,
@@ -99,25 +100,17 @@ if (response.declared && response.status === 404) {
 
 ## Response Without Body
 
-Routes with no `response` or `responses` default to a no-body response.
-`DELETE` uses `204`, `POST` uses `201`, and other methods use `200`.
+Call `.response(status)` without a schema to declare a response without a body.
 
 ```ts
-export const api = {
-	todos: {
-		remove: route.delete("/todos/:id"),
-	},
-};
-```
-
-Use `noBody()` when you want the response status to be explicit.
-
-```ts
-import { noBody, route } from "@rest-rpc/core";
+import { route } from "@rest-rpc/core";
 
 export const api = {
 	todos: {
-		remove: route.delete("/todos/:id").response(204, noBody()),
+		remove: route
+			.delete("/todos/:id")
+			.params(z.object({ id: z.string() }))
+			.response(204),
 	},
 };
 ```
@@ -145,13 +138,16 @@ Headers declared in the contract are returned from `responseHeaders`.
 ```ts
 export const api = {
 	todos: {
-		get: route.get("/todos/:id").response(200, {
-			body: todoSchema,
-			headers: {
-				etag: z.string(),
-				"x-next-cursor": z.string().optional(),
-			},
-		}),
+		get: route
+			.get("/todos/:id")
+			.params(z.object({ id: z.string() }))
+			.response(200, {
+				body: todoSchema,
+				headers: {
+					etag: z.string(),
+					"x-next-cursor": z.string().optional(),
+				},
+			}),
 	},
 };
 ```
@@ -288,17 +284,14 @@ await client.sessions.create.fetch({
 ## Response With Custom Content Type
 
 ```ts
-import { customBody, route } from "@rest-rpc/core";
+import { route } from "@rest-rpc/core";
 
 export const api = {
 	reports: {
-		csv: route.get("/reports.csv").response(
-			200,
-			customBody({
-				contentType: "text/csv",
-				schema: z.string(),
-			}),
-		),
+		csv: route.get("/reports.csv").customResponse(200, {
+			contentType: "text/csv",
+			schema: z.string(),
+		}),
 	},
 };
 ```
@@ -326,13 +319,13 @@ When multiple content types are declared, return the selected `contentType` with
 ```ts
 export const api = {
 	images: {
-		download: route.get("/images/:id").response(
-			200,
-			customBody({
+		download: route
+			.get("/images/:id")
+			.params(z.object({ id: z.string() }))
+			.customResponse(200, {
 				contentType: ["image/png", "image/jpeg"],
 				schema: z.instanceof(Uint8Array),
 			}),
-		),
 	},
 };
 ```
@@ -371,7 +364,9 @@ if (response.declared && response.status === 200) {
 
 ## Server-Sent Event Responses
 
-Use `mode: "sse"` for a GET route that returns server-sent events. The route declares one event schema with `response`, and the server yields `sseEvent()` values.
+Start with `route.sse(path)` for a server-sent event route. The builder declares
+one event schema with `.response(schema)`, and the server yields `sseEvent()`
+values.
 
 ```ts
 import { route } from "@rest-rpc/core";
@@ -384,7 +379,7 @@ const notificationSchema = z.object({
 
 export const api = {
 	notifications: {
-		live: route.sse("/notifications/live").response(200, notificationSchema),
+		live: route.sse("/notifications/live").response(notificationSchema),
 	},
 };
 ```
@@ -426,12 +421,13 @@ source.onError(() => {
 
 ## Streaming NDJSON Responses
 
-`stream(schema)` sends newline-delimited JSON and the client reads parsed items.
+`.streamResponse(status, schema)` sends newline-delimited JSON and the client
+reads parsed items.
 
 `request.context.signal` is aborted when the HTTP request is cancelled.
 
 ```ts
-import { route, stream } from "@rest-rpc/core";
+import { route } from "@rest-rpc/core";
 
 const tokenSchema = z.object({
 	index: z.number(),
@@ -447,7 +443,7 @@ export const api = {
 					prompt: z.string().min(1),
 				}),
 			)
-			.response(200, stream(tokenSchema)),
+			.streamResponse(200, tokenSchema),
 	},
 };
 ```
@@ -493,20 +489,19 @@ for await (const token of tokens) {
 
 ## Streaming Responses With Custom Content Type
 
-`stream(customBody(...))` keeps the client response as a raw `Response` stream.
+`.customStreamResponse()` keeps a custom-content response as a raw `Response`
+stream.
 
 ```ts
 export const api = {
 	files: {
-		download: route.get("/files/:id").response(
-			200,
-			stream(
-				customBody({
-					contentType: "application/octet-stream",
-					schema: z.instanceof(Uint8Array),
-				}),
-			),
-		),
+		download: route
+			.get("/files/:id")
+			.params(z.object({ id: z.string() }))
+			.customStreamResponse(200, {
+				contentType: "application/octet-stream",
+				schema: z.instanceof(Uint8Array),
+			}),
 	},
 };
 ```

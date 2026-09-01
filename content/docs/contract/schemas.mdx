@@ -19,24 +19,21 @@ This section describes the default flattened request shape. With
 segments, so whole-location schemas do not need flattened key metadata.
 :::
 
-A schema record maps flattened request keys to individual schemas.
+A route builder receives one schema for `params`, `query`, and `body`, while
+`.headers()` receives a record keyed by header name.
 
 ```ts
-params: {
-	id: z.string().uuid(),
-},
-query: {
-	includeCompleted: z.coerce.boolean().optional(),
-},
-headers: {
-	"x-request-id": z.string().optional(),
-},
-body: {
-	title: z.string().min(1),
-},
+route
+	.patch("/todos/:id")
+	.params(z.object({ id: z.string().uuid() }))
+	.query(z.object({ includeCompleted: z.coerce.boolean().optional() }))
+	.headers({ "x-request-id": z.string().optional() })
+	.body(z.object({ title: z.string().min(1) }))
+	.response(200, todoSchema);
 ```
 
-Each record key becomes a key in the client and handler request object.
+Each top-level schema property becomes a key in the client and handler request
+object.
 
 ```ts
 await client.todos.update.fetch({
@@ -56,57 +53,67 @@ from object schemas and object-like unions directly.
 Zod supports object, union, and discriminated union schemas.
 
 ```ts
-params: z.object({
-	id: z.string().uuid(),
-}),
-query: z.union([
-	z.object({ q: z.string() }),
-	z.object({ page: z.coerce.number() }),
-]),
-body: z.discriminatedUnion("kind", [
-	z.object({ kind: z.literal("text"), text: z.string() }),
-	z.object({ kind: z.literal("link"), url: z.string().url() }),
-]),
+route
+	.post("/items/:id")
+	.params(z.object({ id: z.string().uuid() }))
+	.query(
+		z.union([
+			z.object({ q: z.string() }),
+			z.object({ page: z.coerce.number() }),
+		]),
+	)
+	.body(
+		z.discriminatedUnion("kind", [
+			z.object({ kind: z.literal("text"), text: z.string() }),
+			z.object({ kind: z.literal("link"), url: z.string().url() }),
+		]),
+	)
+	.response(204);
 ```
 
 Valibot supports object, union, and variant schemas.
 
 ```ts
-params: v.object({
-	id: v.pipe(v.string(), v.uuid()),
-}),
-query: v.union([
-	v.object({ q: v.string() }),
-	v.object({ page: v.pipe(v.string(), v.transform(Number)) }),
-]),
-body: v.variant("kind", [
-	v.object({ kind: v.literal("text"), text: v.string() }),
-	v.object({ kind: v.literal("link"), url: v.pipe(v.string(), v.url()) }),
-]),
+route
+	.post("/items/:id")
+	.params(v.object({ id: v.pipe(v.string(), v.uuid()) }))
+	.query(
+		v.union([
+			v.object({ q: v.string() }),
+			v.object({ page: v.pipe(v.string(), v.transform(Number)) }),
+		]),
+	)
+	.body(
+		v.variant("kind", [
+			v.object({ kind: v.literal("text"), text: v.string() }),
+			v.object({ kind: v.literal("link"), url: v.pipe(v.string(), v.url()) }),
+		]),
+	)
+	.response(204);
 ```
 
 ArkType supports object and union schemas.
 
 ```ts
-params: type({
-	id: "string",
-}),
-query: type({ q: "string" }).or({ page: "string" }),
+route
+	.get("/items/:id")
+	.params(type({ id: "string" }))
+	.query(type({ q: "string" }).or({ page: "string" }))
+	.response(204);
 ```
 
-For other Standard Schema vendors, whole-location schemas needs explicit `requestKeys`
-option so `rest-rpc` can map flattened keys back to HTTP locations.
+For other Standard Schema vendors, a whole-location schema needs
+`.requestKeys()` when rest-rpc cannot discover its flattened keys.
 
 ```ts
-body: type<{
-	title: string;
-}>(),
-requestKeys: {
-	title: "body",
-},
+route
+	.post("/todos")
+	.body(type<{ title: string }>())
+	.requestKeys({ title: "body" })
+	.response(204);
 ```
 
-`headers` is always declared as a schema record.
+Headers are always declared as a schema record with `.headers()`.
 
 ## Schema Input And Output
 
@@ -145,7 +152,10 @@ handler returns schema input.
 ```ts
 const api = {
 	todos: {
-		get: route.get("/todos/:id").response(200, todoSchema),
+		get: route
+			.get("/todos/:id")
+			.params(z.object({ id: z.string() }))
+			.response(200, todoSchema),
 	},
 };
 ```

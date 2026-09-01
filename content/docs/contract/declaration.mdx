@@ -17,7 +17,10 @@ const todoSchema = z.object({
 
 export const api = {
 	todos: {
-		get: route.get("/todos/:id").response(200, todoSchema),
+		get: route
+			.get("/todos/:id")
+			.params(z.object({ id: z.string() }))
+			.response(200, todoSchema),
 	},
 };
 ```
@@ -120,14 +123,7 @@ design tradeoff.
 
 ## Path Params
 
-Full dynamic path segments infer string path params. In this route, `:id`
-contributes an `id: string` input:
-
-```ts
-route.get("/todos/:id").response(200, todoSchema);
-```
-
-Explicit `params` replace the inferred string schema for the same params.
+Declare a schema for every dynamic path segment with `.params()`.
 
 ```ts
 route
@@ -140,8 +136,7 @@ Path parameter rules:
 
 - Only full path segments are params: `:id` and `{id}` are params.
 - Partial segments are static: `/files/file-{id}` and `/todos/:id.json` do not declare params.
-- Inferred params are string schemas.
-- Explicit `params` must match the path params exactly.
+- The `params` schema must match the dynamic path segments exactly.
 - `pathPrefix` must be static and cannot include path params.
 
 ## Flattened Key Collisions
@@ -174,24 +169,20 @@ Other request key constraints:
 
 ## JSON Query
 
-`jsonQuery()` declares a JSON-shaped query value.
+`.jsonQuery()` declares a JSON-shaped query value.
 
 ```ts
-import { jsonQuery, route } from "@rest-rpc/core";
-
 const api = {
 	search: route
 		.get("/search")
-		.query(
-			jsonQuery(
-				z.object({
-					page: z.number(),
-					includeArchived: z.boolean(),
-					filters: z.object({
-						tags: z.array(z.string()),
-					}),
+		.jsonQuery(
+			z.object({
+				page: z.number(),
+				includeArchived: z.boolean(),
+				filters: z.object({
+					tags: z.array(z.string()),
 				}),
-			),
+			}),
 		)
 		.response(200, z.object({ results: z.array(z.string()) })),
 };
@@ -223,22 +214,21 @@ route
 	.response(201, todoSchema);
 ```
 
-`rest-rpc` assigns the status from the HTTP method: `POST` uses `201`, and other
-methods use `200`.
+The status is always explicit. Omit the schema argument to declare a response
+without a body, such as `.response(204)`.
 
 Call `.response()` once for each declared status code.
 
 ```ts
 route
 	.get("/todos/:id")
+	.params(z.object({ id: z.string() }))
 	.response(200, todoSchema)
 	.response(404, z.object({ code: z.literal("TODO_NOT_FOUND") }));
 ```
 
-Non-2xx statuses are declared the same way as 2xx statuses.
-
-Routes with no `response` or `responses` default to a no-body response. `DELETE`
-uses `204`, `POST` uses `201`, and other methods use `200`.
+Non-2xx statuses and no-body responses are declared through the same builder
+method.
 
 Status-specific response headers can be declared by passing an object containing
 `body` and `headers` as the response schema.
@@ -259,8 +249,8 @@ route
 ## Shared Route Options
 
 `route.with()` creates a route factory with shared options for every route built
-from it. The option names match the builder setters: `headers`, `responses`,
-`metadata`, `openApi`, and `pathPrefix`.
+from it. A factory can share headers, responses, metadata, OpenAPI metadata, a
+path prefix, and request or response behavior.
 
 ```ts
 const apiRoute = route.with({
@@ -289,12 +279,16 @@ the factory `401` response, and keeps the route-specific OpenAPI summary.
 
 ## Single Routes
 
-`route()` declares one route.
+A method on `route` starts one route builder. The result can be exported on its
+own; a contract does not need to wrap it in another function or object.
 
 ```ts
 import { route } from "@rest-rpc/core";
 
-export const getTodo = route.get("/todos/:id").response(200, todoSchema);
+export const getTodo = route
+	.get("/todos/:id")
+	.params(z.object({ id: z.string() }))
+	.response(200, todoSchema);
 ```
 
 ## Beyond JSON Contracts
