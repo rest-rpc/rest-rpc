@@ -3,7 +3,6 @@ import { afterEach, describe, it } from "node:test";
 import z from "zod";
 import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
-import { webSocketMessages } from "../contract/websocketMessages.ts";
 import { initClient } from "./index.ts";
 import { assertWebSocketRoute, buildWebSocketUrl } from "./websocket.ts";
 
@@ -45,8 +44,8 @@ const apiContract = {
 		join: route
 			.ws("/rooms/:roomId")
 			.params(z.object({ roomId: z.string() }))
-			.clientMessages(z.object({ text: z.string() }))
-			.serverMessages(z.object({ text: z.string() })),
+			.clientMessage("message", z.object({ text: z.string() }))
+			.serverMessage("message", z.object({ text: z.string() })),
 	},
 };
 
@@ -117,10 +116,12 @@ describe("ApiClient websockets", () => {
 		const socket = client.socket.join.openConnection({ roomId: "general" });
 		instances[0].readyState = FakeWebSocket.OPEN;
 
-		socket.send({ text: "hello" });
+		socket.send({ type: "message", message: { text: "hello" } });
 
 		assert.equal(instances[0]?.url, "ws://api.test/rooms/general");
-		assert.deepEqual(instances[0]?.sent, ['{"text":"hello"}']);
+		assert.deepEqual(instances[0]?.sent, [
+			'{"type":"message","message":{"text":"hello"}}',
+		]);
 	});
 
 	it("rejects sends before the socket is open", () => {
@@ -131,7 +132,7 @@ describe("ApiClient websockets", () => {
 		const socket = client.socket.join.openConnection({ roomId: "general" });
 
 		assert.throws(
-			() => socket.send({ text: "hello" }),
+			() => socket.send({ type: "message", message: { text: "hello" } }),
 			/WebSocket is not open/,
 		);
 	});
@@ -146,10 +147,14 @@ describe("ApiClient websockets", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		instances[0].dispatchEvent(
-			new MessageEvent("message", { data: '{"text":"hello"}' }),
+			new MessageEvent("message", {
+				data: '{"type":"message","message":{"text":"hello"}}',
+			}),
 		);
 
-		assert.deepEqual(messages, [{ text: "hello" }]);
+		assert.deepEqual(messages, [
+			{ type: "message", message: { text: "hello" } },
+		]);
 	});
 
 	it("removes event listeners with unsubscribe callbacks", () => {
@@ -204,8 +209,8 @@ describe("ApiClient websockets", () => {
 				join: route
 					.ws("/rooms/:roomId")
 					.params(z.object({ roomId: z.string() }))
-					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages(serverMessageSchema),
+					.clientMessage("message", z.object({ text: z.string() }))
+					.serverMessage("message", serverMessageSchema),
 			},
 		};
 		const client = initClient(apiContract, {
@@ -219,10 +224,14 @@ describe("ApiClient websockets", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		instances[0].dispatchEvent(
-			new MessageEvent("message", { data: JSON.stringify(serverOutput) }),
+			new MessageEvent("message", {
+				data: JSON.stringify({ type: "message", message: serverOutput }),
+			}),
 		);
 
-		assert.deepEqual(messages, [{ name: "Ada Lovelace" }]);
+		assert.deepEqual(messages, [
+			{ type: "message", message: { name: "Ada Lovelace" } },
+		]);
 	});
 
 	it("closes transformed server message output when validation is enabled and output does not match input", () => {
@@ -240,8 +249,8 @@ describe("ApiClient websockets", () => {
 				join: route
 					.ws("/rooms/:roomId")
 					.params(z.object({ roomId: z.string() }))
-					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages(serverMessageSchema),
+					.clientMessage("message", z.object({ text: z.string() }))
+					.serverMessage("message", serverMessageSchema),
 			},
 		};
 		const client = initClient(apiContract, {
@@ -256,7 +265,9 @@ describe("ApiClient websockets", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		instances[0].dispatchEvent(
-			new MessageEvent("message", { data: JSON.stringify(serverOutput) }),
+			new MessageEvent("message", {
+				data: JSON.stringify({ type: "message", message: serverOutput }),
+			}),
 		);
 
 		assert.deepEqual(messages, []);
@@ -277,25 +288,30 @@ describe("ApiClient websockets", () => {
 				join: route
 					.ws("/rooms/:roomId")
 					.params(z.object({ roomId: z.string() }))
-					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages(serverMessageSchema),
+					.clientMessage("message", z.object({ text: z.string() }))
+					.serverMessage("message", serverMessageSchema),
 			},
 		};
 		const client = initClient(apiContract, {
 			baseUrl: "https://api.test",
 		});
 		const socket = client.socket.join.openConnection({ roomId: "general" });
-		const messages: Array<{ createdAt: unknown }> = [];
+		const messages: unknown[] = [];
 		const serverOutput = serverMessageSchema.parse({
 			createdAt: "2026-08-10T00:00:00.000Z",
 		});
 		socket.onMessage((message) => messages.push(message));
 
 		instances[0].dispatchEvent(
-			new MessageEvent("message", { data: JSON.stringify(serverOutput) }),
+			new MessageEvent("message", {
+				data: JSON.stringify({ type: "message", message: serverOutput }),
+			}),
 		);
 
-		assert.equal(messages[0]?.createdAt, "2026-08-10T00:00:00.000Z");
+		assert.equal(
+			(messages[0] as { message: { createdAt: unknown } }).message.createdAt,
+			"2026-08-10T00:00:00.000Z",
+		);
 	});
 
 	it("parses serialized Date server message output when validation is enabled", () => {
@@ -311,8 +327,8 @@ describe("ApiClient websockets", () => {
 				join: route
 					.ws("/rooms/:roomId")
 					.params(z.object({ roomId: z.string() }))
-					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages(serverMessageSchema),
+					.clientMessage("message", z.object({ text: z.string() }))
+					.serverMessage("message", serverMessageSchema),
 			},
 		};
 		const client = initClient(apiContract, {
@@ -320,19 +336,22 @@ describe("ApiClient websockets", () => {
 			validateResponses: true,
 		});
 		const socket = client.socket.join.openConnection({ roomId: "general" });
-		const messages: Array<{ createdAt: Date }> = [];
+		const messages: Array<{ type: "message"; message: { createdAt: Date } }> =
+			[];
 		const serverOutput = serverMessageSchema.parse({
 			createdAt: "2026-08-10T00:00:00.000Z",
 		});
 		socket.onMessage((message) => messages.push(message));
 
 		instances[0].dispatchEvent(
-			new MessageEvent("message", { data: JSON.stringify(serverOutput) }),
+			new MessageEvent("message", {
+				data: JSON.stringify({ type: "message", message: serverOutput }),
+			}),
 		);
 
-		assert.ok(messages[0]?.createdAt instanceof Date);
+		assert.ok(messages[0]?.message.createdAt instanceof Date);
 		assert.equal(
-			messages[0]?.createdAt.toISOString(),
+			messages[0]?.message.createdAt.toISOString(),
 			"2026-08-10T00:00:00.000Z",
 		);
 	});
@@ -344,15 +363,13 @@ describe("ApiClient websockets", () => {
 				join: route
 					.ws("/rooms/:roomId")
 					.params(z.object({ roomId: z.string() }))
-					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages({
-						discriminator: "type",
-						schemas: {
-							count: z.object({
-								value: z.string().transform((value) => Number(value)),
-							}),
-						},
-					}),
+					.clientMessage("message", z.object({ text: z.string() }))
+					.serverMessage(
+						"count",
+						z.object({
+							value: z.string().transform((value) => Number(value)),
+						}),
+					),
 			},
 		};
 		const client = initClient(apiContract, {
@@ -379,12 +396,8 @@ describe("ApiClient websockets", () => {
 				join: route
 					.ws("/rooms/:roomId")
 					.params(z.object({ roomId: z.string() }))
-					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages(
-						webSocketMessages("type", {
-							count: z.object({ value: z.number() }),
-						}),
-					),
+					.clientMessage("message", z.object({ text: z.string() }))
+					.serverMessage("count", z.object({ value: z.number() })),
 			},
 		};
 		const client = initClient(apiContract, {

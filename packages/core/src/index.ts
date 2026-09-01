@@ -41,7 +41,6 @@ export {
 	noBody,
 	route,
 	stream,
-	webSocketMessages,
 } from "./contract/index.ts";
 export type {
 	CreateOpenApiDocumentOptions,

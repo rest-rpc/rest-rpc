@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { setImmediate } from "node:timers/promises";
-import { webSocketMessages } from "@rest-rpc/core/contract";
+import { type WebSocketMessageSchemas } from "@rest-rpc/core/contract";
+import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 import z from "zod";
 import {
 	createContractWebSocket,
@@ -51,9 +52,15 @@ class FakeWebSocketLike implements WebSocketLike {
 	}
 }
 
-const websocketRoute = (
-	messages: Parameters<typeof createContractWebSocket>[0]["messages"],
-) =>
+type TestMessage = StandardSchemaV1 | WebSocketMessageSchemas;
+
+const normalizeMessage = (message: TestMessage) =>
+	"~standard" in message ? { message } : message;
+
+const websocketRoute = (messages: {
+	client: TestMessage;
+	server: TestMessage;
+}) =>
 	({
 		method: "GET",
 		path: "/rooms/:roomId",
@@ -66,7 +73,10 @@ const websocketRoute = (
 			},
 		},
 		mode: "webSocket",
-		messages,
+		messages: {
+			client: normalizeMessage(messages.client),
+			server: normalizeMessage(messages.server),
+		},
 	}) as const;
 
 describe("createContractWebSocket", () => {
@@ -88,13 +98,16 @@ describe("createContractWebSocket", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		rawSocket.receive(
-			JSON.stringify({ createdAt: "2026-08-10T00:00:00.000Z" }),
+			JSON.stringify({
+				type: "message",
+				message: { createdAt: "2026-08-10T00:00:00.000Z" },
+			}),
 		);
 		await Promise.resolve();
 
-		assert.ok(messages[0]?.createdAt instanceof Date);
+		assert.ok(messages[0]?.message.createdAt instanceof Date);
 		assert.equal(
-			messages[0]?.createdAt.toISOString(),
+			messages[0]?.message.createdAt.toISOString(),
 			"2026-08-10T00:00:00.000Z",
 		);
 	});
@@ -114,7 +127,10 @@ describe("createContractWebSocket", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		rawSocket.receive(
-			JSON.stringify({ createdAt: new Date("2026-08-10T00:00:00.000Z") }),
+			JSON.stringify({
+				type: "message",
+				message: { createdAt: new Date("2026-08-10T00:00:00.000Z") },
+			}),
 		);
 		await Promise.resolve();
 
@@ -141,13 +157,18 @@ describe("createContractWebSocket", () => {
 		);
 
 		socket.send({
-			name: {
-				first: "Ada",
-				last: "Lovelace",
+			type: "message",
+			message: {
+				name: {
+					first: "Ada",
+					last: "Lovelace",
+				},
 			},
 		});
 
-		assert.deepEqual(rawSocket.sent, ['{"name":"Ada Lovelace"}']);
+		assert.deepEqual(rawSocket.sent, [
+			'{"type":"message","message":{"name":"Ada Lovelace"}}',
+		]);
 	});
 
 	it("serializes Date server message output as JSON strings", () => {
@@ -166,11 +187,12 @@ describe("createContractWebSocket", () => {
 		);
 
 		socket.send({
-			createdAt: "2026-08-10T00:00:00.000Z",
+			type: "message",
+			message: { createdAt: "2026-08-10T00:00:00.000Z" },
 		});
 
 		assert.deepEqual(rawSocket.sent, [
-			'{"createdAt":"2026-08-10T00:00:00.000Z"}',
+			'{"type":"message","message":{"createdAt":"2026-08-10T00:00:00.000Z"}}',
 		]);
 	});
 
@@ -179,12 +201,9 @@ describe("createContractWebSocket", () => {
 		const socket = createContractWebSocket(
 			websocketRoute({
 				client: {
-					discriminator: "action",
-					schemas: {
-						count: z.object({
-							value: z.string().transform((value) => Number(value)),
-						}),
-					},
+					count: z.object({
+						value: z.string().transform((value) => Number(value)),
+					}),
 				},
 				server: z.object({ text: z.string() }),
 			}),
@@ -194,20 +213,20 @@ describe("createContractWebSocket", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		rawSocket.receive(
-			JSON.stringify({ action: "count", message: { value: "2" } }),
+			JSON.stringify({ type: "count", message: { value: "2" } }),
 		);
 		await Promise.resolve();
 
-		assert.deepEqual(messages, [{ action: "count", message: { value: 2 } }]);
+		assert.deepEqual(messages, [{ type: "count", message: { value: 2 } }]);
 	});
 
 	it("closes discriminated client messages with unknown discriminator values", async () => {
 		const rawSocket = new FakeWebSocketLike();
 		const socket = createContractWebSocket(
 			websocketRoute({
-				client: webSocketMessages("action", {
+				client: {
 					count: z.object({ value: z.number() }),
-				}),
+				},
 				server: z.object({ text: z.string() }),
 			}),
 			rawSocket,
@@ -216,7 +235,7 @@ describe("createContractWebSocket", () => {
 		socket.onMessage((message) => messages.push(message));
 
 		rawSocket.receive(
-			JSON.stringify({ action: "missing", message: { value: 2 } }),
+			JSON.stringify({ type: "missing", message: { value: 2 } }),
 		);
 		await Promise.resolve();
 
@@ -231,12 +250,9 @@ describe("createContractWebSocket", () => {
 			websocketRoute({
 				client: z.object({ text: z.string() }),
 				server: {
-					discriminator: "type",
-					schemas: {
-						count: z.object({
-							value: z.string().transform((value) => Number(value)),
-						}),
-					},
+					count: z.object({
+						value: z.string().transform((value) => Number(value)),
+					}),
 				},
 			}),
 			rawSocket,
@@ -262,7 +278,9 @@ describe("createContractWebSocket", () => {
 
 		const unsubscribe = socket.onMessage((message) => messages.push(message));
 		unsubscribe();
-		rawSocket.receive(JSON.stringify({ text: "hello" }));
+		rawSocket.receive(
+			JSON.stringify({ type: "message", message: { text: "hello" } }),
+		);
 		await Promise.resolve();
 
 		assert.deepEqual(messages, []);
@@ -281,7 +299,9 @@ describe("createContractWebSocket", () => {
 		socket.onMessage(async () => {
 			throw new Error("boom");
 		});
-		rawSocket.receive(JSON.stringify({ text: "hello" }));
+		rawSocket.receive(
+			JSON.stringify({ type: "message", message: { text: "hello" } }),
+		);
 		await setImmediate();
 
 		assert.equal(rawSocket.closeCode, 1011);
@@ -485,7 +505,10 @@ describe("handleWebSocketRoute", () => {
 			(request) => {
 				assert.equal(request.roomId, "room-1");
 				assert.equal(request.context.userId, "user-1");
-				request.context.socket.send({ text: "ready" });
+				request.context.socket.send({
+					type: "message",
+					message: { text: "ready" },
+				});
 			},
 			{
 				request: { roomId: "room-1" },
@@ -495,7 +518,9 @@ describe("handleWebSocketRoute", () => {
 		);
 		await setImmediate();
 
-		assert.deepEqual(rawSocket.sent, ['{"text":"ready"}']);
+		assert.deepEqual(rawSocket.sent, [
+			'{"type":"message","message":{"text":"ready"}}',
+		]);
 	});
 
 	it("closes when the websocket handler rejects", async () => {

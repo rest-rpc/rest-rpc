@@ -479,8 +479,8 @@ const invalidApi = {
 		.response(202, schemaType<{ pending: true }>()),
 	events: route
 		.ws("/events")
-		.clientMessages(schemaType<{ subscribe: boolean }>())
-		.serverMessages(schemaType<{ id: string }>()),
+		.clientMessage("subscribe", schemaType<{ subscribe: boolean }>())
+		.serverMessage("id", schemaType<{ id: string }>()),
 	feeds: {
 		live: route
 			.sse("/feeds/live")

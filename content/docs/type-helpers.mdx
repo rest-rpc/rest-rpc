@@ -7,7 +7,7 @@ Type helpers take a route declaration and infer the type used at a specific
 runtime boundary.
 
 ```ts
-import { route, stream, webSocketMessages } from "@rest-rpc/core";
+import { route, stream } from "@rest-rpc/core";
 import { z } from "zod";
 
 export const api = {
@@ -47,13 +47,9 @@ export const api = {
 		watch: route
 			.ws("/todos/:id/watch")
 			.params(z.object({ id: z.string() }))
-			.clientMessages(
-				webSocketMessages("action", {
-					typing: z.object({ active: z.boolean() }),
-					rename: z.object({ title: z.string() }),
-				}),
-			)
-			.serverMessages(z.object({ title: z.string() })),
+			.clientMessage("typing", z.object({ active: z.boolean() }))
+			.clientMessage("rename", z.object({ title: z.string() }))
+			.serverMessage("title", z.object({ title: z.string() })),
 	},
 };
 ```
@@ -97,11 +93,11 @@ type WatchSocket = ClientSocket<typeof api.todos.watch>;
 // }
 
 type WatchSent = ClientSent<typeof api.todos.watch>;
-// | { action: "typing"; message: { active: boolean } }
-// | { action: "rename"; message: { title: string } }
+// | { type: "typing"; message: { active: boolean } }
+// | { type: "rename"; message: { title: string } }
 
 type WatchReceived = ClientReceived<typeof api.todos.watch>;
-// { title: string }
+// { type: "title"; message: { title: string } }
 
 type LiveEventSource = ClientEventSource<typeof api.todos.live>;
 // {
@@ -158,11 +154,11 @@ type WatchSocket = RouteSocket<typeof api.todos.watch>;
 // }
 
 type WatchSent = RouteSent<typeof api.todos.watch>;
-// { title: string }
+// { type: "title"; message: { title: string } }
 
 type WatchReceived = RouteReceived<typeof api.todos.watch>;
-// | { action: "typing"; message: { active: boolean } }
-// | { action: "rename"; message: { title: string } }
+// | { type: "typing"; message: { active: boolean } }
+// | { type: "rename"; message: { title: string } }
 
 type LiveSent = RouteSseSent<typeof api.todos.live>;
 // { id: string; title: string }

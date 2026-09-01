@@ -4,14 +4,14 @@ import type {
 	RouteMetadata,
 } from "../contract/contract.ts";
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
-import type { WebSocketMessageDeclaration } from "../contract/websocketMessages.ts";
+import type { WebSocketMessageSchemas } from "../contract/websocketMessages.ts";
 import { BaseRouteBuilder } from "./baseRouteBuilder.ts";
 import type { EmptyObject, ProtocolRequestFor, WithRequest } from "./shared.ts";
 import { protocolRequestDefaults } from "./shared.ts";
 
 class WebSocketRouteBuilder extends BaseRouteBuilder {
 	declare messages?: Partial<
-		Record<"client" | "server", WebSocketMessageDeclaration>
+		Record<"client" | "server", WebSocketMessageSchemas>
 	>;
 
 	constructor(path: string, options?: RouteFactoryOptions) {
@@ -26,27 +26,75 @@ class WebSocketRouteBuilder extends BaseRouteBuilder {
 
 	private setMessage(
 		direction: "client" | "server",
-		schema: WebSocketMessageDeclaration,
+		type: string,
+		schema: StandardSchemaV1,
 	) {
+		const current = this.messages?.[direction];
+		if (current?.[type]) {
+			throw new Error(
+				`WebSocket ${direction} message type "${type}" is already declared.`,
+			);
+		}
 		this.messages = {
 			...this.messages,
-			[direction]: schema,
+			[direction]: {
+				...current,
+				[type]: schema,
+			},
 		};
 		return this;
 	}
 
-	clientMessages(schema: WebSocketMessageDeclaration) {
-		return this.setMessage("client", schema);
+	clientMessage(type: string, schema: StandardSchemaV1) {
+		return this.setMessage("client", type, schema);
 	}
 
-	serverMessages(schema: WebSocketMessageDeclaration) {
-		return this.setMessage("server", schema);
+	serverMessage(type: string, schema: StandardSchemaV1) {
+		return this.setMessage("server", type, schema);
 	}
 }
 
+type AddWebSocketMessage<
+	TMessages extends WebSocketCompletion,
+	TDirection extends "client" | "server",
+	TType extends string,
+	TSchema extends StandardSchemaV1,
+> = TMessages & {
+	[TKey in TDirection]: Record<TType, TSchema>;
+};
+
+type WebSocketMessageSetters<
+	TRequest,
+	TUsed extends string,
+	TMessages extends WebSocketCompletion,
+> = {
+	clientMessage<
+		const TType extends string,
+		const TSchema extends StandardSchemaV1,
+	>(
+		type: TType,
+		schema: TSchema,
+	): WebSocketBuilder<
+		TRequest,
+		TUsed,
+		AddWebSocketMessage<TMessages, "client", TType, TSchema>
+	>;
+	serverMessage<
+		const TType extends string,
+		const TSchema extends StandardSchemaV1,
+	>(
+		type: TType,
+		schema: TSchema,
+	): WebSocketBuilder<
+		TRequest,
+		TUsed,
+		AddWebSocketMessage<TMessages, "server", TType, TSchema>
+	>;
+};
+
 export type WebSocketCompletion = {
-	client?: WebSocketMessageDeclaration;
-	server?: WebSocketMessageDeclaration;
+	client?: WebSocketMessageSchemas;
+	server?: WebSocketMessageSchemas;
 };
 
 type WebSocketRequestSetters<
@@ -115,20 +163,7 @@ export type WebSocketBuilder<
 	(keyof TMessages extends never
 		? { messages?: never }
 		: { messages: TMessages }) &
-	(TMessages extends { client: WebSocketMessageDeclaration }
-		? EmptyObject
-		: {
-				clientMessages<const TSchema extends WebSocketMessageDeclaration>(
-					schema: TSchema,
-				): WebSocketBuilder<TRequest, TUsed, TMessages & { client: TSchema }>;
-			}) &
-	(TMessages extends { server: WebSocketMessageDeclaration }
-		? EmptyObject
-		: {
-				serverMessages<const TSchema extends WebSocketMessageDeclaration>(
-					schema: TSchema,
-				): WebSocketBuilder<TRequest, TUsed, TMessages & { server: TSchema }>;
-			}) &
+	WebSocketMessageSetters<TRequest, TUsed, TMessages> &
 	WebSocketRequestSetters<TRequest, TUsed, TMessages>;
 
 export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<

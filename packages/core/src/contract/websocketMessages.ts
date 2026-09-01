@@ -1,5 +1,4 @@
 import {
-	isStandardSchema,
 	type StandardSchemaV1,
 	validateStandardSchemaSync,
 } from "../standard-schema/index.ts";
@@ -11,46 +10,6 @@ import {
  */
 export type WebSocketMessageSchemas = Record<string, StandardSchemaV1>;
 
-export type WebSocketMessages<
-	TDiscriminator extends string = string,
-	TSchemas extends WebSocketMessageSchemas = WebSocketMessageSchemas,
-> = {
-	discriminator: TDiscriminator;
-	schemas: TSchemas;
-};
-
-export type WebSocketMessageDeclaration = StandardSchemaV1 | WebSocketMessages;
-
-/**
- * Declares discriminated WebSocket message schemas.
- *
- * @see {@link https://rest-rpc.dev/docs/websockets#contract}
- */
-export function webSocketMessages<
-	const TDiscriminator extends string,
-	const TSchemas extends WebSocketMessageSchemas,
->(
-	discriminator: TDiscriminator,
-	schemas: TSchemas,
-): WebSocketMessages<TDiscriminator, TSchemas> {
-	return {
-		discriminator,
-		schemas,
-	};
-}
-
-export const isWebSocketMessages = (
-	value: unknown,
-): value is WebSocketMessages =>
-	typeof value === "object" &&
-	value !== null &&
-	"discriminator" in value &&
-	typeof value.discriminator === "string" &&
-	"schemas" in value &&
-	typeof value.schemas === "object" &&
-	value.schemas !== null &&
-	Object.values(value.schemas).every(isStandardSchema);
-
 const messageIssue = (message: string): StandardSchemaV1.FailureResult => ({
 	issues: [{ message }],
 });
@@ -58,26 +17,20 @@ const messageIssue = (message: string): StandardSchemaV1.FailureResult => ({
 const isRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
 	typeof value === "object" && value !== null;
 
-export const validateWebSocketMessageSync = <
-	const TDeclaration extends WebSocketMessageDeclaration,
->(
-	declaration: TDeclaration,
+export const validateWebSocketMessageSync = (
+	declaration: WebSocketMessageSchemas,
 	value: unknown,
 ): StandardSchemaV1.Result<unknown> => {
-	if (isStandardSchema(declaration)) {
-		return validateStandardSchemaSync(declaration, value);
-	}
-
 	if (!isRecord(value)) {
 		return messageIssue("Expected WebSocket message envelope.");
 	}
 
-	const discriminatorValue = value[declaration.discriminator];
+	const discriminatorValue = value.type;
 	if (typeof discriminatorValue !== "string") {
 		return messageIssue("Expected WebSocket message discriminator.");
 	}
 
-	const schema = declaration.schemas[discriminatorValue];
+	const schema = declaration[discriminatorValue];
 	if (!schema) {
 		return messageIssue("Unknown WebSocket message discriminator.");
 	}
@@ -87,7 +40,7 @@ export const validateWebSocketMessageSync = <
 
 	return {
 		value: {
-			[declaration.discriminator]: discriminatorValue,
+			type: discriminatorValue,
 			message: result.value,
 		},
 	};

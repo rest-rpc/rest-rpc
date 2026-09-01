@@ -56,9 +56,9 @@ export const assertProtocolRouteComplete = (route: {
 		const messages = Object.hasOwn(route, "messages")
 			? (route as unknown as { messages: Record<string, unknown> }).messages
 			: undefined;
-		if (!messages?.client || !messages.server) {
+		if (!messages?.client && !messages?.server) {
 			throw new Error(
-				`WebSocket route declaration at path "${route.path}" must declare client and server messages.`,
+				`WebSocket route declaration at path "${route.path}" must declare client or server messages.`,
 			);
 		}
 	}

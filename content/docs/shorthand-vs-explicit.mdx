@@ -591,9 +591,8 @@ const todos = useInfiniteQuery(
 
 ## WebSocket Messages
 
-WebSocket message declarations accept any schema. Use a plain schema when the
-message shape is simple or when your schema library already gives you the union
-shape you want.
+WebSocket message declarations use a fixed `type` discriminator and wrap each
+payload in a `message` field.
 
 ```ts
 chat: {
@@ -601,32 +600,25 @@ chat: {
 	path: "/rooms/:roomId",
 	mode: "webSocket",
 	messages: {
-		client: z.discriminatedUnion("action", [
-			z.object({
-				action: z.literal("typing"),
-				roomId: z.string(),
-			}),
-			z.object({
-				action: z.literal("send"),
-				text: z.string().min(1),
-			}),
-		]),
-		server: z.object({
-			connected: z.boolean(),
-		}),
+		client: {
+			typing: z.object({ roomId: z.string() }),
+			send: z.object({ text: z.string().min(1) }),
+		},
+		server: {
+			connected: z.object({ connected: z.boolean() }),
+		},
 	},
 }
 ```
 
 ```ts
 socket.send({
-	action: "send",
-	text: "Hello from rest-rpc",
+	type: "send",
+	message: { text: "Hello from rest-rpc" },
 });
 ```
 
-Use `webSocketMessages()` when you want rest-rpc to build a discriminated
-message envelope from a map of payload schemas.
+Each direction is a map from message types to their payload schemas.
 
 ```ts
 chat: {
@@ -634,15 +626,15 @@ chat: {
 	path: "/rooms/:roomId",
 	mode: "webSocket",
 	messages: {
-		client: webSocketMessages("action", {
+		client: {
 			typing: z.object({
 				roomId: z.string(),
 			}),
 			send: z.object({
 				text: z.string().min(1),
 			}),
-		}),
-		server: webSocketMessages("type", {
+		},
+		server: {
 			connected: z.object({
 				memberCount: z.number(),
 			}),
@@ -650,14 +642,14 @@ chat: {
 				text: z.string(),
 				sentAt: z.string(),
 			}),
-		}),
+		},
 	},
 }
 ```
 
 ```ts
 socket.send({
-	action: "send",
+	type: "send",
 	message: {
 		text: "Hello from rest-rpc",
 	},

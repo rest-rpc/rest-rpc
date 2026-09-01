@@ -6,7 +6,7 @@ import type {
 	RequestSchemaRecord,
 } from "./request.ts";
 import type { RouteResponses } from "./response.ts";
-import type { WebSocketMessageDeclaration } from "./websocketMessages.ts";
+import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
 
 /** An HTTP method supported by a rest-rpc route. */
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -89,6 +89,14 @@ export type SseRouteDeclaration = Omit<
 	messages?: never;
 };
 
+type WebSocketRouteMessages =
+	| { client: WebSocketMessageSchemas; server?: never }
+	| { client?: never; server: WebSocketMessageSchemas }
+	| {
+			client: WebSocketMessageSchemas;
+			server: WebSocketMessageSchemas;
+	  };
+
 /** A canonical WebSocket route declaration. */
 export type WebSocketRouteDeclaration = Omit<
 	BaseRouteDeclaration,
@@ -100,10 +108,7 @@ export type WebSocketRouteDeclaration = Omit<
 		body?: never;
 		headers?: never;
 	};
-	messages: {
-		client: WebSocketMessageDeclaration;
-		server: WebSocketMessageDeclaration;
-	};
+	messages: WebSocketRouteMessages;
 	responses?: never;
 };
 

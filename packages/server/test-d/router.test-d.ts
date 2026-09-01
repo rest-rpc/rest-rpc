@@ -4,7 +4,6 @@ import {
 	jsonQuery,
 	noBody,
 	stream,
-	webSocketMessages,
 } from "@rest-rpc/core/contract";
 import {
 	type RouteHandlers,
@@ -233,20 +232,17 @@ const socketApi = {
 			mode: "webSocket",
 			messages: {
 				client: {
-					discriminator: "action",
-					schemas: {
-						echo: z.object({ text: z.string() }),
-						count: z.object({
-							value: z.string().transform((value) => Number(value)),
-						}),
-					},
+					echo: z.object({ text: z.string() }),
+					count: z.object({
+						value: z.string().transform((value) => Number(value)),
+					}),
 				},
-				server: webSocketMessages("type", {
+				server: {
 					ready: z.object({ roomId: z.string() }),
 					counted: z.object({
 						value: z.string().transform((value) => Number(value)),
 					}),
-				}),
+				},
 			},
 		},
 	},
@@ -538,10 +534,10 @@ route(socketApi.socket.room, ({ roomId, context }) => {
 	expectError(context.socket.send({ type: "missing", message: {} }));
 
 	context.socket.onMessage((message) => {
-		if (message.action === "echo") {
+		if (message.type === "echo") {
 			expectType<string>(message.message.text);
 		} else {
-			expectType<"count">(message.action);
+			expectType<"count">(message.type);
 			expectType<number>(message.message.value);
 		}
 	});

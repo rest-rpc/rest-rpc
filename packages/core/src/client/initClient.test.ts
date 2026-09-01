@@ -35,8 +35,8 @@ const apiContract = {
 		join: route
 			.ws("/rooms/:roomId")
 			.params(z.object({ roomId: z.string() }))
-			.clientMessages(z.object({ text: z.string() }))
-			.serverMessages(z.object({ text: z.string() })),
+			.clientMessage("message", z.object({ text: z.string() }))
+			.serverMessage("message", z.object({ text: z.string() })),
 	},
 };
 

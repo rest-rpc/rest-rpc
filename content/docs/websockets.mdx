@@ -22,23 +22,21 @@ export const api = {
 					name: z.string().min(1),
 				}),
 			)
-			.clientMessages(
+			.clientMessage("message", z.object({ text: z.string().min(1) }))
+			.serverMessage(
+				"joined",
 				z.object({
-					text: z.string().min(1),
+					roomId: z.string(),
+					name: z.string(),
 				}),
 			)
-			.serverMessages(
-				webSocketMessages("type", {
-					joined: z.object({
-						roomId: z.string(),
-						name: z.string(),
-					}),
-					message: z.object({
-						roomId: z.string(),
-						name: z.string(),
-						text: z.string(),
-						sentAt: z.string(),
-					}),
+			.serverMessage(
+				"message",
+				z.object({
+					roomId: z.string(),
+					name: z.string(),
+					text: z.string(),
+					sentAt: z.string(),
 				}),
 			),
 	},

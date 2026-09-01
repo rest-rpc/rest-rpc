@@ -94,12 +94,5 @@ export {
 	flattenContractRoutes,
 	mapContractRoutes,
 } from "./traversal.ts";
-export type {
-	WebSocketMessageDeclaration,
-	WebSocketMessageSchemas,
-	WebSocketMessages,
-} from "./websocketMessages.ts";
-export {
-	validateWebSocketMessageSync,
-	webSocketMessages,
-} from "./websocketMessages.ts";
+export type { WebSocketMessageSchemas } from "./websocketMessages.ts";
+export { validateWebSocketMessageSync } from "./websocketMessages.ts";

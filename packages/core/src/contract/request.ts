@@ -6,7 +6,7 @@ import type { CustomBody, FormBody, MultipartBody, NoBody } from "./body.ts";
 import { isCustomBody, isFormBody, isMultipartBody, isNoBody } from "./body.ts";
 import type { RouteDeclaration } from "./contract.ts";
 import type { InferCustomBody } from "./response.ts";
-import type { WebSocketMessages } from "./websocketMessages.ts";
+import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
 
 export type RequestSegment = "body" | "query" | "params" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
@@ -306,31 +306,24 @@ export type IsWebSocketRoute<E extends RouteDeclaration> = E extends {
 	: false;
 
 type InferDiscriminatedWebSocketMessage<
-	TDeclaration extends WebSocketMessages,
+	TSchemas extends WebSocketMessageSchemas,
 	TIO extends "input" | "output",
-> =
-	TDeclaration extends WebSocketMessages<infer TDiscriminator, infer TSchemas>
-		? {
-				[TKey in keyof TSchemas & string]: {
-					[TDiscriminatorKey in TDiscriminator]: TKey;
-				} & {
-					message: TIO extends "input"
-						? StandardSchemaV1.InferInput<TSchemas[TKey]>
-						: StandardSchemaV1.InferOutput<TSchemas[TKey]>;
-				};
-			}[keyof TSchemas & string]
-		: never;
+> = {
+	[TKey in keyof TSchemas & string]: {
+		type: TKey;
+	} & {
+		message: TIO extends "input"
+			? StandardSchemaV1.InferInput<TSchemas[TKey]>
+			: StandardSchemaV1.InferOutput<TSchemas[TKey]>;
+	};
+}[keyof TSchemas & string];
 
 type InferWebSocketMessage<
 	TMessage,
 	TIO extends "input" | "output",
-> = TMessage extends StandardSchemaV1
-	? TIO extends "input"
-		? StandardSchemaV1.InferInput<TMessage>
-		: StandardSchemaV1.InferOutput<TMessage>
-	: TMessage extends WebSocketMessages
-		? InferDiscriminatedWebSocketMessage<TMessage, TIO>
-		: never;
+> = TMessage extends WebSocketMessageSchemas
+	? InferDiscriminatedWebSocketMessage<TMessage, TIO>
+	: never;
 
 /**
  * Infers the message type a client can send on a WebSocket route.

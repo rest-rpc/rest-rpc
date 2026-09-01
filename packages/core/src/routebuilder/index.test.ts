@@ -237,10 +237,51 @@ describe("protocol route builder runtime", () => {
 		const server = type<{ event: string }>();
 		const directional = route
 			.ws("/socket")
-			.serverMessages(server)
-			.clientMessages(client);
-		assert.deepEqual(directional.messages, { client, server });
+			.clientMessage("command", client)
+			.serverMessage("event", server);
+		assert.deepEqual(directional.messages, {
+			client: { command: client },
+			server: { event: server },
+		});
 		assert.equal(assertProtocolRouteComplete(directional), directional);
+	});
+
+	it("normalizes discriminated WebSocket messages", () => {
+		const join = type<{ roomId: string }>();
+		const message = type<{ text: string }>();
+		const connected = type<{ memberCount: number }>();
+		const declaration = route
+			.ws("/socket")
+			.clientMessage("join", join)
+			.clientMessage("message", message)
+			.serverMessage("connected", connected);
+
+		assert.deepEqual(declaration.messages, {
+			client: { join, message },
+			server: { connected },
+		});
+	});
+
+	it("rejects duplicate WebSocket message types", () => {
+		const client = type<{ command: string }>();
+		const server = type<{ event: string }>();
+
+		assert.throws(
+			() =>
+				route
+					.ws("/socket")
+					.clientMessage("command", client)
+					.clientMessage("command", client),
+			/WebSocket client message type "command" is already declared/,
+		);
+		assert.throws(
+			() =>
+				route
+					.ws("/socket")
+					.serverMessage("event", server)
+					.serverMessage("event", server),
+			/WebSocket server message type "event" is already declared/,
+		);
 	});
 
 	it("rejects incomplete protocol routes", () => {
@@ -250,9 +291,18 @@ describe("protocol route builder runtime", () => {
 			/missing a response schema/,
 		);
 		assert.throws(
-			() =>
-				assertProtocolRouteComplete(route.ws("/socket").clientMessages(schema)),
-			/client and server messages/,
+			() => assertProtocolRouteComplete(route.ws("/socket")),
+			/client or server messages/,
+		);
+		assert.doesNotThrow(() =>
+			assertProtocolRouteComplete(
+				route.ws("/socket").clientMessage("message", schema),
+			),
+		);
+		assert.doesNotThrow(() =>
+			assertProtocolRouteComplete(
+				route.ws("/socket").serverMessage("message", schema),
+			),
 		);
 	});
 
@@ -268,8 +318,8 @@ describe("protocol route builder runtime", () => {
 		const sse = factory.sse("/events").response(schema);
 		const ws = factory
 			.ws("/socket")
-			.clientMessages(schema)
-			.serverMessages(schema);
+			.clientMessage("message", schema)
+			.serverMessage("message", schema);
 		assert.equal(sse.path, "/api/events");
 		assert.equal(ws.path, "/api/socket");
 		assert.equal(sse.request?.headers, undefined);

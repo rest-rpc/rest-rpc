@@ -7,7 +7,6 @@ import {
 	initClient,
 	route,
 	type as schemaType,
-	webSocketMessages,
 } from "@rest-rpc/core";
 import { expectError, expectType } from "tsd";
 import { z } from "zod";
@@ -508,26 +507,23 @@ const websocketApi = {
 	todos: {
 		socket: route
 			.ws("/todos/socket")
-			.clientMessages(
-				webSocketMessages("action", {
-					echo: z.object({ text: z.string() }),
-					count: z.object({
-						value: z.string().transform((value) => Number(value)),
-					}),
+			.clientMessage("echo", z.object({ text: z.string() }))
+			.clientMessage(
+				"count",
+				z.object({
+					value: z.string().transform((value) => Number(value)),
 				}),
 			)
-			.serverMessages({
-				discriminator: "type",
-				schemas: {
-					ready: z.object({
-						createdAt: z
-							.string()
-							.datetime()
-							.transform((value) => new Date(value)),
-					}),
-					event: z.string(),
-				},
-			}),
+			.serverMessage(
+				"ready",
+				z.object({
+					createdAt: z
+						.string()
+						.datetime()
+						.transform((value) => new Date(value)),
+				}),
+			)
+			.serverMessage("event", z.string()),
 	},
 };
 
@@ -537,10 +533,10 @@ const websocketClient = initClient(websocketApi, {
 
 const socket = websocketClient.todos.socket.openConnection();
 
-socket.send({ action: "echo", message: { text: "hello" } });
-socket.send({ action: "count", message: { value: "1" } });
-expectError(socket.send({ action: "count", message: { value: 1 } }));
-expectError(socket.send({ action: "missing", message: {} }));
+socket.send({ type: "echo", message: { text: "hello" } });
+socket.send({ type: "count", message: { value: "1" } });
+expectError(socket.send({ type: "count", message: { value: 1 } }));
+expectError(socket.send({ type: "missing", message: {} }));
 
 socket.onMessage((message) => {
 	if (message.type === "ready") {

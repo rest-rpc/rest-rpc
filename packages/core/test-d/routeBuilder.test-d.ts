@@ -266,7 +266,7 @@ expectError(sseConfigured.body(event));
 expectError(sseConfigured.headers({ authorization: input }));
 expectError(sseConfigured.response(event));
 expectError(sseConfigured.streamResponse(200, event));
-expectError(sseConfigured.clientMessages(clientMessage));
+expectError(sseConfigured.clientMessage(clientMessage));
 
 // Supports JSON query and unused route configuration after response().
 const sseConfiguredAfterResponse = route
@@ -299,45 +299,66 @@ expectAssignable<Contract>(sse);
 
 // WebSocket route builders
 
-// Requires both message directions and excludes HTTP/SSE APIs.
-const incompleteSocket = route.ws("/socket").clientMessages(clientMessage);
-expectNotAssignable<WebSocketRouteDeclaration>(incompleteSocket);
-expectNotAssignable<Contract>(incompleteSocket);
-expectError(incompleteSocket.body(event));
-expectError(incompleteSocket.headers({ authorization: schemaType<string>() }));
-expectError(incompleteSocket.response(event));
-expectError(incompleteSocket.responses({ 200: event }));
-expectError(incompleteSocket.clientMessages(clientMessage));
+// Requires one message direction and excludes HTTP/SSE APIs.
+const clientSocket = route
+	.ws("/socket")
+	.clientMessage("command", clientMessage);
+expectAssignable<WebSocketRouteDeclaration>(clientSocket);
+expectAssignable<Contract>(clientSocket);
+expectError(clientSocket.body(event));
+expectError(clientSocket.headers({ authorization: schemaType<string>() }));
+expectError(clientSocket.response(event));
+expectError(clientSocket.responses({ 200: event }));
+clientSocket.clientMessage("anotherCommand", clientMessage);
 
 // Preserves WebSocket message inference and widens route metadata.
-const socket = incompleteSocket
+const socket = clientSocket
 	.params(schemaType<{ roomId: string }>())
-	.serverMessages(serverMessage)
+	.serverMessage("event", serverMessage)
 	.withMetadata({ public: true });
 
 expectType<"GET">(socket.method);
 expectType<"webSocket">(socket.mode);
-expectType<typeof clientMessage>(socket.messages.client);
-expectType<typeof serverMessage>(socket.messages.server);
+expectType<typeof clientMessage>(socket.messages.client.command);
+expectType<typeof serverMessage>(socket.messages.server.event);
 expectType<RouteMetadata>(socket.metadata);
 expectAssignable<WebSocketRouteDeclaration>(socket);
 expectAssignable<Contract>(socket);
-expectError(incompleteSocket.withOpenApi({ summary: "Join socket" }));
+expectError(clientSocket.withOpenApi({ summary: "Join socket" }));
 
-// Supports either message declaration order.
-const socketServerFirst = route
-	.ws("/socket-server-first")
-	.serverMessages(serverMessage)
-	.clientMessages(clientMessage)
+// Supports multiple discriminated messages in either direction and order.
+const socketDiscriminated = route
+	.ws("/socket-discriminated")
+	.serverMessage("event", serverMessage)
+	.serverMessage("anotherEvent", serverMessage)
+	.clientMessage("command", clientMessage)
+	.clientMessage("anotherCommand", clientMessage)
 	.jsonQuery(input);
-expectAssignable<WebSocketRouteDeclaration>(socketServerFirst);
-expectError(socketServerFirst.query(input));
+expectType<typeof clientMessage>(socketDiscriminated.messages.client.command);
+expectType<typeof serverMessage>(socketDiscriminated.messages.server.event);
+expectAssignable<WebSocketRouteDeclaration>(socketDiscriminated);
+expectError(socketDiscriminated.query(input));
+expectError(socketDiscriminated.clientMessage(clientMessage));
+expectError(socketDiscriminated.serverMessage(serverMessage));
+
+// Keeps discriminated messages consistent within each direction.
+const discriminatedClient = route
+	.ws("/discriminated-client")
+	.clientMessage("command", clientMessage);
+discriminatedClient.clientMessage("again", clientMessage);
+const discriminatedClientWithServer = discriminatedClient.serverMessage(
+	"event",
+	serverMessage,
+);
+discriminatedClientWithServer.clientMessage("another", clientMessage);
+discriminatedClientWithServer.serverMessage("anotherEvent", serverMessage);
 
 // Rejects duplicate server message declarations.
 const socketServerDuplicate = route
 	.ws("/socket-server-duplicate")
-	.serverMessages(serverMessage);
-expectError(socketServerDuplicate.serverMessages(serverMessage));
+	.clientMessage("command", clientMessage)
+	.serverMessage("event", serverMessage);
+socketServerDuplicate.serverMessage("anotherEvent", serverMessage);
 
 // Allows each WebSocket request setter and message direction only once.
 const completeSocket = route
@@ -346,8 +367,8 @@ const completeSocket = route
 	.params(schemaType<{ roomId: string }>())
 	.requestKeys({ title: "query", roomId: "params" })
 	.withMetadata({ public: true })
-	.clientMessages(clientMessage)
-	.serverMessages(serverMessage);
+	.clientMessage("command", clientMessage)
+	.serverMessage("event", serverMessage);
 expectAssignable<WebSocketRouteDeclaration>(completeSocket);
 expectAssignable<Contract>(completeSocket);
 expectError(completeSocket.query(input));
@@ -356,14 +377,24 @@ expectError(completeSocket.params(input));
 expectError(completeSocket.requestKeys({ title: "query" }));
 expectError(completeSocket.withMetadata({ public: false }));
 expectError(completeSocket.withOpenApi({ summary: "socket" }));
-expectError(completeSocket.clientMessages(clientMessage));
-expectError(completeSocket.serverMessages(serverMessage));
+completeSocket.clientMessage("anotherCommand", clientMessage);
+completeSocket.serverMessage("anotherEvent", serverMessage);
 expectError(completeSocket.response(event));
 expectError(completeSocket.streamResponse(200, event));
 expectError(completeSocket.body(event));
 expectError(completeSocket.headers({ authorization: input }));
 
-// Client-only and server-only builders remain incomplete.
-const serverOnlySocket = route.ws("/server-only").serverMessages(serverMessage);
-expectNotAssignable<WebSocketRouteDeclaration>(serverOnlySocket);
-expectNotAssignable<Contract>(serverOnlySocket);
+// A single message direction is enough to complete a WebSocket route.
+const clientOnlySocket = route
+	.ws("/client-only")
+	.clientMessage("command", clientMessage);
+expectAssignable<WebSocketRouteDeclaration>(clientOnlySocket);
+expectAssignable<Contract>(clientOnlySocket);
+const serverOnlySocket = route
+	.ws("/server-only")
+	.serverMessage("event", serverMessage);
+expectAssignable<WebSocketRouteDeclaration>(serverOnlySocket);
+expectAssignable<Contract>(serverOnlySocket);
+const messageLessSocket = route.ws("/message-less");
+expectNotAssignable<WebSocketRouteDeclaration>(messageLessSocket);
+expectNotAssignable<Contract>(messageLessSocket);
