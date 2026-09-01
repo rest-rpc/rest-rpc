@@ -18,21 +18,19 @@ By default, request fields from `pathParams`, `query`, JSON `body`, and
 `headers` are flattened into one request object.
 
 ```ts
-const api = router({
+const api = {
 	todos: {
-		update: {
-			method: "PATCH",
-			path: "/todos/:id",
-			pathParams: z.object({ id: z.string() }),
-			query: z.object({ notify: z.boolean().optional() }),
-			body: z.object({ title: z.string() }),
-			headers: {
+		update: route
+			.patch("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.query(z.object({ notify: z.boolean().optional() }))
+			.body(z.object({ title: z.string() }))
+			.headers({
 				"x-request-id": z.string(),
-			},
-			response: todoSchema,
-		},
+			})
+			.response(200, todoSchema),
 	},
-});
+};
 ```
 
 ```ts

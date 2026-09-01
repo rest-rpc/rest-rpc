@@ -83,7 +83,9 @@ export type SchemaConverter = (
 	mode: "input" | "output",
 ) => OpenApiSchema | undefined;
 
-export type OpenApiRouteDeclaration = HttpRouteDeclaration | SseRouteDeclaration;
+export type OpenApiRouteDeclaration =
+	| HttpRouteDeclaration
+	| SseRouteDeclaration;
 
 export type ParameterTransformContext = {
 	route: OpenApiRouteDeclaration;

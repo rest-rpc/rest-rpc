@@ -8,23 +8,27 @@ description: Use rest-rpc with WebSockets
 ### Contract
 
 ```ts
-export const api = router({
+export const api = {
 	chat: {
-		room: {
-			method: "GET",
-			path: "/rooms/:roomId",
-			mode: "webSocket",
-			pathParams: z.object({
-				roomId: z.string().min(1),
-			}),
-			query: z.object({
-				name: z.string().min(1),
-			}),
-			messages: {
-				client: z.object({
+		room: route
+			.ws("/rooms/:roomId")
+			.pathParams(
+				z.object({
+					roomId: z.string().min(1),
+				}),
+			)
+			.query(
+				z.object({
+					name: z.string().min(1),
+				}),
+			)
+			.clientMessages(
+				z.object({
 					text: z.string().min(1),
 				}),
-				server: webSocketMessages("type", {
+			)
+			.serverMessages(
+				webSocketMessages("type", {
 					joined: z.object({
 						roomId: z.string(),
 						name: z.string(),
@@ -36,10 +40,9 @@ export const api = router({
 						sentAt: z.string(),
 					}),
 				}),
-			},
-		},
+			),
 	},
-});
+};
 ```
 
 ### Server

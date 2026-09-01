@@ -66,25 +66,23 @@ carry parameter-level requiredness in the converted schema. Use
 `transformParameter` when generated parameters need project-specific metadata.
 
 ```ts
-const api = router({
-	search: {
-		method: "GET",
-		path: "/search",
-		query: {
-			q: z
-				.string()
-				.min(1)
-				.meta({ openApi: { required: true } }),
-			cursor: z
-				.string()
-				.optional()
-				.meta({ openApi: { required: false } }),
-		},
-		responses: {
-			200: z.array(todoSchema),
-		},
-	},
-});
+const api = {
+	search: route
+		.get("/search")
+		.query(
+			z.object({
+				q: z
+					.string()
+					.min(1)
+					.meta({ openApi: { required: true } }),
+				cursor: z
+					.string()
+					.optional()
+					.meta({ openApi: { required: false } }),
+			}),
+		)
+		.response(200, z.array(todoSchema)),
+};
 
 const document = createOpenApiDocument(api, {
 	info: {

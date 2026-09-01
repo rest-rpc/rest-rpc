@@ -34,10 +34,12 @@ const sseContract = {
 			.sse("/projects/:projectId/events")
 			.pathParams(z.object({ projectId: z.string() }))
 			.query(z.object({ done: z.coerce.boolean().optional() }))
-			.response(z.object({
-				id: z.string(),
-				createdAt: z.string().transform((value) => new Date(value)),
-			})),
+			.response(
+				z.object({
+					id: z.string(),
+					createdAt: z.string().transform((value) => new Date(value)),
+				}),
+			),
 	},
 };
 

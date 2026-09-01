@@ -143,15 +143,11 @@ Server adapters validate handler output before writing the HTTP response. The
 handler returns schema input.
 
 ```ts
-const api = router({
+const api = {
 	todos: {
-		get: {
-			method: "GET",
-			path: "/todos/:id",
-			response: todoSchema,
-		},
+		get: route.get("/todos/:id").response(200, todoSchema),
 	},
-});
+};
 ```
 
 Fetch clients do not validate response bodies by default. With

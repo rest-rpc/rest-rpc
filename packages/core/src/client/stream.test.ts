@@ -14,7 +14,9 @@ afterEach(() => {
 
 const apiContract = {
 	events: {
-		stream: route.get("/events").streamResponse(200, z.object({ id: z.string() })),
+		stream: route
+			.get("/events")
+			.streamResponse(200, z.object({ id: z.string() })),
 	},
 };
 

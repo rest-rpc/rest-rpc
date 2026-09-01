@@ -65,25 +65,27 @@ as typed functions.
 <Tab title="Contract">
 
 ```ts
-export const api = router({
+export const api = {
 	todos: {
-		update: {
-			method: "PATCH",
-			path: "/todos/:id",
-			query: {
-				notify: z.coerce.boolean().optional(),
-			},
-			headers: {
+		update: route
+			.patch("/todos/:id")
+			.query(
+				z.object({
+					notify: z.coerce.boolean().optional(),
+				}),
+			)
+			.headers({
 				"x-request-id": z.string().optional(),
-			},
-			body: {
-				title: z.string().min(1),
-				completed: z.boolean().optional(),
-			},
-			response: todoSchema,
-		},
+			})
+			.body(
+				z.object({
+					title: z.string().min(1),
+					completed: z.boolean().optional(),
+				}),
+			)
+			.response(200, todoSchema),
 	},
-});
+};
 ```
 
 </Tab>

@@ -3,10 +3,10 @@ title: Declaration
 description: Learn how to declare contracts with rest-rpc
 ---
 
-A contract is a plain TypeScript object passed through `router()`.
+A contract is a plain TypeScript object composed from route builders.
 
 ```ts
-import { router } from "@rest-rpc/core";
+import { route } from "@rest-rpc/core";
 import { z } from "zod";
 
 const todoSchema = z.object({
@@ -15,54 +15,39 @@ const todoSchema = z.object({
 	completed: z.boolean(),
 });
 
-export const api = router({
+export const api = {
 	todos: {
-		get: {
-			method: "GET",
-			path: "/todos/:id",
-			response: todoSchema,
-		},
+		get: route.get("/todos/:id").response(200, todoSchema),
 	},
-});
+};
 ```
 
 The contract is used at runtime and at type level. It can drive server handlers,
 clients, TanStack Query options, and OpenAPI generation.
 
-## Route Fields
+## Route Builders
 
-HTTP routes use these fields:
+Start a route with an HTTP method and path, then add request and response
+declarations with chainable setters. Body, query, and path-parameter setters
+each receive one schema. Headers are the exception: `.headers()` receives a
+`Record<string, schema>` because each header has its own name.
 
-- `method`: `GET`, `POST`, `PUT`, `DELETE`, or `PATCH`.
-- `path`: HTTP path with static segments and full dynamic `:param` or `{param}` segments.
-- `pathParams`: path parameter schemas.
-- `query`: query parameter schemas.
-- `headers`: request header schemas.
-- `body`: request body schema.
-- `response`: one successful response body, with status inferred from `method`.
-- `responses`: status-keyed response body declarations.
-- `metadata`: application-defined route metadata.
-- `openApi`: OpenAPI operation hints.
-- `flattenRequestKeys`: whether clients and handlers use flattened request keys for this route.
-- `options`: route options.
+Use `.response(status, schema)` repeatedly for declared statuses. Protocol
+routes start with `.sse(path)` or `.ws(path)` and have their own completion
+setters.
 
 ## Request Model
 
-Request data is declared by HTTP location.
+Request data is declared by HTTP location on the route builder.
 
 ```ts
-pathParams: {
-	id: z.string(),
-},
-query: {
-	includeCompleted: z.coerce.boolean().optional(),
-},
-headers: {
-	"x-request-id": z.string().optional(),
-},
-body: {
-	title: z.string(),
-},
+route
+	.patch("/todos/:id")
+	.pathParams(z.object({ id: z.string() }))
+	.query(z.object({ includeCompleted: z.coerce.boolean().optional() }))
+	.headers({ "x-request-id": z.string().optional() })
+	.body(z.object({ title: z.string() }))
+	.response(200, todoSchema);
 ```
 
 Those locations remain part of the contract. By default, clients and server
@@ -90,27 +75,22 @@ const routes = router(api, {
 The flattened shape is only the default TypeScript and adapter API. `rest-rpc`
 still serializes each value to the HTTP location where it was declared.
 
-Set `flattenRequestKeys: false` on the router when you want clients and handlers
-to receive explicit HTTP request segments.
+Create a route factory with `route.with({ flattenRequestKeys: false })` when you
+want clients and handlers to receive explicit HTTP request segments.
 
 ```ts
-export const api = router(
-	{
-		todos: {
-			update: {
-				method: "PATCH",
-				path: "/todos/:id",
-				pathParams: z.object({ id: z.string() }),
-				query: z.object({ includeCompleted: z.boolean().optional() }),
-				body: z.object({ title: z.string() }),
-				response: todoSchema,
-			},
-		},
+const groupedRoute = route.with({ flattenRequestKeys: false });
+
+export const api = {
+	todos: {
+		update: groupedRoute
+			.patch("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.query(z.object({ includeCompleted: z.boolean().optional() }))
+			.body(z.object({ title: z.string() }))
+			.response(200, todoSchema),
 	},
-	{
-		flattenRequestKeys: false,
-	},
-);
+};
 ```
 
 ```ts
@@ -144,24 +124,16 @@ Full dynamic path segments infer string path params. In this route, `:id`
 contributes an `id: string` input:
 
 ```ts
-get: {
-	method: "GET",
-	path: "/todos/:id",
-	response: todoSchema,
-}
+route.get("/todos/:id").response(200, todoSchema);
 ```
 
 Explicit `pathParams` replace the inferred string schema for the same params.
 
 ```ts
-get: {
-	method: "GET",
-	path: "/todos/:id",
-	pathParams: {
-		id: z.string().uuid(),
-	},
-	response: todoSchema,
-}
+route
+	.get("/todos/:id")
+	.pathParams(z.object({ id: z.string().uuid() }))
+	.response(200, todoSchema);
 ```
 
 Path parameter rules:
@@ -184,15 +156,14 @@ Every flattened request key must identify exactly one HTTP location. A route is
 invalid when the same key appears in multiple request locations.
 
 ```ts
-pathParams: {
-	id: z.string(),
-},
-body: {
-	id: z.string(),
-},
+route
+	.post("/todos")
+	.pathParams(z.object({ id: z.string() }))
+	.body(z.object({ id: z.string() }))
+	.response(201, todoSchema);
 ```
 
-Both fields would flatten to `id`, so `router()` rejects the contract.
+Both fields would flatten to `id`, so the route builder rejects the contract.
 
 Other request key constraints:
 
@@ -206,24 +177,24 @@ Other request key constraints:
 `jsonQuery()` declares a JSON-shaped query value.
 
 ```ts
-import { jsonQuery, router } from "@rest-rpc/core";
+import { jsonQuery, route } from "@rest-rpc/core";
 
-const api = router({
-	search: {
-		method: "GET",
-		path: "/search",
-		query: jsonQuery(
-			z.object({
-				page: z.number(),
-				includeArchived: z.boolean(),
-				filters: z.object({
-					tags: z.array(z.string()),
+const api = {
+	search: route
+		.get("/search")
+		.query(
+			jsonQuery(
+				z.object({
+					page: z.number(),
+					includeArchived: z.boolean(),
+					filters: z.object({
+						tags: z.array(z.string()),
+					}),
 				}),
-			}),
-		),
-		response: z.object({ results: z.array(z.string()) }),
-	},
-});
+			),
+		)
+		.response(200, z.object({ results: z.array(z.string()) })),
+};
 ```
 
 The client and handler use a top-level `query` value:
@@ -243,31 +214,25 @@ parses it on the server, and validates it with the wrapped schema.
 
 ## Responses
 
-The `response` field declares one successful response body.
+`.response(status, schema)` declares a response body for a status.
 
 ```ts
-create: {
-	method: "POST",
-	path: "/todos",
-	body: {
-		title: z.string().min(1),
-	},
-	response: todoSchema,
-}
+route
+	.post("/todos")
+	.body(z.object({ title: z.string().min(1) }))
+	.response(201, todoSchema);
 ```
 
 `rest-rpc` assigns the status from the HTTP method: `POST` uses `201`, and other
 methods use `200`.
 
-The `responses` field declares response bodies by status code.
+Call `.response()` once for each declared status code.
 
 ```ts
-responses: {
-	200: todoSchema,
-	404: z.object({
-		code: z.literal("TODO_NOT_FOUND"),
-	}),
-}
+route
+	.get("/todos/:id")
+	.response(200, todoSchema)
+	.response(404, z.object({ code: z.literal("TODO_NOT_FOUND") }));
 ```
 
 Non-2xx statuses are declared the same way as 2xx statuses.
@@ -275,82 +240,52 @@ Non-2xx statuses are declared the same way as 2xx statuses.
 Routes with no `response` or `responses` default to a no-body response. `DELETE`
 uses `204`, `POST` uses `201`, and other methods use `200`.
 
-Route status specific response headers can be declared using `response` or
-`responses` with an object containing `body` and `headers`.
+Status-specific response headers can be declared by passing an object containing
+`body` and `headers` as the response schema.
 
 ```ts
-create: {
-	method: "POST",
-	path: "/todos",
-	body: {
-		title: z.string().min(1),
-	},
-	response: {
+route
+	.post("/todos")
+	.body(z.object({ title: z.string().min(1) }))
+	.response(201, {
 		body: todoSchema,
 		headers: {
 			location: z.string(),
 			"x-next-cursor": z.string().optional(),
 		},
-	},
-}
+	});
 ```
 
-## Shared Router Options
+## Shared Route Options
 
-`router()` can apply shared fields to every route in a tree.
+`route.with()` creates a route factory with shared options for every route built
+from it. The option names match the builder setters: `headers`, `responses`,
+`metadata`, `openApi`, and `pathPrefix`.
 
 ```ts
-export const api = router(
-	{
-		todos: {
-			list: {
-				method: "GET",
-				path: "/todos",
-				response: z.object({
-					items: z.array(todoSchema),
-				}),
-				openApi: {
-					summary: "List todos",
-				},
-			},
-		},
+const apiRoute = route.with({
+	pathPrefix: "/api",
+	metadata: { auth: "required" },
+	headers: { "x-request-id": z.string().optional() },
+	responses: { 401: z.object({ code: z.literal("UNAUTHORIZED") }) },
+	openApi: {
+		tags: ["Todos"],
+		security: [{ bearerAuth: [] }],
 	},
-	{
-		pathPrefix: "/api",
-		metadata: {
-			auth: "required",
-		},
-		commonHeaders: {
-			"x-request-id": z.string().optional(),
-		},
-		commonResponses: {
-			401: z.object({
-				code: z.literal("UNAUTHORIZED"),
-			}),
-		},
-		commonOpenApi: {
-			tags: ["Todos"],
-			security: [{ bearerAuth: [] }],
-			responses: {
-				200: {
-					headers: {
-						"x-request-id": z.string(),
-					},
-				},
-				401: {
-					description: "Authentication is required.",
-				},
-			},
-		},
+});
+
+export const api = {
+	todos: {
+		list: apiRoute
+			.get("/todos")
+			.response(200, z.object({ items: z.array(todoSchema) }))
+			.openApi({ summary: "List todos" }),
 	},
-);
+};
 ```
 
-The route above is normalized to `GET /api/todos`, includes the common header,
-includes the common `401` response, and keeps the route-specific OpenAPI summary.
-The `commonOpenApi.responses` headers are documentation-only. They do not require
-handlers to return `responseHeaders`, add client `responseHeaders`, validate
-runtime responses, or send headers from the server.
+The route above is normalized to `GET /api/todos`, includes the factory header,
+the factory `401` response, and keeps the route-specific OpenAPI summary.
 
 ## Single Routes
 
@@ -359,11 +294,7 @@ runtime responses, or send headers from the server.
 ```ts
 import { route } from "@rest-rpc/core";
 
-export const getTodo = route({
-	method: "GET",
-	path: "/todos/:id",
-	response: todoSchema,
-});
+export const getTodo = route.get("/todos/:id").response(200, todoSchema);
 ```
 
 ## Beyond JSON Contracts

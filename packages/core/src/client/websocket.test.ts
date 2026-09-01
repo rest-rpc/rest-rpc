@@ -346,12 +346,12 @@ describe("ApiClient websockets", () => {
 					.pathParams(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
 					.serverMessages({
-							discriminator: "type",
-							schemas: {
-								count: z.object({
-									value: z.string().transform((value) => Number(value)),
-								}),
-							},
+						discriminator: "type",
+						schemas: {
+							count: z.object({
+								value: z.string().transform((value) => Number(value)),
+							}),
+						},
 					}),
 			},
 		};
@@ -380,9 +380,11 @@ describe("ApiClient websockets", () => {
 					.ws("/rooms/:roomId")
 					.pathParams(z.object({ roomId: z.string() }))
 					.clientMessages(z.object({ text: z.string() }))
-					.serverMessages(webSocketMessages("type", {
+					.serverMessages(
+						webSocketMessages("type", {
 							count: z.object({ value: z.number() }),
-					})),
+						}),
+					),
 			},
 		};
 		const client = initClient(apiContract, {

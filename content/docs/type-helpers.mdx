@@ -7,69 +7,55 @@ Type helpers take a route declaration and infer the type used at a specific
 runtime boundary.
 
 ```ts
-import { route, router, stream, webSocketMessages } from "@rest-rpc/core";
+import { route, stream, webSocketMessages } from "@rest-rpc/core";
 import { z } from "zod";
 
-export const api = router({
+export const api = {
 	todos: {
-		get: route({
-			method: "GET",
-			path: "/todos/:id",
-			pathParams: z.object({ id: z.string() }),
-			query: z.object({ includeDone: z.boolean().optional() }),
-			responses: {
-				200: z.object({ id: z.string(), title: z.string() }),
-				404: z.object({ code: z.literal("NOT_FOUND") }),
-			},
-		}),
-		page: route({
-			method: "GET",
-			path: "/todos/page",
-			query: z.object({
-				cursor: z.string().optional(),
-				status: z.enum(["open", "done"]),
-				limit: z.number(),
-			}),
-			responses: {
-				200: z.object({
+		get: route
+			.get("/todos/:id")
+			.pathParams(z.object({ id: z.string() }))
+			.query(z.object({ includeDone: z.boolean().optional() }))
+			.response(200, z.object({ id: z.string(), title: z.string() }))
+			.response(404, z.object({ code: z.literal("NOT_FOUND") })),
+		page: route
+			.get("/todos/page")
+			.query(
+				z.object({
+					cursor: z.string().optional(),
+					status: z.enum(["open", "done"]),
+					limit: z.number(),
+				}),
+			)
+			.response(
+				200,
+				z.object({
 					items: z.array(z.object({ id: z.string(), title: z.string() })),
 					nextCursor: z.string().optional(),
 				}),
-			},
-		}),
-		create: route({
-			method: "POST",
-			path: "/todos",
-			body: z.object({ title: z.string() }),
-			response: z.object({ id: z.string(), title: z.string() }),
-		}),
-		live: route({
-			method: "GET",
-			path: "/todos/live",
-			mode: "sse",
-			response: z.object({ id: z.string(), title: z.string() }),
-		}),
-		events: route({
-			method: "GET",
-			path: "/todos/events",
-			responses: {
-				200: stream(z.object({ id: z.string(), message: z.string() })),
-			},
-		}),
-		watch: route({
-			mode: "webSocket",
-			path: "/todos/:id/watch",
-			pathParams: z.object({ id: z.string() }),
-			messages: {
-				client: webSocketMessages("action", {
+			),
+		create: route
+			.post("/todos")
+			.body(z.object({ title: z.string() }))
+			.response(201, z.object({ id: z.string(), title: z.string() })),
+		live: route
+			.sse("/todos/live")
+			.response(z.object({ id: z.string(), title: z.string() })),
+		events: route
+			.get("/todos/events")
+			.streamResponse(200, z.object({ id: z.string(), message: z.string() })),
+		watch: route
+			.ws("/todos/:id/watch")
+			.pathParams(z.object({ id: z.string() }))
+			.clientMessages(
+				webSocketMessages("action", {
 					typing: z.object({ active: z.boolean() }),
 					rename: z.object({ title: z.string() }),
 				}),
-				server: z.object({ title: z.string() }),
-			},
-		}),
+			)
+			.serverMessages(z.object({ title: z.string() })),
 	},
-});
+};
 ```
 
 ## Fetch Client

@@ -102,11 +102,7 @@ export function createOpenApiDocument(
 		const path = toOpenApiPath(route.path);
 		const method = route.method.toLowerCase() as keyof OpenApiPathItem;
 		document.paths[path] ??= {};
-		document.paths[path][method] = createOperation(
-			route,
-			options,
-			routePath,
-		);
+		document.paths[path][method] = createOperation(route, options, routePath);
 	}
 
 	return document;

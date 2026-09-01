@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
-import { customBody, noBody, stream } from "../contract/body.ts";
+import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
 import { createOpenApiDocument } from "./document.ts";
 import type { SchemaConverter } from "./operation.ts";
@@ -18,31 +18,40 @@ const openApiTestContract = {
 	todos: {
 		list: route
 			.get("/todos")
-			.query(z.object({
-				search: z.string(),
-				includeCompleted: z.boolean().optional(),
-			}))
+			.query(
+				z.object({
+					search: z.string(),
+					includeCompleted: z.boolean().optional(),
+				}),
+			)
 			.response(200, z.array(z.object({ id: z.string(), title: z.string() }))),
 		update: route
 			.post("/todos/:id")
 			.pathParams(z.object({ id: z.string() }))
 			.body(z.object({ title: z.string().min(1) }))
-			.response(202, z.object({
+			.response(
+				202,
+				z.object({
 					id: z.string(),
 					title: z.string(),
-			}))
-			.response(409, z.object({
+				}),
+			)
+			.response(
+				409,
+				z.object({
 					code: z.literal("TITLE_ALREADY_EXISTS"),
-			})),
+				}),
+			),
 		remove: route
 			.delete("/todos/:id")
 			.pathParams(z.object({ id: z.string() }))
 			.response(204),
-		events: route
-			.get("/todos/events")
-			.streamResponse(200, z.object({
-						type: z.string(),
-			})),
+		events: route.get("/todos/events").streamResponse(
+			200,
+			z.object({
+				type: z.string(),
+			}),
+		),
 		socket: route
 			.ws("/todos/socket")
 			.clientMessages(z.object({ type: z.literal("ping") }))
@@ -113,14 +122,14 @@ describe("createOpenApiDocument", () => {
 					get: {
 						path: "/todos/:id",
 						method: "GET",
-					request: { pathParams: z.object({ id: z.string() }) },
-					responses: { 200: z.object({ id: z.string() }) },
+						request: { pathParams: z.object({ id: z.string() }) },
+						responses: { 200: z.object({ id: z.string() }) },
 					},
 					remove: {
 						path: "/todos/:id",
 						method: "DELETE",
-					request: { pathParams: z.object({ id: z.string() }) },
-					responses: { 204: noBody() },
+						request: { pathParams: z.object({ id: z.string() }) },
+						responses: { 204: noBody() },
 					},
 				},
 			},

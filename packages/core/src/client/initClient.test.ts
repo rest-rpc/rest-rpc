@@ -21,7 +21,7 @@ const apiContract = {
 			.get("/todos")
 			.query(
 				z.object({
-				search: z.string().optional(),
+					search: z.string().optional(),
 				}),
 			)
 			.response(200, z.array(z.object({ id: z.string() }))),
