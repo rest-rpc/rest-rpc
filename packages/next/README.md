@@ -36,7 +36,7 @@ export const api = {
 Implement the contract on the server
 
 ```ts
-import { router } from "@rest-rpc/core";
+import { router } from "@rest-rpc/express";
 
 const routes = router(api, {
 	todos: {
