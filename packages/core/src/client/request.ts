@@ -86,7 +86,10 @@ const serializeFormBody = (
 ) => {
 	const routeBody = route.request?.body;
 	const arrayKeys = new Set(isFormBody(routeBody) ? routeBody.arrayKeys : []);
-	const formBody = (body?.body as Record<string, unknown> | undefined) ?? body;
+	const formBody =
+		route.request?.flattenKeys === false
+			? body
+			: ((body?.body as Record<string, unknown> | undefined) ?? body);
 
 	return new URLSearchParams(
 		Object.entries(formBody ?? {}).flatMap(([key, value]) => {
@@ -122,7 +125,9 @@ const serializeMultipartBody = (
 		isMultipartBody(routeBody) ? routeBody.arrayKeys : [],
 	);
 	const multipartBody =
-		(body?.body as Record<string, unknown> | undefined) ?? body;
+		route.request?.flattenKeys === false
+			? body
+			: ((body?.body as Record<string, unknown> | undefined) ?? body);
 	const formData = new FormData();
 
 	for (const [key, value] of Object.entries(multipartBody ?? {})) {

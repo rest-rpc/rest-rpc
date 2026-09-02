@@ -30,7 +30,9 @@ export const validateWebSocketMessageSync = (
 		return messageIssue("Expected WebSocket message discriminator.");
 	}
 
-	const schema = declaration[discriminatorValue];
+	const schema = Object.hasOwn(declaration, discriminatorValue)
+		? declaration[discriminatorValue]
+		: undefined;
 	if (!schema) {
 		return messageIssue("Unknown WebSocket message discriminator.");
 	}

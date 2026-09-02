@@ -421,6 +421,40 @@ describe("ApiClient requests", () => {
 		assert.deepEqual(calls[0]?.init?.headers, {});
 	});
 
+	it("preserves body fields in grouped form payloads", async () => {
+		const apiContract = {
+			forms: {
+				submit: route
+					.with({ flattenRequestKeys: false })
+					.post("/forms")
+					.formBody(
+						z.object({
+							body: z.string(),
+							title: z.string(),
+						}),
+					)
+					.response(204),
+			},
+		};
+		const calls = captureFetch();
+		const client = initClient(apiContract, {
+			baseUrl: "https://api.test",
+		});
+
+		await client.forms.submit.fetch({
+			body: {
+				body: "Article contents",
+				title: "Write docs",
+			},
+		});
+
+		assert.ok(calls[0]?.init?.body instanceof URLSearchParams);
+		assert.equal(
+			calls[0].init.body.toString(),
+			"body=Article+contents&title=Write+docs",
+		);
+	});
+
 	it("sends inferred form array keys as repeated URLSearchParams entries", async () => {
 		const apiContract = {
 			forms: {
@@ -519,6 +553,38 @@ describe("ApiClient requests", () => {
 		assert.ok(calls[0].init.body.get("file") instanceof Blob);
 		assert.deepEqual(calls[0].init.body.getAll("tags"), ["ts", "rpc"]);
 		assert.deepEqual(calls[0]?.init?.headers, {});
+	});
+
+	it("preserves body fields in grouped multipart payloads", async () => {
+		const apiContract = {
+			uploads: {
+				create: route
+					.with({ flattenRequestKeys: false })
+					.post("/uploads")
+					.multipartBody(
+						z.object({
+							body: z.string(),
+							title: z.string(),
+						}),
+					)
+					.response(204),
+			},
+		};
+		const calls = captureFetch();
+		const client = initClient(apiContract, {
+			baseUrl: "https://api.test",
+		});
+
+		await client.uploads.create.fetch({
+			body: {
+				body: "File contents",
+				title: "Upload docs",
+			},
+		});
+
+		assert.ok(calls[0]?.init?.body instanceof FormData);
+		assert.equal(calls[0].init.body.get("body"), "File contents");
+		assert.equal(calls[0].init.body.get("title"), "Upload docs");
 	});
 
 	it("rejects omitted explicit multipart array keys before sending requests", async () => {
