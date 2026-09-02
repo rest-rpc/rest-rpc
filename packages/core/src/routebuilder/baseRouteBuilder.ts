@@ -155,8 +155,9 @@ export class BaseRouteBuilder {
 		if (mode) {
 			this.mode = mode;
 		}
-		this.request = request;
-		this.requestForWrite().keys ??= {};
+		if (request) {
+			this.request = request;
+		}
 		this.#commonMetadata = options.metadata;
 		this.#commonOpenApi = options.openApi;
 		if (this.#commonMetadata) {
@@ -256,11 +257,15 @@ export class BaseRouteBuilder {
 		}
 
 		for (const key of Object.keys(keys)) {
-			if (keys[key] === "headers" && key.toLowerCase() === "content-type") {
-				throw new Error(
-					`Route declaration at path "${this.path}" has a reserved header key "${key}". Use customBody({ schema, contentType }) to declare request content type instead.`,
-				);
-			}
+			if (keys[key] === "headers") this.assertHeaderKeyAllowed(key);
+		}
+	}
+
+	protected assertHeaderKeyAllowed(key: string) {
+		if (key.toLowerCase() === "content-type") {
+			throw new Error(
+				`Route declaration at path "${this.path}" has a reserved header key "${key}". Use customBody({ schema, contentType }) to declare request content type instead.`,
+			);
 		}
 	}
 
@@ -280,6 +285,7 @@ export class BaseRouteBuilder {
 			}
 
 			for (const key of segmentKeys) {
+				if (segment === "headers") this.assertHeaderKeyAllowed(key);
 				const existing = keys[key];
 				if (existing && existing !== segment) {
 					throw new Error(

@@ -17,9 +17,25 @@ describe("HTTP route builder runtime", () => {
 			const declaration = factory("/items");
 			assert.equal(declaration.method, method);
 			assert.equal(declaration.path, "/items");
-			assert.deepEqual(Object.keys(declaration), ["method", "path", "request"]);
+			assert.deepEqual(Object.keys(declaration), ["method", "path"]);
+			assert.equal(Object.hasOwn(declaration, "request"), false);
 			assert.equal(Object.hasOwn(declaration, "body"), false);
 		}
+	});
+
+	it("rejects reserved content-type keys derived from header schemas", () => {
+		assert.throws(
+			() =>
+				route.post("/items").headers(z.object({ "content-type": z.string() })),
+			/reserved header key "content-type"/,
+		);
+		assert.throws(
+			() =>
+				route
+					.with({ headers: z.object({ "Content-Type": z.string() }) })
+					.post("/items"),
+			/reserved header key "Content-Type"/,
+		);
 	});
 
 	it("supports independent setters in arbitrary order", () => {
