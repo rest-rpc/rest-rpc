@@ -69,7 +69,6 @@ const websocketRoute = (messages: {
 		type MessageBuilder = {
 			clientMessage(type: string, schema: StandardSchemaV1): MessageBuilder;
 			serverMessage(type: string, schema: StandardSchemaV1): MessageBuilder;
-			finalize(): WebSocketRouteDeclaration;
 		};
 
 		const builder = coreRoute
@@ -89,7 +88,7 @@ const websocketRoute = (messages: {
 
 		addMessages("client", messages.client);
 		addMessages("server", messages.server);
-		return builder.finalize();
+		return builder as unknown as WebSocketRouteDeclaration;
 	})();
 
 describe("createContractWebSocket", () => {

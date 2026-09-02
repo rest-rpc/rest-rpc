@@ -116,7 +116,9 @@ export type CustomBody<
 	: { contentType?: Exclude<TContentType, undefined> });
 
 /**
- * A custom body declaration that is valid for responses.
+ * A response body declaration with an explicit content type.
+ *
+ * @see {@link https://rest-rpc.dev/docs/http-responses#response-with-custom-content-type}
  */
 export type CustomResponseBody<
 	TSchema extends StandardSchemaV1 = StandardSchemaV1,

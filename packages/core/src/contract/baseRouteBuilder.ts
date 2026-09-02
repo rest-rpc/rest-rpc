@@ -343,8 +343,4 @@ export class BaseRouteBuilder {
 		});
 		return this;
 	}
-
-	finalize() {
-		return this;
-	}
 }

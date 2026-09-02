@@ -118,7 +118,11 @@ type InferWebSocketMessage<
 	? InferDiscriminatedWebSocketMessage<TMessage, TIO>
 	: never;
 
-/** Infers the message type a client can send on a WebSocket route. */
+/**
+ * Infers the message type a client can send on a WebSocket route.
+ *
+ * @see {@link https://rest-rpc.dev/docs/type-helpers#fetch-client}
+ */
 export type ClientSent<E extends RouteDeclaration> = E extends {
 	messages: { client: infer R };
 }
@@ -139,7 +143,11 @@ export type ServerSent<E extends RouteDeclaration> = E extends {
 	? InferWebSocketMessage<R, "input">
 	: never;
 
-/** Infers the message type a client receives from a WebSocket route. */
+/**
+ * Infers the message type a client receives from a WebSocket route.
+ *
+ * @see {@link https://rest-rpc.dev/docs/type-helpers#fetch-client}
+ */
 export type ClientReceived<E extends RouteDeclaration> = E extends {
 	messages: { server: infer R };
 }
@@ -230,31 +238,8 @@ type WebSocketBuilderDeclaration<TState extends WebSocketBuilderState> = {
 		? { messages?: never }
 		: { messages: TState["messages"] });
 
-/** A completed WebSocket route declaration with its inferred request and messages. */
-export type FinalizedWebSocketRoute<TRequest, TMessages, TUsed> = {
-	readonly method: "GET";
-	readonly path: string;
-	readonly mode: "webSocket";
-} & (keyof TRequest extends never
-	? { request?: never }
-	: { request: TRequest }) & {
-		messages: TMessages;
-	} & ("withMetadata" extends TUsed
-		? { metadata: RouteMetadata }
-		: Record<never, never>);
-
-type WebSocketFinalize<TState extends WebSocketBuilderState> =
-	keyof TState["messages"] extends never
-		? EmptyObject
-		: {
-				finalize(): FinalizedWebSocketRoute<
-					{ [TKey in keyof TState["request"]]: TState["request"][TKey] },
-					{ [TKey in keyof TState["messages"]]: TState["messages"][TKey] },
-					TState["used"]
-				>;
-			};
-
 type WebSocketMessageSetters<TState extends WebSocketBuilderState> = {
+	/** Declares a client message. @see {@link https://rest-rpc.dev/docs/websockets#contract} */
 	clientMessage<
 		const TType extends string,
 		const TSchema extends StandardSchemaV1,
@@ -262,6 +247,7 @@ type WebSocketMessageSetters<TState extends WebSocketBuilderState> = {
 		type: TType,
 		schema: TSchema,
 	): WebSocketBuilder<AddWebSocketMessage<TState, "client", TType, TSchema>>;
+	/** Declares a server message. @see {@link https://rest-rpc.dev/docs/websockets#contract} */
 	serverMessage<
 		const TType extends string,
 		const TSchema extends StandardSchemaV1,
@@ -280,9 +266,11 @@ type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
 	TState,
 	"query",
 	{
+		/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
 		query<const TSchema extends RequestQuerySchema>(
 			schema: TSchema,
 		): WebSocketBuilder<SetWebSocketRequest<TState, "query", TSchema, "query">>;
+		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
 		jsonQuery<const TSchema extends StandardSchemaV1>(
 			schema: TSchema,
 		): WebSocketBuilder<
@@ -294,6 +282,7 @@ type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
 		TState,
 		"params",
 		{
+			/** Declares path parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#path-params} */
 			params<const TSchema extends RequestParamsSchema>(
 				schema: TSchema,
 			): WebSocketBuilder<
@@ -305,6 +294,7 @@ type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
 		TState,
 		"requestKeys",
 		{
+			/** Maps flattened request keys. @see {@link https://rest-rpc.dev/docs/contract/declaration#flattened-key-collisions} */
 			requestKeys<const TKeys extends RequestKeys>(
 				keys: TKeys,
 			): WebSocketBuilder<
@@ -315,6 +305,7 @@ type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
 	("withMetadata" extends TState["used"]
 		? { metadata: RouteMetadata }
 		: {
+				/** Adds application metadata. @see {@link https://rest-rpc.dev/docs/contract/declaration#shared-route-options} */
 				withMetadata(
 					metadata: RouteMetadata,
 				): WebSocketBuilder<UseBuilderMethod<TState, "withMetadata">>;
@@ -324,8 +315,7 @@ type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
 export type WebSocketBuilder<TState extends WebSocketBuilderState> =
 	WebSocketBuilderDeclaration<TState> &
 		WebSocketMessageSetters<TState> &
-		WebSocketRequestSetters<TState> &
-		WebSocketFinalize<TState>;
+		WebSocketRequestSetters<TState>;
 
 /** Creates the initial WebSocket builder type for route factory options. */
 export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<{

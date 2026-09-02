@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { type as schemaType } from "@rest-rpc/core/contract";
-import { route } from "@rest-rpc/core";
+import { route, type as schemaType } from "@rest-rpc/core";
 import { Hono } from "hono";
 import { registerRoutes, router } from "./index.ts";
 

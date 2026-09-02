@@ -151,16 +151,6 @@ describe("HTTP route builder runtime", () => {
 		);
 	});
 
-	it("finalizes complete declarations without changing their runtime value", () => {
-		const http = route.get("/items").response(200, type<string>());
-		const sse = route.sse("/events").response(type<string>());
-		const socket = route.ws("/socket").clientMessage("message", type<string>());
-
-		assert.equal(http.finalize(), http);
-		assert.equal(sse.finalize(), sse);
-		assert.equal(socket.finalize(), socket);
-	});
-
 	it("rejects duplicate local response statuses at runtime", () => {
 		assert.throws(
 			() =>

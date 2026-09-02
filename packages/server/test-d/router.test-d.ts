@@ -247,8 +247,7 @@ const socketApi = {
 			.serverMessage(
 				"counted",
 				z.object({ value: z.string().transform((value) => Number(value)) }),
-			)
-			.finalize(),
+			),
 	},
 } as const;
 

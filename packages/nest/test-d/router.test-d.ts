@@ -1,6 +1,5 @@
 import type { ExecutionContext } from "@nestjs/common";
-import { route as defineRoute } from "@rest-rpc/core";
-import { type as schemaType } from "@rest-rpc/core/contract";
+import { route as defineRoute, type as schemaType } from "@rest-rpc/core";
 import {
 	RestRpcModule,
 	Route,

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { route as coreRoute } from "@rest-rpc/core";
-import { type as schemaType } from "@rest-rpc/core/contract";
+import { route as coreRoute, type as schemaType } from "@rest-rpc/core";
 import { createRouteHandler, route, router } from "./index.ts";
 
 const healthRoute = coreRoute.get("/health").response(204);

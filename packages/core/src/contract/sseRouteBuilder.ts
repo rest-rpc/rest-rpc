@@ -41,7 +41,11 @@ type SseResponseSchema<E extends RouteDeclaration> = E extends {
 	? TResponse
 	: never;
 
-/** Infers the event payload type a client receives from an SSE route. */
+/**
+ * Infers the event payload type a client receives from an SSE route.
+ *
+ * @see {@link https://rest-rpc.dev/docs/type-helpers#server-sent-events}
+ */
 export type ClientSseReceived<E extends RouteDeclaration> =
 	StandardSchemaV1.InferOutput<SseResponseSchema<E>>;
 
@@ -94,46 +98,28 @@ type SseBuilderDeclaration<TState extends SseBuilderState> = {
 	? { request?: never }
 	: { request: TState["request"] });
 
-/** A completed SSE route declaration with its inferred request and response. */
-export type FinalizedSseRoute<TRequest, TResponse, TUsed> = {
-	readonly method: "GET";
-	readonly path: string;
-	readonly mode: "sse";
-} & (keyof TRequest extends never
-	? { request?: never }
-	: { request: TRequest }) & {
-		responses: { 200: TResponse };
-	} & ("withMetadata" extends TUsed
-		? { metadata: RouteMetadata }
-		: Record<never, never>) &
-	("withOpenApi" extends TUsed
-		? { openApi: OpenApiRouteOptions }
-		: Record<never, never>);
-
 type SseResponseSetter<TState extends SseBuilderState> = [
 	TState["response"],
 ] extends [never]
 	? {
+			/** Declares the event schema. @see {@link https://rest-rpc.dev/docs/http-responses#server-sent-event-responses} */
 			response<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): SseBuilder<Omit<TState, "response"> & { response: TSchema }>;
 		}
 	: {
 			responses: { 200: TState["response"] };
-			finalize(): FinalizedSseRoute<
-				{ [TKey in keyof TState["request"]]: TState["request"][TKey] },
-				TState["response"],
-				TState["used"]
-			>;
 		};
 
 type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 	TState,
 	"query",
 	{
+		/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
 		query<const TSchema extends RequestQuerySchema>(
 			schema: TSchema,
 		): SseBuilder<SetSseRequest<TState, "query", TSchema, "query">>;
+		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
 		jsonQuery<const TSchema extends StandardSchemaV1>(
 			schema: TSchema,
 		): SseBuilder<SetSseRequest<TState, "query", JsonQuery<TSchema>, "query">>;
@@ -143,6 +129,7 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 		TState,
 		"params",
 		{
+			/** Declares path parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#path-params} */
 			params<const TSchema extends RequestParamsSchema>(
 				schema: TSchema,
 			): SseBuilder<SetSseRequest<TState, "params", TSchema, "params">>;
@@ -152,6 +139,7 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 		TState,
 		"requestKeys",
 		{
+			/** Maps flattened request keys. @see {@link https://rest-rpc.dev/docs/contract/declaration#flattened-key-collisions} */
 			requestKeys<const TKeys extends RequestKeys>(
 				keys: TKeys,
 			): SseBuilder<SetSseRequest<TState, "keys", TKeys, "requestKeys">>;
@@ -160,6 +148,7 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 	("withMetadata" extends TState["used"]
 		? { metadata: RouteMetadata }
 		: {
+				/** Adds application metadata. @see {@link https://rest-rpc.dev/docs/contract/declaration#shared-route-options} */
 				withMetadata(
 					metadata: RouteMetadata,
 				): SseBuilder<UseBuilderMethod<TState, "withMetadata">>;
@@ -167,6 +156,7 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 	("withOpenApi" extends TState["used"]
 		? { openApi: OpenApiRouteOptions }
 		: {
+				/** Adds OpenAPI metadata. @see {@link https://rest-rpc.dev/docs/openapi#route-metadata} */
 				withOpenApi(
 					openApi: OpenApiRouteOptions,
 				): SseBuilder<UseBuilderMethod<TState, "withOpenApi">>;

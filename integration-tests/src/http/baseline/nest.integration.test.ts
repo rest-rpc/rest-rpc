@@ -10,8 +10,7 @@ import {
 	Sse,
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { initClient, route } from "@rest-rpc/core";
-import { type as schemaType } from "@rest-rpc/core/contract";
+import { initClient, route, type as schemaType } from "@rest-rpc/core";
 import {
 	RestRpcModule,
 	Route,

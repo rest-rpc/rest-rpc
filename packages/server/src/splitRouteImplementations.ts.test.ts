@@ -19,8 +19,7 @@ const createRoute: HttpRouteDeclaration = coreRoute
 const socketRoute: WebSocketRouteDeclaration = coreRoute
 	.ws("/todos/:id/events")
 	.clientMessage("message", z.object({ action: z.string() }))
-	.serverMessage("message", z.object({ id: z.string() }))
-	.finalize();
+	.serverMessage("message", z.object({ id: z.string() }));
 
 describe("splitRouteImplementations", () => {
 	it("sorts and splits route implementations before calling adapter hooks", () => {

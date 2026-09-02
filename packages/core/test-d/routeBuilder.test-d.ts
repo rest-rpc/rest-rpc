@@ -4,10 +4,9 @@ import {
 	type OpenApiRouteOptions,
 	type RouteMetadata,
 	type SseRouteDeclaration,
-	type as schemaType,
 	type WebSocketRouteDeclaration,
 } from "@rest-rpc/core/contract";
-import { route } from "@rest-rpc/core";
+import { route, type as schemaType } from "@rest-rpc/core";
 import {
 	expectAssignable,
 	expectError,
@@ -236,23 +235,6 @@ expectType<typeof event>(configuredAfterResponse.responses[201].schema);
 expectType<RouteMetadata>(configuredAfterResponse.metadata);
 expectType<OpenApiRouteOptions>(configuredAfterResponse.openApi);
 expectAssignable<HttpRouteDeclaration>(configuredAfterResponse);
-
-type EffectiveHttpRoute<T> = Pick<
-	T,
-	Extract<keyof T, keyof HttpRouteDeclaration>
->;
-type MutuallyAssignable<TLeft, TRight> = [TLeft] extends [TRight]
-	? [TRight] extends [TLeft]
-		? true
-		: false
-	: false;
-const finalizedConfiguredAfterResponse = configuredAfterResponse.finalize();
-expectType<true>(
-	true as MutuallyAssignable<
-		EffectiveHttpRoute<typeof configuredAfterResponse>,
-		EffectiveHttpRoute<typeof finalizedConfiguredAfterResponse>
-	>,
-);
 
 // Keeps HTTP body variants and query variants mutually exclusive.
 const bodyUsed = route.post("/body-used").body(input);
