@@ -1,4 +1,4 @@
-import { noBody } from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
 import { type as schemaType } from "@rest-rpc/core/standard-schema";
 import {
 	createRouteHandler,
@@ -25,13 +25,7 @@ const api = {
 			},
 		},
 	},
-	health: {
-		method: "GET",
-		path: "/health",
-		responses: {
-			204: noBody(),
-		},
-	},
+	health: coreRoute.get("/health").response(204),
 } as const;
 
 const middleware: NextRouteMiddleware<{ userId: string }> = ({ request }) => {

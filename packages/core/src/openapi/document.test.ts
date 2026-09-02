@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
-import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
 import { createOpenApiDocument } from "./document.ts";
 import type { SchemaConverter } from "./operation.ts";
@@ -69,15 +68,7 @@ const openApiTestContract = {
 describe("createOpenApiDocument", () => {
 	it("builds base document fields", () => {
 		const document = createOpenApiDocument(
-			{
-				health: {
-					path: "/health",
-					method: "GET",
-					responses: {
-						204: noBody(),
-					},
-				},
-			},
+			{ health: route.get("/health").response(204) },
 			{
 				openapi: "3.0.3",
 				info: {
@@ -119,18 +110,14 @@ describe("createOpenApiDocument", () => {
 		const document = createOpenApiDocument(
 			{
 				todos: {
-					get: {
-						path: "/todos/:id",
-						method: "GET",
-						request: { params: z.object({ id: z.string() }) },
-						responses: { 200: z.object({ id: z.string() }) },
-					},
-					remove: {
-						path: "/todos/:id",
-						method: "DELETE",
-						request: { params: z.object({ id: z.string() }) },
-						responses: { 204: noBody() },
-					},
+					get: route
+						.get("/todos/:id")
+						.params(z.object({ id: z.string() }))
+						.response(200, z.object({ id: z.string() })),
+					remove: route
+						.delete("/todos/:id")
+						.params(z.object({ id: z.string() }))
+						.response(204),
 				},
 			},
 			{

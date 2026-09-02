@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	customBody,
-	type HttpRouteDeclaration,
-	noBody,
-	stream,
-} from "@rest-rpc/core/contract";
+import type { HttpRouteDeclaration } from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
 import z from "zod";
 import { handleHttpRoute } from "./handleHttpRoute.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
@@ -33,19 +29,10 @@ const normalizedSseRoute = (response: z.ZodType): HttpRouteDeclaration =>
 describe("handleHttpRoute", () => {
 	it("passes validated request data and context to the handler", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos/:id",
-				request: {
-					params: z.object({ id: z.coerce.number<number>() }),
-					keys: {
-						id: "params",
-					},
-				},
-				responses: {
-					200: z.object({ id: z.number() }),
-				},
-			},
+			coreRoute
+				.get("/todos/:id")
+				.params(z.object({ id: z.coerce.number<number>() }))
+				.response(200, z.object({ id: z.number() })),
 			(request) => {
 				assert.deepEqual(request, {
 					id: 123,
@@ -72,17 +59,11 @@ describe("handleHttpRoute", () => {
 
 	it("passes grouped request data when flattened request keys are disabled", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos",
-				request: {
-					flattenKeys: false,
-					query: z.object({ q: z.string() }).transform(() => ["todo"]),
-				},
-				responses: {
-					204: noBody(),
-				},
-			},
+			coreRoute
+				.with({ flattenRequestKeys: false })
+				.get("/todos")
+				.query(z.object({ q: z.string() }).transform(() => ["todo"]))
+				.response(204),
 			(request) => {
 				assert.deepEqual(request, {
 					query: ["todo"],
@@ -107,19 +88,10 @@ describe("handleHttpRoute", () => {
 	it("returns request validation errors without calling the handler", async () => {
 		let called = false;
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos/:id",
-				request: {
-					params: z.object({ id: z.number() }),
-					keys: {
-						id: "params",
-					},
-				},
-				responses: {
-					204: noBody(),
-				},
-			},
+			coreRoute
+				.get("/todos/:id")
+				.params(z.object({ id: z.number() }))
+				.response(204),
 			() => {
 				called = true;
 			},
@@ -138,19 +110,10 @@ describe("handleHttpRoute", () => {
 
 	it("uses custom request validation error responses", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos/:id",
-				request: {
-					params: z.object({ id: z.number() }),
-					keys: {
-						id: "params",
-					},
-				},
-				responses: {
-					204: noBody(),
-				},
-			},
+			coreRoute
+				.get("/todos/:id")
+				.params(z.object({ id: z.number() }))
+				.response(204),
 			() => undefined,
 			{
 				request: {
@@ -524,16 +487,10 @@ describe("handleHttpRoute", () => {
 describe("handleHttpRoute custom responses", () => {
 	it("normalizes custom single bodies after validating without serializing them", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/report.csv",
-				responses: {
-					200: customBody({
-						contentType: "text/csv",
-						schema: z.string(),
-					}),
-				},
-			},
+			coreRoute.get("/report.csv").customResponse(200, {
+				contentType: "text/csv",
+				schema: z.string(),
+			}),
 			() => ({ status: 200, body: "id,title\n1,First\n" }),
 			{ request: {}, context: {} },
 		);
@@ -546,16 +503,10 @@ describe("handleHttpRoute custom responses", () => {
 
 	it("normalizes custom response bodies with selected content types", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/images/:id",
-				responses: {
-					200: customBody({
-						contentType: ["image/png", "image/jpeg"],
-						schema: z.string(),
-					}),
-				},
-			},
+			coreRoute.get("/images/:id").customResponse(200, {
+				contentType: ["image/png", "image/jpeg"],
+				schema: z.string(),
+			}),
 			() => ({
 				status: 200,
 				body: {
@@ -579,18 +530,10 @@ describe("handleHttpRoute custom responses", () => {
 		}
 
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/report.csv",
-				responses: {
-					200: stream(
-						customBody({
-							contentType: "text/csv",
-							schema: z.string(),
-						}),
-					),
-				},
-			},
+			coreRoute.get("/report.csv").customStreamResponse(200, {
+				contentType: "text/csv",
+				schema: z.string(),
+			}),
 			() => ({ status: 200, body: rows() }),
 			{ request: {}, context: {} },
 		);

@@ -1,12 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	customBody,
-	formBody,
-	jsonQuery,
-	multipartBody,
-	stream,
-} from "@rest-rpc/core/contract";
 import { route } from "@rest-rpc/core";
 import z from "zod";
 import {
@@ -199,12 +192,13 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos",
 				request: {
-					query: jsonQuery(
-						z.object({
+					query: {
+						kind: "jsonQuery",
+						schema: z.object({
 							page: z.number(),
 							filters: z.object({ tags: z.array(z.string()) }),
 						}),
-					),
+					},
 					keys: {},
 				},
 				responses: {},
@@ -233,7 +227,10 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos",
 				request: {
-					query: jsonQuery(z.object({ page: z.number() }).optional()),
+					query: {
+						kind: "jsonQuery",
+						schema: z.object({ page: z.number() }).optional(),
+					},
 					keys: {},
 				},
 				responses: {},
@@ -253,10 +250,11 @@ describe("validateRequest", () => {
 				method: "POST",
 				path: "/images",
 				request: {
-					body: customBody({
+					body: {
+						kind: "customBody",
 						contentType: ["image/png", "image/jpeg"],
 						schema: z.string().transform((value) => value.toUpperCase()),
-					}),
+					},
 					keys: {},
 				},
 				responses: {},
@@ -286,7 +284,7 @@ describe("validateRequest", () => {
 				method: "POST",
 				path: "/forms",
 				request: {
-					body: customBody(z.instanceof(URLSearchParams)),
+					body: { kind: "customBody", schema: z.instanceof(URLSearchParams) },
 					keys: {},
 				},
 				responses: {},
@@ -312,13 +310,15 @@ describe("validateRequest", () => {
 				method: "POST",
 				path: "/forms",
 				request: {
-					body: formBody(
-						z.object({
+					body: {
+						kind: "formBody",
+						schema: z.object({
 							title: z.string(),
 							count: z.coerce.number<number>(),
 							remember: z.string().optional(),
 						}),
-					),
+						arrayKeys: [],
+					},
 					keys: {},
 				},
 				responses: {},
@@ -351,12 +351,14 @@ describe("validateRequest", () => {
 				method: "POST",
 				path: "/forms",
 				request: {
-					body: formBody(
-						z.object({
+					body: {
+						kind: "formBody",
+						schema: z.object({
 							title: z.string(),
 							tags: z.array(z.string()),
 						}),
-					),
+						arrayKeys: ["tags"],
+					},
 					keys: {},
 				},
 				responses: {},
@@ -399,7 +401,8 @@ describe("validateRequest", () => {
 				method: "POST",
 				path: "/uploads",
 				request: {
-					body: multipartBody({
+					body: {
+						kind: "multipartBody",
 						schema: z.object({
 							title: z.string(),
 							count: z.coerce.number<number>(),
@@ -407,7 +410,7 @@ describe("validateRequest", () => {
 							tags: z.array(z.string()),
 						}),
 						arrayKeys: ["tags"],
-					}),
+					},
 					keys: {},
 				},
 				responses: {},
@@ -435,7 +438,10 @@ describe("validateRequest", () => {
 				method: "GET",
 				path: "/todos",
 				request: {
-					query: jsonQuery(z.object({ page: z.number() })),
+					query: {
+						kind: "jsonQuery",
+						schema: z.object({ page: z.number() }),
+					},
 					keys: {},
 				},
 				responses: {},
@@ -458,10 +464,11 @@ describe("validateResponseBody", () => {
 	it("validates custom response bodies", async () => {
 		await assert.rejects(
 			validateResponseBody(
-				customBody({
+				{
+					kind: "customBody",
 					contentType: "text/csv",
 					schema: z.number(),
-				}),
+				},
 				"id,title\n1,First\n",
 			),
 		);
@@ -507,10 +514,11 @@ describe("resolveCustomResponseBody", () => {
 	it("resolves declared custom response content types", () => {
 		assert.deepEqual(
 			resolveCustomResponseBody(
-				customBody({
+				{
+					kind: "customBody",
 					contentType: ["image/png", "image/jpeg"],
 					schema: z.string(),
-				}),
+				},
 				{
 					contentType: "image/jpeg",
 					payload: "jpeg bytes",
@@ -528,10 +536,11 @@ describe("resolveCustomResponseBody", () => {
 		assert.throws(
 			() =>
 				resolveCustomResponseBody(
-					customBody({
+					{
+						kind: "customBody",
 						contentType: ["image/png", "image/jpeg"],
 						schema: z.string(),
-					}),
+					},
 					{
 						contentType: "image/webp",
 						payload: "webp bytes",
@@ -549,15 +558,14 @@ describe("validateResponseStreamChunks", () => {
 			yield "id,title\n";
 		}
 
-		const chunks = validateResponseStreamChunks(
-			rows(),
-			stream(
-				customBody({
-					contentType: "text/csv",
-					schema: z.number(),
-				}),
-			),
-		);
+		const chunks = validateResponseStreamChunks(rows(), {
+			kind: "stream",
+			schema: {
+				kind: "customBody",
+				contentType: "text/csv",
+				schema: z.number(),
+			},
+		});
 
 		await assert.rejects(async () => {
 			for await (const _chunk of chunks) {

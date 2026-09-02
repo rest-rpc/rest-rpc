@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
 import { initClient } from "./index.ts";
 import { assertWebSocketRoute, buildWebSocketUrl } from "./websocket.ts";
@@ -432,7 +431,7 @@ describe("assertWebSocketRoute", () => {
 					method: "GET",
 					path: "/todos",
 					responses: {
-						204: noBody(),
+						204: { kind: "noBody" },
 					},
 				}),
 			/Expected a websocket route/,

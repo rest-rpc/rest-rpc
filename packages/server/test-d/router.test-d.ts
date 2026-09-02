@@ -1,10 +1,4 @@
-import {
-	customBody,
-	formBody,
-	jsonQuery,
-	noBody,
-	stream,
-} from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
 import {
 	type RouteHandlers,
 	type RouteReceived,
@@ -108,7 +102,7 @@ const composedHeadersApi = {
 						.transform(() => ({ traceId: "request-1" as const })),
 				},
 			},
-			responses: { 204: noBody() },
+			responses: { 204: { kind: "noBody" } },
 		},
 	},
 } as const;
@@ -466,19 +460,10 @@ route(transformedApi.todos.transform, ({ id, title, slug }) => {
 // should expose single custom body content types as payloads to handlers
 const singleCustomRequestApi = {
 	todos: {
-		importCsv: {
-			method: "POST",
-			path: "/todos/import.csv",
-			request: {
-				body: customBody({
-					contentType: "text/csv",
-					schema: z.string(),
-				}),
-			},
-			responses: {
-				204: noBody(),
-			},
-		},
+		importCsv: coreRoute
+			.post("/todos/import.csv")
+			.customBody({ contentType: "text/csv", schema: z.string() })
+			.response(204),
 	},
 } as const;
 
@@ -493,16 +478,10 @@ route(singleCustomRequestApi.todos.importCsv, ({ body }) => {
 // should expose omitted custom body content types as payloads to handlers
 const omittedCustomRequestApi = {
 	todos: {
-		submitForm: {
-			method: "POST",
-			path: "/todos/form",
-			request: {
-				body: customBody(z.instanceof(URLSearchParams)),
-			},
-			responses: {
-				204: noBody(),
-			},
-		},
+		submitForm: coreRoute
+			.post("/todos/form")
+			.customBody(z.instanceof(URLSearchParams))
+			.response(204),
 	},
 } as const;
 
@@ -517,21 +496,15 @@ route(omittedCustomRequestApi.todos.submitForm, ({ body }) => {
 // should expose validated urlencoded form bodies to handlers
 const formRequestApi = {
 	todos: {
-		submitForm: {
-			method: "POST",
-			path: "/todos/form",
-			request: {
-				body: formBody(
-					z.object({
-						title: z.string(),
-						count: z.coerce.number<number>(),
-					}),
-				),
-			},
-			responses: {
-				204: noBody(),
-			},
-		},
+		submitForm: coreRoute
+			.post("/todos/form")
+			.formBody(
+				z.object({
+					title: z.string(),
+					count: z.coerce.number<number>(),
+				}),
+			)
+			.response(204),
 	},
 } as const;
 
@@ -547,20 +520,14 @@ route(formRequestApi.todos.submitForm, ({ body }) => {
 // should expose selected custom body content type and payload to handlers
 const customRequestApi = {
 	todos: {
-		uploadImage: {
-			method: "POST",
-			path: "/todos/:id/image",
-			request: {
-				params: z.object({ id: z.string() }),
-				body: customBody({
-					contentType: ["image/png", "image/jpeg"],
-					schema: z.instanceof(Uint8Array),
-				}),
-			},
-			responses: {
-				204: noBody(),
-			},
-		},
+		uploadImage: coreRoute
+			.post("/todos/:id/image")
+			.params(z.object({ id: z.string() }))
+			.customBody({
+				contentType: ["image/png", "image/jpeg"],
+				schema: z.instanceof(Uint8Array),
+			})
+			.response(204),
 	},
 } as const;
 
@@ -594,31 +561,19 @@ route(socketApi.socket.room, ({ roomId, context }) => {
 // should expose JSON query schemas as a single typed query field
 const jsonQueryApi = {
 	todos: {
-		jsonSearch: {
-			method: "GET",
-			path: "/todos/json-search",
-			request: {
-				query: jsonQuery(
-					z.object({
-						page: z.string().transform((value) => Number(value)),
-						filters: z.object({ tags: z.array(z.string()) }),
-					}),
-				),
-			},
-			responses: {
-				200: z.array(todoSchema),
-			},
-		},
-		optionalJsonSearch: {
-			method: "GET",
-			path: "/todos/optional-json-search",
-			request: {
-				query: jsonQuery(z.object({ page: z.number() }).optional()),
-			},
-			responses: {
-				200: z.array(todoSchema),
-			},
-		},
+		jsonSearch: coreRoute
+			.get("/todos/json-search")
+			.jsonQuery(
+				z.object({
+					page: z.string().transform((value) => Number(value)),
+					filters: z.object({ tags: z.array(z.string()) }),
+				}),
+			)
+			.response(200, z.array(todoSchema)),
+		optionalJsonSearch: coreRoute
+			.get("/todos/optional-json-search")
+			.jsonQuery(z.object({ page: z.number() }).optional())
+			.response(200, z.array(todoSchema)),
 	},
 } as const;
 
@@ -652,28 +607,13 @@ expectError(
 // should accept native server payloads for custom responses
 const customResponseApi = {
 	reports: {
-		csv: {
-			method: "GET",
-			path: "/reports.csv",
-			responses: {
-				200: customBody({
-					contentType: "text/csv",
-					schema: z.string(),
-				}),
-			},
-		},
-		csvStream: {
-			method: "GET",
-			path: "/reports-stream.csv",
-			responses: {
-				200: stream(
-					customBody({
-						contentType: "text/csv",
-						schema: z.string(),
-					}),
-				),
-			},
-		},
+		csv: coreRoute
+			.get("/reports.csv")
+			.customResponse(200, { contentType: "text/csv", schema: z.string() }),
+		csvStream: coreRoute.get("/reports-stream.csv").customStreamResponse(200, {
+			contentType: "text/csv",
+			schema: z.string(),
+		}),
 	},
 } as const;
 

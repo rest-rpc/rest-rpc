@@ -54,20 +54,6 @@ export type JsonQuery<TSchema extends StandardSchemaV1 = StandardSchemaV1> = {
 	schema: TSchema;
 };
 
-/**
- * Wraps a schema as a JSON query declaration.
- *
- * @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query}
- */
-export function jsonQuery<const TSchema extends StandardSchemaV1>(
-	schema: TSchema,
-): JsonQuery<TSchema> {
-	return {
-		kind: "jsonQuery",
-		schema,
-	};
-}
-
 export function isJsonQuery(schema: unknown): schema is JsonQuery {
 	return (
 		typeof schema === "object" &&

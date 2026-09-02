@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import { noBody } from "../contract/body.ts";
 import { route } from "../routebuilder/index.ts";
 import { type } from "../standard-schema/index.ts";
 import { initClient } from "./index.ts";
@@ -665,12 +664,7 @@ describe("ApiClient requests", () => {
 
 	it("treats explicit no-body request declarations as options-only routes", async () => {
 		const apiContract = {
-			ping: {
-				method: "POST",
-				path: "/ping",
-				request: { body: noBody() },
-				responses: { 204: noBody() },
-			},
+			ping: route.post("/ping").response(204),
 		};
 		const calls = captureFetch();
 		const controller = new AbortController();

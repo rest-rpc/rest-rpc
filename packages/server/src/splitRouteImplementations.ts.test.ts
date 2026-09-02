@@ -4,25 +4,17 @@ import type {
 	HttpRouteDeclaration,
 	WebSocketRouteDeclaration,
 } from "@rest-rpc/core/contract";
-import { noBody } from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
 import z from "zod";
 import { splitRouteImplementations } from "./splitRouteImplementations.ts";
 
-const listRoute: HttpRouteDeclaration = {
-	method: "GET",
-	path: "/todos/:id",
-	responses: {
-		204: noBody(),
-	},
-};
+const listRoute: HttpRouteDeclaration = coreRoute
+	.get("/todos/:id")
+	.response(204);
 
-const createRoute: HttpRouteDeclaration = {
-	method: "POST",
-	path: "/todos/new",
-	responses: {
-		204: noBody(),
-	},
-};
+const createRoute: HttpRouteDeclaration = coreRoute
+	.post("/todos/new")
+	.response(204);
 
 const socketRoute: WebSocketRouteDeclaration = {
 	method: "GET",

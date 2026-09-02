@@ -10,16 +10,11 @@ export type {
 	Stream,
 } from "./body.ts";
 export {
-	customBody,
-	formBody,
 	isCustomBody,
 	isFormBody,
 	isMultipartBody,
 	isNoBody,
 	isStream,
-	multipartBody,
-	noBody,
-	stream,
 } from "./body.ts";
 export type {
 	BaseRouteDeclaration,
@@ -64,7 +59,6 @@ export type {
 export {
 	isJsonQuery,
 	getRequestHeaderSchemas,
-	jsonQuery,
 	REQUEST_CONTEXT_KEY,
 } from "./request.ts";
 export type {

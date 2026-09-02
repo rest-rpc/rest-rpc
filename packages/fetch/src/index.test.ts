@@ -1,36 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	formBody,
-	multipartBody,
-	noBody,
-	type as schemaType,
-} from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
+import { type as schemaType } from "@rest-rpc/core/contract";
 import { createRouteHandler, route, router } from "./index.ts";
 
-const healthRoute = {
-	method: "GET",
-	path: "/health",
-	responses: {
-		204: noBody(),
-	},
-} as const;
+const healthRoute = coreRoute.get("/health").response(204);
 
-const compiledRoute = {
-	method: "GET",
-	path: "/compiled",
-	responses: {
-		204: noBody(),
-	},
-} as const;
+const compiledRoute = coreRoute.get("/compiled").response(204);
 
-const plainRoute = {
-	method: "GET",
-	path: "/plain",
-	responses: {
-		204: noBody(),
-	},
-} as const;
+const plainRoute = coreRoute.get("/plain").response(204);
 
 describe("createRouteHandler", () => {
 	it("runs stacked middleware in declaration order with accumulated context", async () => {
@@ -155,16 +133,10 @@ describe("createRouteHandler", () => {
 
 	it("parses urlencoded form bodies with the default body parser", async () => {
 		const routes = router({
-			form: {
-				method: "POST",
-				path: "/forms",
-				request: {
-					body: formBody(schemaType<{ title: string }>()),
-				},
-				responses: {
-					200: schemaType<{ title: string }>(),
-				},
-			},
+			form: coreRoute
+				.post("/forms")
+				.formBody(schemaType<{ title: string }>())
+				.response(200, schemaType<{ title: string }>()),
 		}).handlers({
 			form: ({ body }) => body,
 		});
@@ -186,27 +158,24 @@ describe("createRouteHandler", () => {
 
 	it("parses multipart bodies with the default body parser", async () => {
 		const routes = router({
-			upload: {
-				method: "POST",
-				path: "/uploads",
-				request: {
-					body: multipartBody({
-						schema: schemaType<{
-							title: string;
-							file: Blob;
-							tags: string[];
-						}>(),
-						arrayKeys: ["tags"],
-					}),
-				},
-				responses: {
-					200: schemaType<{
+			upload: coreRoute
+				.post("/uploads")
+				.multipartBody({
+					schema: schemaType<{
+						title: string;
+						file: Blob;
+						tags: string[];
+					}>(),
+					arrayKeys: ["tags"],
+				})
+				.response(
+					200,
+					schemaType<{
 						title: string;
 						tags: string[];
 						hasFile: boolean;
 					}>(),
-				},
-			},
+				),
 		}).handlers({
 			upload: ({ body }) => ({
 				title: body.title,

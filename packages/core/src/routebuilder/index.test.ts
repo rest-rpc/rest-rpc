@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
 import { type } from "../standard-schema/index.ts";
-import { noBody } from "../contract/body.ts";
 import { route } from "./index.ts";
 
 describe("HTTP route builder runtime", () => {
@@ -140,10 +139,9 @@ describe("HTTP route builder runtime", () => {
 			route.get("/items").response(200, schema).responses?.[200],
 			schema,
 		);
-		assert.deepEqual(
-			route.delete("/items").response(204).responses?.[204],
-			noBody(),
-		);
+		assert.deepEqual(route.delete("/items").response(204).responses?.[204], {
+			kind: "noBody",
+		});
 		assert.equal(
 			route
 				.with({ strictStatusCodes: true })

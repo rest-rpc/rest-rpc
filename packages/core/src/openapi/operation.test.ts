@@ -2,14 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
 import {
-	customBody,
-	formBody,
-	multipartBody,
-	noBody,
-	stream,
-} from "../contract/body.ts";
-import { jsonQuery } from "../contract/request.ts";
-import {
 	createHeaderParameters,
 	createOperation,
 	createParameters,
@@ -105,12 +97,13 @@ describe("OpenAPI operations", () => {
 
 	it("creates one JSON query parameter for jsonQuery schemas", () => {
 		const parameters = createParameters(
-			jsonQuery(
-				z.object({
+			{
+				kind: "jsonQuery",
+				schema: z.object({
 					page: z.number(),
 					filters: z.object({ tags: z.array(z.string()) }),
 				}),
-			),
+			},
 			"query",
 			operationOptions,
 		);
@@ -146,7 +139,7 @@ describe("OpenAPI operations", () => {
 
 	it("does not assume jsonQuery parameters are required", () => {
 		const parameters = createParameters(
-			jsonQuery(z.object({ page: z.number() }).optional()),
+			{ kind: "jsonQuery", schema: z.object({ page: z.number() }).optional() },
 			"query",
 			operationOptions,
 		);
@@ -337,10 +330,11 @@ describe("OpenAPI operations", () => {
 			schemaConverter,
 		);
 		const custom = createRequestBody(
-			customBody({
+			{
+				kind: "customBody",
 				schema: z.string(),
 				contentType: "text/csv",
-			}),
+			},
 			schemaConverter,
 		);
 
@@ -365,10 +359,11 @@ describe("OpenAPI operations", () => {
 
 	it("creates custom request bodies with multiple declared content types", () => {
 		const body = createRequestBody(
-			customBody({
+			{
+				kind: "customBody",
 				schema: z.string(),
 				contentType: ["image/png", "image/jpeg"],
-			}),
+			},
 			schemaConverter,
 		);
 
@@ -378,18 +373,23 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("omits custom request bodies without declared content types", () => {
-		const body = createRequestBody(customBody(z.string()), schemaConverter);
+		const body = createRequestBody(
+			{ kind: "customBody", schema: z.string() },
+			schemaConverter,
+		);
 
 		assert.equal(body, undefined);
 	});
 
 	it("creates urlencoded form request bodies", () => {
 		const body = createRequestBody(
-			formBody(
-				z.object({
+			{
+				kind: "formBody",
+				schema: z.object({
 					title: z.string(),
 				}),
-			),
+				arrayKeys: [],
+			},
 			schemaConverter,
 		);
 
@@ -402,13 +402,14 @@ describe("OpenAPI operations", () => {
 
 	it("creates multipart request bodies", () => {
 		const body = createRequestBody(
-			multipartBody({
+			{
+				kind: "multipartBody",
 				schema: z.object({
 					title: z.string(),
 					file: z.string(),
 				}),
 				arrayKeys: [],
-			}),
+			},
 			schemaConverter,
 		);
 
@@ -442,11 +443,14 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("omits explicit no-body request bodies", () => {
-		assert.equal(createRequestBody(noBody(), schemaConverter), undefined);
+		assert.equal(
+			createRequestBody({ kind: "noBody" }, schemaConverter),
+			undefined,
+		);
 	});
 
 	it("creates no-body and JSON responses", () => {
-		const empty = createResponse("", noBody(), schemaConverter);
+		const empty = createResponse("", { kind: "noBody" }, schemaConverter);
 		const json = createResponse(
 			"",
 			z.object({ code: z.string() }),
@@ -490,7 +494,7 @@ describe("OpenAPI operations", () => {
 		const response = createResponse(
 			"",
 			{
-				body: noBody(),
+				body: { kind: "noBody" },
 				headers: z.object({ location: z.string() }),
 			},
 			schemaConverter,
@@ -598,10 +602,11 @@ describe("OpenAPI operations", () => {
 	it("creates custom responses with declared content types", () => {
 		const response = createResponse(
 			"",
-			customBody({
+			{
+				kind: "customBody",
 				contentType: "text/csv",
 				schema: z.string(),
-			}),
+			},
 			schemaConverter,
 		);
 
@@ -612,10 +617,11 @@ describe("OpenAPI operations", () => {
 	it("creates custom responses with multiple declared content types", () => {
 		const response = createResponse(
 			"",
-			customBody({
+			{
+				kind: "customBody",
 				contentType: ["image/png", "image/jpeg"],
 				schema: z.string(),
-			}),
+			},
 			schemaConverter,
 		);
 
@@ -626,7 +632,7 @@ describe("OpenAPI operations", () => {
 	it("creates NDJSON stream responses as text wire bodies", () => {
 		const response = createResponse(
 			"",
-			stream(z.object({ id: z.string() })),
+			{ kind: "stream", schema: z.object({ id: z.string() }) },
 			schemaConverter,
 		);
 
@@ -638,22 +644,26 @@ describe("OpenAPI operations", () => {
 	it("creates custom stream responses with wire-level schemas", () => {
 		const csv = createResponse(
 			"",
-			stream(
-				customBody({
+			{
+				kind: "stream",
+				schema: {
+					kind: "customBody",
 					contentType: "text/csv",
 					schema: z.number(),
-				}),
-			),
+				},
+			},
 			schemaConverter,
 		);
 		const binary = createResponse(
 			"",
-			stream(
-				customBody({
+			{
+				kind: "stream",
+				schema: {
+					kind: "customBody",
 					contentType: "application/octet-stream",
 					schema: z.number(),
-				}),
-			),
+				},
+			},
 			schemaConverter,
 		);
 
@@ -695,9 +705,7 @@ describe("OpenAPI operations", () => {
 		const route: OpenApiRouteDeclaration = {
 			path: "/todos",
 			method: "GET",
-			responses: {
-				204: noBody(),
-			},
+			responses: { 204: { kind: "noBody" } },
 		};
 
 		const operation = createOperation(
@@ -761,7 +769,7 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("omits explicit no-body responses after receiving the required converter", () => {
-		assert.deepEqual(createResponse("", noBody(), schemaConverter), {
+		assert.deepEqual(createResponse("", { kind: "noBody" }, schemaConverter), {
 			description: "",
 		});
 	});
