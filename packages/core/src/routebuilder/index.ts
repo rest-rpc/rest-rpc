@@ -4,10 +4,19 @@ import type {
 	RouteFactoryOptions,
 } from "../contract/contract.ts";
 import { getPathParamNames } from "../contract/path.ts";
-import { createHttpRoute, type HttpBuilderFor } from "./httpRouteBuilder.ts";
-import { createSseRoute, type SseBuilderFor } from "./sseRouteBuilder.ts";
+import {
+	createHttpRoute,
+	type FinalizedHttpRoute,
+	type HttpBuilderFor,
+} from "./httpRouteBuilder.ts";
+import {
+	createSseRoute,
+	type FinalizedSseRoute,
+	type SseBuilderFor,
+} from "./sseRouteBuilder.ts";
 import {
 	createWebSocketRoute,
+	type FinalizedWebSocketRoute,
 	type WebSocketBuilderFor,
 } from "./webSocketRouteBuilder.ts";
 export { joinPathPrefix } from "./baseRouteBuilder.ts";
@@ -78,6 +87,9 @@ export const route = {
 };
 
 export type {
+	FinalizedHttpRoute,
+	FinalizedSseRoute,
+	FinalizedWebSocketRoute,
 	HttpBuilderFor,
 	RouteFactory,
 	RouteFactoryOptions,

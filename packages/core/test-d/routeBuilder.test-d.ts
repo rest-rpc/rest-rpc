@@ -237,6 +237,23 @@ expectType<RouteMetadata>(configuredAfterResponse.metadata);
 expectType<OpenApiRouteOptions>(configuredAfterResponse.openApi);
 expectAssignable<HttpRouteDeclaration>(configuredAfterResponse);
 
+type EffectiveHttpRoute<T> = Pick<
+	T,
+	Extract<keyof T, keyof HttpRouteDeclaration>
+>;
+type MutuallyAssignable<TLeft, TRight> = [TLeft] extends [TRight]
+	? [TRight] extends [TLeft]
+		? true
+		: false
+	: false;
+const finalizedConfiguredAfterResponse = configuredAfterResponse.finalize();
+expectType<true>(
+	true as MutuallyAssignable<
+		EffectiveHttpRoute<typeof configuredAfterResponse>,
+		EffectiveHttpRoute<typeof finalizedConfiguredAfterResponse>
+	>,
+);
+
 // Keeps HTTP body variants and query variants mutually exclusive.
 const bodyUsed = route.post("/body-used").body(input);
 expectError(bodyUsed.formBody(input));

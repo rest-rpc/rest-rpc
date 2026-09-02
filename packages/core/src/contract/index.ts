@@ -40,6 +40,11 @@ export type {
 } from "./contract.ts";
 export { isRouteDeclaration } from "./contract.ts";
 export { route } from "../routebuilder/index.ts";
+export type {
+	FinalizedHttpRoute,
+	FinalizedSseRoute,
+	FinalizedWebSocketRoute,
+} from "../routebuilder/index.ts";
 export {
 	getPathParamNames,
 	getPathParamSegmentName,

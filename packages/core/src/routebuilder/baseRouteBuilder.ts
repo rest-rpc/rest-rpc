@@ -31,6 +31,14 @@ import { resolveBuiltInRequestKeys } from "../contract/requestKeys.ts";
 
 export type EmptyObject = Record<never, never>;
 
+export type BuilderState<
+	TRequest = EmptyObject,
+	TUsed extends string = never,
+> = {
+	request: TRequest;
+	used: TUsed;
+};
+
 export type ProtocolRequestFor<TOptions> = TOptions extends {
 	flattenRequestKeys: infer TFlatten extends boolean;
 }
@@ -38,10 +46,25 @@ export type ProtocolRequestFor<TOptions> = TOptions extends {
 	: EmptyObject;
 
 export type WithRequest<
-	TRequest,
+	TState extends BuilderState<unknown, string>,
 	TKey extends keyof RouteRequestDeclaration,
 	TValue,
-> = Omit<TRequest, TKey> & Record<TKey, TValue>;
+> = Omit<TState, "request"> & {
+	request: Omit<TState["request"], TKey> & Record<TKey, TValue>;
+};
+
+export type UseBuilderMethod<
+	TState extends BuilderState<unknown, string>,
+	TMethod extends string,
+> = Omit<TState, "used"> & {
+	used: TState["used"] | TMethod;
+};
+
+export type WhenUnused<
+	TState extends BuilderState<unknown, string>,
+	TMethod extends string,
+	TAvailable,
+> = TMethod extends TState["used"] ? EmptyObject : TAvailable;
 
 export const joinPathPrefix = (prefix: string, path: string) =>
 	`${prefix}${path}`;
@@ -309,6 +332,10 @@ export class BaseRouteBuilder {
 		Object.assign(this, {
 			openApi: mergeOpenApi(this.#commonOpenApi, openApi),
 		});
+		return this;
+	}
+
+	finalize() {
 		return this;
 	}
 }

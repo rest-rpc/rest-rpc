@@ -12,9 +12,12 @@ import type {
 import type { WebSocketMessageSchemas } from "../contract/websocketMessages.ts";
 import {
 	BaseRouteBuilder,
+	type BuilderState,
 	type EmptyObject,
 	type ProtocolRequestFor,
 	protocolRequestDefaults,
+	type UseBuilderMethod,
+	type WhenUnused,
 	type WithRequest,
 } from "./baseRouteBuilder.ts";
 
@@ -64,41 +67,83 @@ class WebSocketRouteBuilder extends BaseRouteBuilder {
 }
 
 type AddWebSocketMessage<
-	TMessages extends WebSocketCompletion,
+	TState extends WebSocketBuilderState,
 	TDirection extends "client" | "server",
 	TType extends string,
 	TSchema extends StandardSchemaV1,
-> = TMessages & {
-	[TKey in TDirection]: Record<TType, TSchema>;
+> = Omit<TState, "messages"> & {
+	messages: TState["messages"] & {
+		[TKey in TDirection]: Record<TType, TSchema>;
+	};
 };
 
-type WebSocketMessageSetters<
-	TRequest,
-	TUsed extends string,
-	TMessages extends WebSocketCompletion,
-> = {
+type WebSocketBuilderMethod =
+	| "query"
+	| "params"
+	| "requestKeys"
+	| "withMetadata";
+
+type WebSocketBuilderState = BuilderState<unknown, WebSocketBuilderMethod> & {
+	messages: WebSocketCompletion;
+};
+
+type SetWebSocketRequest<
+	TState extends WebSocketBuilderState,
+	TKey extends "query" | "params" | "keys",
+	TValue,
+	TMethod extends WebSocketBuilderMethod,
+> = UseBuilderMethod<WithRequest<TState, TKey, TValue>, TMethod>;
+
+type WebSocketBuilderDeclaration<TState extends WebSocketBuilderState> = {
+	readonly method: "GET";
+	readonly path: string;
+	readonly mode: "webSocket";
+} & (keyof TState["request"] extends never
+	? { request?: never }
+	: { request: TState["request"] }) &
+	(keyof TState["messages"] extends never
+		? { messages?: never }
+		: { messages: TState["messages"] });
+
+/** A completed WebSocket route declaration with its inferred request and messages. */
+export type FinalizedWebSocketRoute<TRequest, TMessages, TUsed> = {
+	readonly method: "GET";
+	readonly path: string;
+	readonly mode: "webSocket";
+} & (keyof TRequest extends never
+	? { request?: never }
+	: { request: TRequest }) & {
+		messages: TMessages;
+	} & ("withMetadata" extends TUsed
+		? { metadata: RouteMetadata }
+		: Record<never, never>);
+
+type WebSocketFinalize<TState extends WebSocketBuilderState> =
+	keyof TState["messages"] extends never
+		? EmptyObject
+		: {
+				finalize(): FinalizedWebSocketRoute<
+					{ [TKey in keyof TState["request"]]: TState["request"][TKey] },
+					{ [TKey in keyof TState["messages"]]: TState["messages"][TKey] },
+					TState["used"]
+				>;
+			};
+
+type WebSocketMessageSetters<TState extends WebSocketBuilderState> = {
 	clientMessage<
 		const TType extends string,
 		const TSchema extends StandardSchemaV1,
 	>(
 		type: TType,
 		schema: TSchema,
-	): WebSocketBuilder<
-		TRequest,
-		TUsed,
-		AddWebSocketMessage<TMessages, "client", TType, TSchema>
-	>;
+	): WebSocketBuilder<AddWebSocketMessage<TState, "client", TType, TSchema>>;
 	serverMessage<
 		const TType extends string,
 		const TSchema extends StandardSchemaV1,
 	>(
 		type: TType,
 		schema: TSchema,
-	): WebSocketBuilder<
-		TRequest,
-		TUsed,
-		AddWebSocketMessage<TMessages, "server", TType, TSchema>
-	>;
+	): WebSocketBuilder<AddWebSocketMessage<TState, "server", TType, TSchema>>;
 };
 
 export type WebSocketCompletion = {
@@ -106,78 +151,61 @@ export type WebSocketCompletion = {
 	server?: WebSocketMessageSchemas;
 };
 
-type WebSocketRequestSetters<
-	TRequest,
-	TUsed extends string,
-	TMessages extends WebSocketCompletion,
-> = ("query" extends TUsed
-	? EmptyObject
-	: {
-			query<const TSchema extends RequestQuerySchema>(
+type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
+	TState,
+	"query",
+	{
+		query<const TSchema extends RequestQuerySchema>(
+			schema: TSchema,
+		): WebSocketBuilder<SetWebSocketRequest<TState, "query", TSchema, "query">>;
+		jsonQuery<const TSchema extends StandardSchemaV1>(
+			schema: TSchema,
+		): WebSocketBuilder<
+			SetWebSocketRequest<TState, "query", JsonQuery<TSchema>, "query">
+		>;
+	}
+> &
+	WhenUnused<
+		TState,
+		"params",
+		{
+			params<const TSchema extends RequestParamsSchema>(
 				schema: TSchema,
 			): WebSocketBuilder<
-				WithRequest<TRequest, "query", TSchema>,
-				TUsed | "query",
-				TMessages
+				SetWebSocketRequest<TState, "params", TSchema, "params">
 			>;
-			jsonQuery<const TSchema extends StandardSchemaV1>(
-				schema: TSchema,
+		}
+	> &
+	WhenUnused<
+		TState,
+		"requestKeys",
+		{
+			requestKeys<const TKeys extends RequestKeys>(
+				keys: TKeys,
 			): WebSocketBuilder<
-				WithRequest<TRequest, "query", JsonQuery<TSchema>>,
-				TUsed | "query",
-				TMessages
+				SetWebSocketRequest<TState, "keys", TKeys, "requestKeys">
 			>;
-		}) &
-	("params" extends TUsed
-		? EmptyObject
-		: {
-				params<const TSchema extends RequestParamsSchema>(
-					schema: TSchema,
-				): WebSocketBuilder<
-					WithRequest<TRequest, "params", TSchema>,
-					TUsed | "params",
-					TMessages
-				>;
-			}) &
-	("requestKeys" extends TUsed
-		? EmptyObject
-		: {
-				requestKeys<const TKeys extends RequestKeys>(
-					keys: TKeys,
-				): WebSocketBuilder<
-					WithRequest<TRequest, "keys", TKeys>,
-					TUsed | "requestKeys",
-					TMessages
-				>;
-			}) &
-	("withMetadata" extends TUsed
+		}
+	> &
+	("withMetadata" extends TState["used"]
 		? { metadata: RouteMetadata }
 		: {
 				withMetadata(
 					metadata: RouteMetadata,
-				): WebSocketBuilder<TRequest, TUsed | "withMetadata", TMessages>;
+				): WebSocketBuilder<UseBuilderMethod<TState, "withMetadata">>;
 			});
 
-export type WebSocketBuilder<
-	TRequest,
-	TUsed extends string = never,
-	TMessages extends WebSocketCompletion = EmptyObject,
-> = {
-	readonly method: "GET";
-	readonly path: string;
-	readonly mode: "webSocket";
-} & (keyof TRequest extends never
-	? { request?: never }
-	: { request: TRequest }) &
-	(keyof TMessages extends never
-		? { messages?: never }
-		: { messages: TMessages }) &
-	WebSocketMessageSetters<TRequest, TUsed, TMessages> &
-	WebSocketRequestSetters<TRequest, TUsed, TMessages>;
+export type WebSocketBuilder<TState extends WebSocketBuilderState> =
+	WebSocketBuilderDeclaration<TState> &
+		WebSocketMessageSetters<TState> &
+		WebSocketRequestSetters<TState> &
+		WebSocketFinalize<TState>;
 
-export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<
-	ProtocolRequestFor<TOptions>
->;
+export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<{
+	request: ProtocolRequestFor<TOptions>;
+	used: never;
+	messages: EmptyObject;
+}>;
 
 export const createWebSocketRoute = (
 	path: string,
