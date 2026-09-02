@@ -1,4 +1,4 @@
-import { jsonQuery, route } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core/contract";
 import z from "zod";
 
 export const requestValidationContract = {
@@ -39,14 +39,12 @@ export const requestValidationContract = {
 		.response(200, z.object({ value: z.literal("") })),
 	jsonQuery: route
 		.get("/request-validation/json-query")
-		.query(
-			jsonQuery(
-				z.object({
-					page: z.number(),
-					includeArchived: z.boolean(),
-					filters: z.object({ tags: z.array(z.string()) }),
-				}),
-			),
+		.jsonQuery(
+			z.object({
+				page: z.number(),
+				includeArchived: z.boolean(),
+				filters: z.object({ tags: z.array(z.string()) }),
+			}),
 		)
 		.response(
 			200,

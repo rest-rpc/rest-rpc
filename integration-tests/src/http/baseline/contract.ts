@@ -1,4 +1,4 @@
-import { customBody, route } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core/contract";
 import z from "zod";
 
 const itemSchema = z.object({ id: z.string(), title: z.string() });
@@ -29,10 +29,10 @@ export const integrationContract = {
 			.post("/echo/text/:id")
 			.params(z.object({ id: z.string() }))
 			.customBody({ contentType: "text/plain", schema: z.string() })
-			.response(
-				200,
-				customBody({ contentType: "text/plain", schema: z.string() }),
-			),
+			.customResponse(200, {
+				contentType: "text/plain",
+				schema: z.string(),
+			}),
 	},
 	items: {
 		list: route
@@ -68,13 +68,10 @@ export const integrationContract = {
 			.response(204),
 	},
 	responses: {
-		binary: route.get("/responses/binary").response(
-			200,
-			customBody({
-				contentType: "application/octet-stream",
-				schema: z.instanceof(Uint8Array),
-			}),
-		),
+		binary: route.get("/responses/binary").customResponse(200, {
+			contentType: "application/octet-stream",
+			schema: z.instanceof(Uint8Array),
+		}),
 		headers: route.get("/responses/headers").response(200, {
 			body: z.object({ ok: z.literal(true) }),
 			headers: z.object({
@@ -82,12 +79,10 @@ export const integrationContract = {
 				"x-optional-result": z.string().optional(),
 			}),
 		}),
-		text: route
-			.get("/responses/text")
-			.response(
-				200,
-				customBody({ contentType: "text/plain", schema: z.string() }),
-			),
+		text: route.get("/responses/text").customResponse(200, {
+			contentType: "text/plain",
+			schema: z.string(),
+		}),
 		undeclared: route
 			.get("/responses/undeclared")
 			.response(200, z.object({ ok: z.literal(true) })),
@@ -96,12 +91,10 @@ export const integrationContract = {
 		ndjson: route
 			.get("/streams/ndjson")
 			.streamResponse(200, z.object({ id: z.string(), index: z.number() })),
-		text: route
-			.get("/streams/text")
-			.streamResponse(
-				200,
-				customBody({ contentType: "text/plain", schema: z.string() }),
-			),
+		text: route.get("/streams/text").customStreamResponse(200, {
+			contentType: "text/plain",
+			schema: z.string(),
+		}),
 	},
 } as const;
 

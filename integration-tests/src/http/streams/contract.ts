@@ -1,4 +1,4 @@
-import { customBody, route } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core/contract";
 import z from "zod";
 
 const eventSchema = z.object({ id: z.string(), index: z.number() });
@@ -12,19 +12,14 @@ export const streamsContract = {
 	cancellable: route
 		.get("/streams/cancellable")
 		.streamResponse(200, eventSchema),
-	rawText: route
-		.get("/streams/raw-text")
-		.streamResponse(
-			200,
-			customBody({ contentType: "text/plain", schema: z.string() }),
-		),
-	rawBytes: route.get("/streams/raw-bytes").streamResponse(
-		200,
-		customBody({
-			contentType: "application/octet-stream",
-			schema: z.instanceof(Uint8Array),
-		}),
-	),
+	rawText: route.get("/streams/raw-text").customStreamResponse(200, {
+		contentType: "text/plain",
+		schema: z.string(),
+	}),
+	rawBytes: route.get("/streams/raw-bytes").customStreamResponse(200, {
+		contentType: "application/octet-stream",
+		schema: z.instanceof(Uint8Array),
+	}),
 	invalid: route.get("/streams/invalid").streamResponse(200, eventSchema),
 	throwsBeforeFirstChunk: route
 		.get("/streams/throws-before-first-chunk")
