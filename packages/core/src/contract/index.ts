@@ -48,7 +48,6 @@ export type {
 	WebSocketMessageSchemas,
 	WebSocketRouteDeclaration,
 } from "./websocketRouteBuilder.ts";
-export { isRouteDeclaration } from "./contract.ts";
 export {
 	getPathParamNames,
 	getPathParamSegmentName,
