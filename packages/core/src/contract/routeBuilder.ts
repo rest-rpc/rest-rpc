@@ -1,10 +1,7 @@
-import type {
-	CommonOpenApiRouteOptions,
-	RouteMetadata,
-} from "../contract/contract.ts";
-import { getPathParamNames } from "../contract/path.ts";
-import type { RequestHeadersSchema } from "../contract/request.ts";
-import type { RouteResponses } from "../contract/response.ts";
+import type { CommonOpenApiRouteOptions, RouteMetadata } from "./contract.ts";
+import { getPathParamNames } from "./path.ts";
+import type { RequestHeadersSchema } from "./request.ts";
+import type { RouteResponses } from "./response.ts";
 import {
 	createHttpRoute,
 	type FinalizedHttpRoute,

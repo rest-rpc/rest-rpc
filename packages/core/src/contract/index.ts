@@ -1,4 +1,10 @@
 export { type } from "../standard-schema/index.ts";
+export { route } from "./routeBuilder.ts";
+export type {
+	FinalizedHttpRoute,
+	FinalizedSseRoute,
+	FinalizedWebSocketRoute,
+} from "./routeBuilder.ts";
 export type {
 	CustomBody,
 	CustomBodyContentType,

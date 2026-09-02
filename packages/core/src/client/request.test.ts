@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import { route } from "../routebuilder/index.ts";
+import { route } from "../contract/routeBuilder.ts";
 import { type } from "../standard-schema/index.ts";
 import { initClient } from "./index.ts";
 import { constructBaseRequest, createRequestSignal } from "./request.ts";

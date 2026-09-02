@@ -1,10 +1,5 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import {
-	isCustomBody,
-	isFormBody,
-	isMultipartBody,
-	isNoBody,
-} from "../contract/body.ts";
+import { isCustomBody, isFormBody, isMultipartBody, isNoBody } from "./body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	HttpMethod,
@@ -12,21 +7,21 @@ import type {
 	OpenApiRouteOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
-} from "../contract/contract.ts";
-import type { RouteFactoryOptions } from "./index.ts";
-import { getPathParamNames } from "../contract/path.ts";
+} from "./contract.ts";
+import type { RouteFactoryOptions } from "./routeBuilder.ts";
+import { getPathParamNames } from "./path.ts";
 import type {
 	RequestKeys,
 	RequestParamsSchema,
 	RequestQuerySchema,
 	RequestSegment,
-} from "../contract/request.ts";
+} from "./request.ts";
 import {
 	getRequestHeaderSchemas,
 	isJsonQuery,
 	REQUEST_CONTEXT_KEY,
-} from "../contract/request.ts";
-import { resolveBuiltInRequestKeys } from "../contract/requestKeys.ts";
+} from "./request.ts";
+import { resolveBuiltInRequestKeys } from "./requestKeys.ts";
 
 export type EmptyObject = Record<never, never>;
 

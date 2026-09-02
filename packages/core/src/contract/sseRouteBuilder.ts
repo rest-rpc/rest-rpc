@@ -1,14 +1,8 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type {
-	OpenApiRouteOptions,
-	RouteMetadata,
-} from "../contract/contract.ts";
-import type { RouteFactoryOptions } from "./index.ts";
-import type { JsonQuery, RequestKeys } from "../contract/request.ts";
-import type {
-	RequestParamsSchema,
-	RequestQuerySchema,
-} from "../contract/request.ts";
+import type { OpenApiRouteOptions, RouteMetadata } from "./contract.ts";
+import type { RouteFactoryOptions } from "./routeBuilder.ts";
+import type { JsonQuery, RequestKeys } from "./request.ts";
+import type { RequestParamsSchema, RequestQuerySchema } from "./request.ts";
 import {
 	BaseRouteBuilder,
 	type BuilderState,

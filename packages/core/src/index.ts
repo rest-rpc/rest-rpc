@@ -35,12 +35,12 @@ export type {
 	WebSocketMessageSchemas,
 	WebSocketRouteDeclaration,
 } from "./contract/index.ts";
-export { route } from "./routebuilder/index.ts";
+export { route } from "./contract/index.ts";
 export type {
 	FinalizedHttpRoute,
 	FinalizedSseRoute,
 	FinalizedWebSocketRoute,
-} from "./routebuilder/index.ts";
+} from "./contract/index.ts";
 export type {
 	CreateOpenApiDocumentOptions,
 	OpenApiDocument,

@@ -14,15 +14,15 @@ import {
 	type MultipartBodySchema,
 	type NoBody,
 	type Stream,
-} from "../contract/body.ts";
+} from "./body.ts";
 import type {
 	HttpMethod,
 	HttpRouteDeclaration,
 	OpenApiRouteOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
-} from "../contract/contract.ts";
-import type { RouteFactoryOptions } from "./index.ts";
+} from "./contract.ts";
+import type { RouteFactoryOptions } from "./routeBuilder.ts";
 import type {
 	JsonQuery,
 	RequestHeadersDeclaration,
@@ -30,12 +30,12 @@ import type {
 	RequestKeys,
 	RequestParamsSchema,
 	RequestQuerySchema,
-} from "../contract/request.ts";
+} from "./request.ts";
 import type {
 	RegularResponseDeclaration,
 	ResponseDeclaration,
 	RouteResponses,
-} from "../contract/response.ts";
+} from "./response.ts";
 import {
 	BaseRouteBuilder,
 	type BuilderState,
