@@ -12,16 +12,10 @@ const todoSchema = schemaType<{ id: string }>();
 
 const api = {
 	todos: {
-		get: {
-			method: "GET",
-			path: "/todos/:id",
-			request: {
-				params: schemaType<{ id: string }>(),
-			},
-			responses: {
-				200: todoSchema,
-			},
-		},
+		get: coreRoute
+			.get("/todos/:id")
+			.params(schemaType<{ id: string }>())
+			.response(200, todoSchema),
 	},
 	health: coreRoute.get("/health").response(204),
 } as const;

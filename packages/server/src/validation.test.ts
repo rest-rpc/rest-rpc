@@ -71,19 +71,14 @@ describe("validateRequest", () => {
 
 	it("parses JSON date strings with request body transforms", async () => {
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/todos",
-				request: {
-					body: z.object({
+			route
+				.post("/todos")
+				.body(
+					z.object({
 						createdAt: z.iso.datetime().transform((value) => new Date(value)),
 					}),
-					keys: {
-						createdAt: "body",
-					},
-				},
-				responses: {},
-			},
+				)
+				.response(204),
 			{
 				body: { createdAt: "2026-08-10T00:00:00.000Z" },
 			},
@@ -101,19 +96,14 @@ describe("validateRequest", () => {
 		);
 
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/todos",
-				request: {
-					body: z.object({
+			route
+				.post("/todos")
+				.body(
+					z.object({
 						createdAt: z.date(),
 					}),
-					keys: {
-						createdAt: "body",
-					},
-				},
-				responses: {},
-			},
+				)
+				.response(204),
 			{
 				body: wireBody,
 			},
@@ -127,23 +117,17 @@ describe("validateRequest", () => {
 
 	it("parses string params and query with coercion or transforms", async () => {
 		const result = await validateRequest(
-			{
-				method: "GET",
-				path: "/todos/:id",
-				request: {
-					params: z.object({ id: z.coerce.number<number>() }),
-					query: z.object({
+			route
+				.get("/todos/:id")
+				.params(z.object({ id: z.coerce.number<number>() }))
+				.query(
+					z.object({
 						published: z
 							.enum(["true", "false"])
 							.transform((value) => value === "true"),
 					}),
-					keys: {
-						id: "params",
-						published: "query",
-					},
-				},
-				responses: {},
-			},
+				)
+				.response(204),
 			{
 				params: { id: "123" },
 				query: { published: "false" },
@@ -161,19 +145,11 @@ describe("validateRequest", () => {
 
 	it("rejects numeric and boolean params or query without coercion", async () => {
 		const result = await validateRequest(
-			{
-				method: "GET",
-				path: "/todos/:id",
-				request: {
-					params: z.object({ id: z.number() }),
-					query: z.object({ published: z.boolean() }),
-					keys: {
-						id: "params",
-						published: "query",
-					},
-				},
-				responses: {},
-			},
+			route
+				.get("/todos/:id")
+				.params(z.object({ id: z.number() }))
+				.query(z.object({ published: z.boolean() }))
+				.response(204),
 			{
 				params: { id: "123" },
 				query: { published: "true" },
@@ -188,21 +164,15 @@ describe("validateRequest", () => {
 
 	it("parses JSON query values before schema validation", async () => {
 		const result = await validateRequest(
-			{
-				method: "GET",
-				path: "/todos",
-				request: {
-					query: {
-						kind: "jsonQuery",
-						schema: z.object({
-							page: z.number(),
-							filters: z.object({ tags: z.array(z.string()) }),
-						}),
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.get("/todos")
+				.jsonQuery(
+					z.object({
+						page: z.number(),
+						filters: z.object({ tags: z.array(z.string()) }),
+					}),
+				)
+				.response(204),
 			{
 				query: {
 					query: JSON.stringify({
@@ -223,18 +193,10 @@ describe("validateRequest", () => {
 
 	it("allows omitted optional JSON query values", async () => {
 		const result = await validateRequest(
-			{
-				method: "GET",
-				path: "/todos",
-				request: {
-					query: {
-						kind: "jsonQuery",
-						schema: z.object({ page: z.number() }).optional(),
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.get("/todos")
+				.jsonQuery(z.object({ page: z.number() }).optional())
+				.response(204),
 			{},
 		);
 
@@ -246,19 +208,13 @@ describe("validateRequest", () => {
 
 	it("wraps custom request bodies with selected content type", async () => {
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/images",
-				request: {
-					body: {
-						kind: "customBody",
-						contentType: ["image/png", "image/jpeg"],
-						schema: z.string().transform((value) => value.toUpperCase()),
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.post("/images")
+				.customBody({
+					contentType: ["image/png", "image/jpeg"],
+					schema: z.string().transform((value) => value.toUpperCase()),
+				})
+				.response(204),
 			{
 				body: "jpeg bytes",
 				headers: {
@@ -280,15 +236,10 @@ describe("validateRequest", () => {
 
 	it("validates custom request bodies without content type as payloads", async () => {
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/forms",
-				request: {
-					body: { kind: "customBody", schema: z.instanceof(URLSearchParams) },
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.post("/forms")
+				.customBody(z.instanceof(URLSearchParams))
+				.response(204),
 			{
 				body: new URLSearchParams([["title", "Write docs"]]),
 				headers: {
@@ -306,23 +257,16 @@ describe("validateRequest", () => {
 
 	it("validates urlencoded form bodies from URLSearchParams", async () => {
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/forms",
-				request: {
-					body: {
-						kind: "formBody",
-						schema: z.object({
-							title: z.string(),
-							count: z.coerce.number<number>(),
-							remember: z.string().optional(),
-						}),
-						arrayKeys: [],
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.post("/forms")
+				.formBody(
+					z.object({
+						title: z.string(),
+						count: z.coerce.number<number>(),
+						remember: z.string().optional(),
+					}),
+				)
+				.response(204),
 			{
 				body: new URLSearchParams([
 					["title", "Write docs"],
@@ -347,22 +291,16 @@ describe("validateRequest", () => {
 
 	it("validates inferred urlencoded form array keys from repeated values", async () => {
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/forms",
-				request: {
-					body: {
-						kind: "formBody",
-						schema: z.object({
-							title: z.string(),
-							tags: z.array(z.string()),
-						}),
-						arrayKeys: ["tags"],
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.post("/forms")
+				.formBody({
+					schema: z.object({
+						title: z.string(),
+						tags: z.array(z.string()),
+					}),
+					arrayKeys: ["tags"],
+				})
+				.response(204),
 			{
 				body: new URLSearchParams([
 					["title", "First"],
@@ -397,24 +335,18 @@ describe("validateRequest", () => {
 		body.append("tags", "rpc");
 
 		const result = await validateRequest(
-			{
-				method: "POST",
-				path: "/uploads",
-				request: {
-					body: {
-						kind: "multipartBody",
-						schema: z.object({
-							title: z.string(),
-							count: z.coerce.number<number>(),
-							file: z.instanceof(Blob),
-							tags: z.array(z.string()),
-						}),
-						arrayKeys: ["tags"],
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.post("/uploads")
+				.multipartBody({
+					schema: z.object({
+						title: z.string(),
+						count: z.coerce.number<number>(),
+						file: z.instanceof(Blob),
+						tags: z.array(z.string()),
+					}),
+					arrayKeys: ["tags"],
+				})
+				.response(204),
 			{
 				body,
 				headers: {
@@ -434,18 +366,10 @@ describe("validateRequest", () => {
 
 	it("rejects malformed JSON query values as request validation errors", async () => {
 		const result = await validateRequest(
-			{
-				method: "GET",
-				path: "/todos",
-				request: {
-					query: {
-						kind: "jsonQuery",
-						schema: z.object({ page: z.number() }),
-					},
-					keys: {},
-				},
-				responses: {},
-			},
+			route
+				.get("/todos")
+				.jsonQuery(z.object({ page: z.number() }))
+				.response(204),
 			{
 				query: { query: "{" },
 			},

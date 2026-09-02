@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { initClient } from "@rest-rpc/core";
+import { initClient, route } from "@rest-rpc/core";
 import { REQUEST_CONTEXT_KEY } from "@rest-rpc/core/contract";
 import type { ImplementationShape } from "@rest-rpc/server";
 import { router as createFetchRouter } from "@rest-rpc/fetch";
@@ -31,21 +31,13 @@ runResponseMiddlewareHeadersSuite(
 );
 
 const lifecycleContract = {
-	contextMutation: {
-		method: "GET",
-		path: "/responses/lifecycle/context-mutation",
-		responses: {
-			200: z.object({ ok: z.literal(true) }),
-		},
-	},
-	returnResponse: {
-		method: "GET",
-		path: "/responses/lifecycle/return-response",
-		responses: {
-			200: z.object({ ok: z.literal(true) }),
-		},
-	},
-} as const;
+	contextMutation: route
+		.get("/responses/lifecycle/context-mutation")
+		.response(200, z.object({ ok: z.literal(true) })),
+	returnResponse: route
+		.get("/responses/lifecycle/return-response")
+		.response(200, z.object({ ok: z.literal(true) })),
+};
 
 type LifecycleContract = typeof lifecycleContract;
 type FetchLifecycleContext = {

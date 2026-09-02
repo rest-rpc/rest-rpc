@@ -1,22 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { route } from "@rest-rpc/core";
+import { type as schemaType } from "@rest-rpc/core/standard-schema";
 import { skipToken } from "@tanstack/query-core";
 import { createRouteApi } from "./routeApi.ts";
 
-const routeWithoutRequest = {
-	method: "GET",
-	path: "/items",
-	responses: { 200: {} },
-} as any;
+const routeWithoutRequest = route
+	.get("/items")
+	.response(200, schemaType<unknown>());
 
-const routeWithRequest = {
-	method: "GET",
-	path: "/items/:id",
-	request: {
-		params: {},
-	},
-	responses: { 200: {} },
-} as any;
+const routeWithRequest = route
+	.get("/items/:id")
+	.params(schemaType<{ id: string }>())
+	.response(200, schemaType<unknown>());
 
 const routeWithoutRequestPath = ["items", "list"];
 const routeWithRequestPath = ["items", "byId"];

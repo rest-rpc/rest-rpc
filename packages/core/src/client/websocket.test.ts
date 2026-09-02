@@ -426,14 +426,7 @@ describe("assertWebSocketRoute", () => {
 
 	it("rejects HTTP route declarations", () => {
 		assert.throws(
-			() =>
-				assertWebSocketRoute({
-					method: "GET",
-					path: "/todos",
-					responses: {
-						204: { kind: "noBody" },
-					},
-				}),
+			() => assertWebSocketRoute(route.get("/todos").response(204)),
 			/Expected a websocket route/,
 		);
 	});

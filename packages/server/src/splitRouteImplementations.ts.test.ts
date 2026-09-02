@@ -16,15 +16,11 @@ const createRoute: HttpRouteDeclaration = coreRoute
 	.post("/todos/new")
 	.response(204);
 
-const socketRoute: WebSocketRouteDeclaration = {
-	method: "GET",
-	path: "/todos/:id/events",
-	mode: "webSocket",
-	messages: {
-		client: { message: z.object({ action: z.string() }) },
-		server: { message: z.object({ id: z.string() }) },
-	},
-};
+const socketRoute: WebSocketRouteDeclaration = coreRoute
+	.ws("/todos/:id/events")
+	.clientMessage("message", z.object({ action: z.string() }))
+	.serverMessage("message", z.object({ id: z.string() }))
+	.finalize();
 
 describe("splitRouteImplementations", () => {
 	it("sorts and splits route implementations before calling adapter hooks", () => {

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { setImmediate } from "node:timers/promises";
-import { type WebSocketMessageSchemas } from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
+import {
+	type WebSocketMessageSchemas,
+	type WebSocketRouteDeclaration,
+} from "@rest-rpc/core/contract";
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 import z from "zod";
 import {
@@ -61,21 +65,32 @@ const websocketRoute = (messages: {
 	client: TestMessage;
 	server: TestMessage;
 }) =>
-	({
-		method: "GET",
-		path: "/rooms/:roomId",
-		request: {
-			params: z.object({ roomId: z.string() }),
-			keys: {
-				roomId: "params",
-			},
-		},
-		mode: "webSocket",
-		messages: {
-			client: normalizeMessage(messages.client),
-			server: normalizeMessage(messages.server),
-		},
-	}) as const;
+	(() => {
+		type MessageBuilder = {
+			clientMessage(type: string, schema: StandardSchemaV1): MessageBuilder;
+			serverMessage(type: string, schema: StandardSchemaV1): MessageBuilder;
+			finalize(): WebSocketRouteDeclaration;
+		};
+
+		const builder = coreRoute
+			.ws("/rooms/:roomId")
+			.params(z.object({ roomId: z.string() })) as unknown as MessageBuilder;
+
+		const addMessages = (
+			direction: "client" | "server",
+			message: TestMessage,
+		) => {
+			const normalized = normalizeMessage(message);
+			for (const [type, schema] of Object.entries(normalized)) {
+				if (direction === "client") builder.clientMessage(type, schema);
+				else builder.serverMessage(type, schema);
+			}
+		};
+
+		addMessages("client", messages.client);
+		addMessages("server", messages.server);
+		return builder.finalize();
+	})();
 
 describe("createContractWebSocket", () => {
 	it("parses JSON client message strings with transforms", async () => {

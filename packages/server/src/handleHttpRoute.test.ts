@@ -1,30 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { HttpRouteDeclaration } from "@rest-rpc/core/contract";
 import { route as coreRoute } from "@rest-rpc/core";
 import z from "zod";
 import { handleHttpRoute } from "./handleHttpRoute.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
 import { sseEvent } from "./sse.ts";
 
-const routeWithDeclaredErrorResponse = {
-	method: "GET",
-	path: "/todos/:id",
-	responses: {
-		200: z.object({ id: z.string() }),
-		404: z.object({ code: z.literal("not_found") }),
-	},
-} as const;
-
-const normalizedSseRoute = (response: z.ZodType): HttpRouteDeclaration =>
-	({
-		method: "GET",
-		path: "/events",
-		mode: "sse",
-		responses: {
-			200: response,
-		},
-	}) as unknown as HttpRouteDeclaration;
+const routeWithDeclaredErrorResponse = coreRoute
+	.get("/todos/:id")
+	.response(200, z.object({ id: z.string() }))
+	.response(404, z.object({ code: z.literal("not_found") }));
 
 describe("handleHttpRoute", () => {
 	it("passes validated request data and context to the handler", async () => {
@@ -152,13 +137,7 @@ describe("handleHttpRoute", () => {
 
 	it("uses custom unhandled error responses", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos",
-				responses: {
-					200: z.object({ id: z.string() }),
-				},
-			},
+			coreRoute.get("/todos").response(200, z.object({ id: z.string() })),
 			() => {
 				throw new Error("boom");
 			},
@@ -192,13 +171,7 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					{
-						method: "GET",
-						path: "/todos",
-						responses: {
-							200: z.object({ id: z.string() }),
-						},
-					},
+					coreRoute.get("/todos").response(200, z.object({ id: z.string() })),
 					() => {
 						throw new Error("boom");
 					},
@@ -217,13 +190,7 @@ describe("handleHttpRoute", () => {
 	it("uses custom response validation error responses", async () => {
 		let unhandledCalled = false;
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos",
-				responses: {
-					200: z.object({ id: z.string() }),
-				},
-			},
+			coreRoute.get("/todos").response(200, z.object({ id: z.string() })),
 			() => ({ id: 123 }),
 			{
 				request: {},
@@ -259,13 +226,7 @@ describe("handleHttpRoute", () => {
 
 	it("uses default response validation error responses", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos",
-				responses: {
-					200: z.object({ id: z.string() }),
-				},
-			},
+			coreRoute.get("/todos").response(200, z.object({ id: z.string() })),
 			() => ({ id: 123 }),
 			{ request: {}, context: {} },
 		);
@@ -282,14 +243,10 @@ describe("handleHttpRoute", () => {
 
 	it("requires explicit response objects when a route has multiple success statuses", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "POST",
-				path: "/todos",
-				responses: {
-					200: z.object({ id: z.string() }),
-					202: z.object({ id: z.string() }),
-				},
-			},
+			coreRoute
+				.post("/todos")
+				.response(200, z.object({ id: z.string() }))
+				.response(202, z.object({ id: z.string() })),
 			() => ({ id: "todo-1" }),
 			{ request: {}, context: {} },
 		);
@@ -302,16 +259,13 @@ describe("handleHttpRoute", () => {
 
 	it("treats returned status and body fields as an explicit response object", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/jobs/:id",
-				responses: {
-					200: z.object({
-						status: z.number(),
-						body: z.string(),
-					}),
-				},
-			},
+			coreRoute.get("/jobs/:id").response(
+				200,
+				z.object({
+					status: z.number(),
+					body: z.string(),
+				}),
+			),
 			() => ({ status: 123, body: "running" }),
 			{ request: {}, context: {} },
 		);
@@ -328,19 +282,13 @@ describe("handleHttpRoute", () => {
 
 	it("normalizes declared response headers", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos",
-				responses: {
-					200: {
-						body: z.object({ id: z.string() }),
-						headers: z.object({
-							etag: z.string(),
-							"x-optional": z.string().optional(),
-						}),
-					},
-				},
-			},
+			coreRoute.get("/todos").response(200, {
+				body: z.object({ id: z.string() }),
+				headers: z.object({
+					etag: z.string(),
+					"x-optional": z.string().optional(),
+				}),
+			}),
 			() => ({
 				status: 200 as const,
 				body: { id: "todo-1" },
@@ -368,16 +316,10 @@ describe("handleHttpRoute", () => {
 
 	it("rejects duplicate declared and raw response headers", async () => {
 		const result = await handleHttpRoute(
-			{
-				method: "GET",
-				path: "/todos",
-				responses: {
-					200: {
-						body: z.object({ id: z.string() }),
-						headers: z.object({ etag: z.string() }),
-					},
-				},
-			},
+			coreRoute.get("/todos").response(200, {
+				body: z.object({ id: z.string() }),
+				headers: z.object({ etag: z.string() }),
+			}),
 			() => ({
 				status: 200 as const,
 				body: { id: "todo-1" },
@@ -451,16 +393,12 @@ describe("handleHttpRoute", () => {
 		const routes = {
 			todos: {
 				get: routeWithDeclaredErrorResponse,
-				create: {
-					method: "POST",
-					path: "/todos",
-					responses: {
-						201: z.object({ id: z.string() }),
-						409: z.object({ code: z.literal("already_exists") }),
-					},
-				},
+				create: coreRoute
+					.post("/todos")
+					.response(201, z.object({ id: z.string() }))
+					.response(409, z.object({ code: z.literal("already_exists") })),
 			},
-		} as const;
+		};
 
 		const result = await handleHttpRoute(
 			routes.todos.get,
@@ -553,7 +491,7 @@ describe("handleHttpRoute SSE responses", () => {
 	it("normalizes SSE responses and exposes lastEventId in context", async () => {
 		const signal = new AbortController().signal;
 		const result = await handleHttpRoute(
-			normalizedSseRoute(z.object({ id: z.coerce.string() })),
+			coreRoute.sse("/events").response(z.object({ id: z.coerce.string() })),
 			async function* (request) {
 				assert.equal(request.context.requestId, "request-1");
 				assert.equal(request.context.signal, signal);

@@ -35,37 +35,25 @@ const todoSchema = z.object({
 // should expose flattened request fields and adapter context to route handlers
 const createApi = {
 	todos: {
-		create: {
-			method: "POST",
-			path: "/todos",
-			request: {
-				body: z.object({ title: z.string() }),
-			},
-			responses: {
-				201: {
-					body: todoSchema,
-					headers: z.object({
-						location: z.string(),
-						"x-next-cursor": z.string().optional(),
-					}),
-				},
-			},
-		},
+		create: coreRoute
+			.post("/todos")
+			.body(z.object({ title: z.string() }))
+			.response(201, {
+				body: todoSchema,
+				headers: z.object({
+					location: z.string(),
+					"x-next-cursor": z.string().optional(),
+				}),
+			}),
 	},
 } as const;
 
 const transformedResponseHeadersApi = {
 	todos: {
-		get: {
-			method: "GET",
-			path: "/todos/transformed-headers",
-			responses: {
-				200: {
-					body: todoSchema,
-					headers: z.string().transform((value) => ({ etag: value })),
-				},
-			},
-		},
+		get: coreRoute.get("/todos/transformed-headers").response(200, {
+			body: todoSchema,
+			headers: z.string().transform((value) => ({ etag: value })),
+		}),
 	},
 } as const;
 
@@ -89,21 +77,19 @@ expectType<string>(createTodoRequestData.title);
 
 const composedHeadersApi = {
 	items: {
-		get: {
-			method: "GET",
-			path: "/items",
-			request: {
-				headers: {
-					inherited: z
-						.object({ authorization: z.string() })
-						.transform(() => ({ authenticated: true as const })),
-					local: z
-						.object({ "x-request-id": z.string() })
-						.transform(() => ({ traceId: "request-1" as const })),
-				},
-			},
-			responses: { 204: { kind: "noBody" } },
-		},
+		get: coreRoute
+			.with({
+				headers: z
+					.object({ authorization: z.string() })
+					.transform(() => ({ authenticated: true as const })),
+			})
+			.get("/items")
+			.headers(
+				z
+					.object({ "x-request-id": z.string() })
+					.transform(() => ({ traceId: "request-1" as const })),
+			)
+			.response(204),
 	},
 } as const;
 
@@ -120,25 +106,15 @@ expectType<201>(createTodoResponse.status);
 
 const errorApi = {
 	todos: {
-		get: {
-			method: "GET",
-			path: "/todos/:id",
-			responses: {
-				200: todoSchema,
-				404: z.object({ code: z.literal("TODO_NOT_FOUND") }),
-			},
-		},
-		create: {
-			method: "POST",
-			path: "/todos",
-			request: {
-				body: z.object({ title: z.string() }),
-			},
-			responses: {
-				201: todoSchema,
-				409: z.object({ code: z.literal("TODO_ALREADY_EXISTS") }),
-			},
-		},
+		get: coreRoute
+			.get("/todos/:id")
+			.response(200, todoSchema)
+			.response(404, z.object({ code: z.literal("TODO_NOT_FOUND") })),
+		create: coreRoute
+			.post("/todos")
+			.body(z.object({ title: z.string() }))
+			.response(201, todoSchema)
+			.response(409, z.object({ code: z.literal("TODO_ALREADY_EXISTS") })),
 	},
 } as const;
 
@@ -198,16 +174,13 @@ expectType<typeof createApi.todos.create>(createImplementation.route);
 
 const responseEnvelopeBodyApi = {
 	jobs: {
-		get: {
-			method: "GET",
-			path: "/jobs/:id",
-			responses: {
-				200: z.object({
-					status: z.number(),
-					body: z.string(),
-				}),
-			},
-		},
+		get: coreRoute.get("/jobs/:id").response(
+			200,
+			z.object({
+				status: z.number(),
+				body: z.string(),
+			}),
+		),
 	},
 } as const;
 
@@ -230,16 +203,13 @@ route(responseEnvelopeBodyApi.jobs.get, () => ({
 
 const optionalStatusBodyApi = {
 	jobs: {
-		get: {
-			method: "GET",
-			path: "/jobs/:id",
-			responses: {
-				200: z.object({
-					id: z.string(),
-					status: z.string().optional(),
-				}),
-			},
-		},
+		get: coreRoute.get("/jobs/:id").response(
+			200,
+			z.object({
+				id: z.string(),
+				status: z.string().optional(),
+			}),
+		),
 	},
 } as const;
 
@@ -265,28 +235,20 @@ route(optionalStatusBodyApi.jobs.get, () => ({
 // should expose path params, context, and typed outbound messages to websocket handlers
 const socketApi = {
 	socket: {
-		room: {
-			method: "GET",
-			path: "/rooms/:roomId",
-			request: {
-				params: z.object({ roomId: z.string() }),
-			},
-			mode: "webSocket",
-			messages: {
-				client: {
-					echo: z.object({ text: z.string() }),
-					count: z.object({
-						value: z.string().transform((value) => Number(value)),
-					}),
-				},
-				server: {
-					ready: z.object({ roomId: z.string() }),
-					counted: z.object({
-						value: z.string().transform((value) => Number(value)),
-					}),
-				},
-			},
-		},
+		room: coreRoute
+			.ws("/rooms/:roomId")
+			.params(z.object({ roomId: z.string() }))
+			.clientMessage("echo", z.object({ text: z.string() }))
+			.clientMessage(
+				"count",
+				z.object({ value: z.string().transform((value) => Number(value)) }),
+			)
+			.serverMessage("ready", z.object({ roomId: z.string() }))
+			.serverMessage(
+				"counted",
+				z.object({ value: z.string().transform((value) => Number(value)) }),
+			)
+			.finalize(),
 	},
 } as const;
 
@@ -316,21 +278,16 @@ socketRequest.context.socket.onMessage((message) => {
 // should expose path params, context, and typed outbound events to sse handlers
 const sseApi = {
 	events: {
-		notifications: {
-			method: "GET",
-			path: "/events/:projectId",
-			mode: "sse",
-			request: {
-				params: z.object({ projectId: z.string() }),
-				query: z.object({ includeDone: z.boolean().optional() }),
-			},
-			responses: {
-				200: z.object({
+		notifications: coreRoute
+			.sse("/events/:projectId")
+			.params(z.object({ projectId: z.string() }))
+			.query(z.object({ includeDone: z.boolean().optional() }))
+			.response(
+				z.object({
 					id: z.string(),
 					createdAt: z.string().transform((value) => new Date(value)),
 				}),
-			},
-		},
+			),
 	},
 } as const;
 
@@ -423,24 +380,25 @@ expectError(
 // should use server-side transformed schema output as handler input
 const transformedApi = {
 	todos: {
-		transform: {
-			method: "POST",
-			path: "/todos/:id/transform",
-			request: {
-				params: z.object({ id: z.string() }).transform(({ id }) => ({
+		transform: coreRoute
+			.post("/todos/:id/transform")
+			.params(
+				z.object({ id: z.string() }).transform(({ id }) => ({
 					id: Number(id),
 				})),
-				body: z.object({ title: z.string() }).transform(({ title }) => ({
+			)
+			.body(
+				z.object({ title: z.string() }).transform(({ title }) => ({
 					title: title.trim(),
 					slug: title.toLowerCase(),
 				})),
-			},
-			responses: {
-				200: z.object({ id: z.number() }).transform(({ id }) => ({
+			)
+			.response(
+				200,
+				z.object({ id: z.number() }).transform(({ id }) => ({
 					id: String(id),
 				})),
-			},
-		},
+			),
 	},
 } as const;
 
