@@ -22,7 +22,7 @@ export const api = {
 					name: z.string().min(1),
 				}),
 			)
-			.clientMessage("message", z.object({ text: z.string().min(1) }))
+			.clientMessage("send", z.object({ text: z.string().min(1) }))
 			.serverMessage(
 				"joined",
 				z.object({
@@ -59,13 +59,13 @@ export const routes = router(api, {
 				message: { roomId, name },
 			});
 
-			context.socket.onMessage((message) => {
+			context.socket.onMessage((event) => {
 				broadcastToRoom(roomId, {
 					type: "message",
 					message: {
 						roomId,
 						name,
-						text: message.text,
+						text: event.message.text,
 						sentAt: new Date().toISOString(),
 					},
 				});
@@ -98,7 +98,10 @@ socket.onMessage((message) => {
 });
 
 socket.send({
-	text: "Hello from rest-rpc",
+	type: "send",
+	message: {
+		text: "Hello from rest-rpc",
+	},
 });
 ```
 

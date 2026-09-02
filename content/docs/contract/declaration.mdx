@@ -151,7 +151,7 @@ invalid when the same key appears in multiple request locations.
 
 ```ts
 route
-	.post("/todos")
+	.post("/todos/:id")
 	.params(z.object({ id: z.string() }))
 	.body(z.object({ id: z.string() }))
 	.response(201, todoSchema);

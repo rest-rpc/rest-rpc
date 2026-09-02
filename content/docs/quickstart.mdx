@@ -168,11 +168,11 @@ export const api = {
 ```ts contract.ts
 import { route, type } from "@rest-rpc/core";
 
-const todoSchema = {
-	id: type<string>(),
-	title: type<string>(),
-	completed: type<boolean>(),
-};
+const todoSchema = type<{
+	id: string;
+	title: string;
+	completed: boolean;
+}>();
 
 export const api = {
 	todos: {
