@@ -56,8 +56,8 @@ export const api = {
 Server implementation:
 
 ```ts
-import { router } from "@rest-rpc/express";
-import { initClient } from "@rest-rpc/core";
+// router and registerRoutes are exported from the server adapter package matching the framework, e.g. @rest-rpc/express
+import { router, registerRoutes } from "@rest-rpc/express";
 import { api } from "./contract";
 
 const routes = router(api, {
@@ -74,6 +74,9 @@ registerRoutes(app, routes, options);
 Client usage:
 
 ```ts
+import { initClient } from "@rest-rpc/core";
+import { api } from "./contract";
+
 const client = initClient(api, { baseUrl: "https://api.example.com" });
 // returns the 200 response body type, or throws on 404 or other errors
 const todoBody = await client.todos.getById.fetch({ id: "todo_1" });

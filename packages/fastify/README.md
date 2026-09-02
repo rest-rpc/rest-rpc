@@ -20,15 +20,12 @@ server handlers, fetch clients, openAPI documents, and more from it.
 Define a contract
 
 ```ts
-import { route } from "@rest-rpc/core";
-import { z } from "zod";
-
 export const api = {
 	todos: {
 		getById: route
 			.get("/todos/:id")
 			.params(z.object({ id: z.string() }))
-			.response(z.object({ id: z.string(), title: z.string() })),
+			.response(200, z.object({ id: z.string(), title: z.string() })),
 	},
 };
 ```
@@ -36,8 +33,6 @@ export const api = {
 Implement the contract on the server
 
 ```ts
-import { router } from "@rest-rpc/express";
-
 const routes = router(api, {
 	todos: {
 		getById({ id }) {
@@ -52,9 +47,6 @@ registerRoutes(app, routes);
 Use the contract on the client with RPC-style function calls
 
 ```ts
-import { initClient } from "@rest-rpc/core";
-import { api } from "./contract";
-
 const client = initClient(api, {
 	baseUrl: "https://api.example.com",
 });
