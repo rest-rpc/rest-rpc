@@ -1,9 +1,9 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type {
 	OpenApiRouteOptions,
-	RouteFactoryOptions,
 	RouteMetadata,
 } from "../contract/contract.ts";
+import type { RouteFactoryOptions } from "./index.ts";
 import type { JsonQuery, RequestKeys } from "../contract/request.ts";
 import type {
 	RequestParamsSchema,

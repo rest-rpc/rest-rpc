@@ -10,11 +10,8 @@ import {
 	Sse,
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { initClient } from "@rest-rpc/core";
-import {
-	route as contractRoute,
-	type as schemaType,
-} from "@rest-rpc/core/contract";
+import { initClient, route } from "@rest-rpc/core";
+import { type as schemaType } from "@rest-rpc/core/contract";
 import {
 	RestRpcModule,
 	Route,
@@ -184,13 +181,9 @@ it("combines Nest controller prefixes with contract route paths", async () => {
 
 it("registers router routes whose contract key paths would produce the same flattened name", async () => {
 	const collisionContract = {
-		a_b: contractRoute
-			.get("/flat")
-			.response(200, schemaType<{ source: string }>()),
+		a_b: route.get("/flat").response(200, schemaType<{ source: string }>()),
 		a: {
-			b: contractRoute
-				.get("/nested")
-				.response(200, schemaType<{ source: string }>()),
+			b: route.get("/nested").response(200, schemaType<{ source: string }>()),
 		},
 	} as const;
 	const server = await createNestAdapter(collisionContract, {
@@ -212,7 +205,7 @@ it("registers router routes whose contract key paths would produce the same flat
 
 it("supports async routers that close over values from Nest parameter decorators", async () => {
 	const asyncContract = {
-		get: contractRoute
+		get: route
 			.get("/async-items/:id")
 			.params(schemaType<{ id: string }>())
 			.headers(schemaType<{ "x-test-source": string }>())
@@ -303,7 +296,7 @@ it("passes non-rest-rpc Observable handlers through the global interceptor", asy
 
 const classContract = {
 	items: {
-		get: contractRoute
+		get: route
 			.get("/class-items/:id")
 			.params(schemaType<{ id: string }>())
 			.response(200, schemaType<{ id: string; title: string }>()),

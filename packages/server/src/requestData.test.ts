@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { route } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core";
 import z from "zod";
 import { flattenRequestData } from "./requestData.ts";
 

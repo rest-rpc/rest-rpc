@@ -1,8 +1,6 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type {
-	RouteFactoryOptions,
-	RouteMetadata,
-} from "../contract/contract.ts";
+import type { RouteMetadata } from "../contract/contract.ts";
+import type { RouteFactoryOptions } from "./index.ts";
 import type {
 	JsonQuery,
 	RequestKeys,

@@ -2,12 +2,12 @@ import {
 	type Contract,
 	type HttpRouteDeclaration,
 	type OpenApiRouteOptions,
-	route,
 	type RouteMetadata,
 	type SseRouteDeclaration,
 	type as schemaType,
 	type WebSocketRouteDeclaration,
 } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core";
 import {
 	expectAssignable,
 	expectError,

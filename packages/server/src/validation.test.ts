@@ -5,9 +5,9 @@ import {
 	formBody,
 	jsonQuery,
 	multipartBody,
-	route,
 	stream,
 } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core";
 import z from "zod";
 import {
 	resolveCustomResponseBody,

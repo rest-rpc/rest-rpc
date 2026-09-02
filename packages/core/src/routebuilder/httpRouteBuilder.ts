@@ -19,10 +19,10 @@ import type {
 	HttpMethod,
 	HttpRouteDeclaration,
 	OpenApiRouteOptions,
-	RouteFactoryOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
 } from "../contract/contract.ts";
+import type { RouteFactoryOptions } from "./index.ts";
 import type {
 	JsonQuery,
 	RequestHeadersDeclaration,
@@ -59,6 +59,7 @@ type RequestFor<TOptions> = (TOptions extends {
 
 type HttpRouteFor<TOptions, TMethod extends HttpMethod> = {
 	readonly method: TMethod;
+	readonly strictStatusCodes?: boolean;
 } & (TOptions extends {
 	strictStatusCodes: infer TStrictStatusCodes extends boolean;
 }
@@ -81,6 +82,7 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 	#localResponseStatuses = new Set<number>();
 	declare method: HttpMethod;
 	declare path: string;
+	declare strictStatusCodes?: boolean;
 	declare request?: HttpRouteDeclaration["request"];
 	declare responses?: RouteResponses;
 
@@ -91,7 +93,7 @@ class HttpRouteBuilder extends BaseRouteBuilder {
 	) {
 		super(method, path, options, httpRequestDefaults(options));
 		if (typeof options.strictStatusCodes === "boolean") {
-			Object.assign(this, { strictStatusCodes: options.strictStatusCodes });
+			this.strictStatusCodes = options.strictStatusCodes;
 		}
 		if (options.responses) {
 			this.responses = { ...options.responses };

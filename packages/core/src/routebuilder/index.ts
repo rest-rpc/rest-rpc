@@ -1,9 +1,10 @@
 import type {
-	HttpMethod,
-	RouteDeclaration,
-	RouteFactoryOptions,
+	CommonOpenApiRouteOptions,
+	RouteMetadata,
 } from "../contract/contract.ts";
 import { getPathParamNames } from "../contract/path.ts";
+import type { RequestHeadersSchema } from "../contract/request.ts";
+import type { RouteResponses } from "../contract/response.ts";
 import {
 	createHttpRoute,
 	type FinalizedHttpRoute,
@@ -20,6 +21,17 @@ import {
 	type WebSocketBuilderFor,
 } from "./webSocketRouteBuilder.ts";
 export { joinPathPrefix } from "./baseRouteBuilder.ts";
+
+/** Defaults applied locally by a configured route factory. */
+export type RouteFactoryOptions = {
+	flattenRequestKeys?: boolean;
+	strictStatusCodes?: boolean;
+	pathPrefix?: string;
+	metadata?: RouteMetadata;
+	responses?: RouteResponses;
+	headers?: RequestHeadersSchema;
+	openApi?: CommonOpenApiRouteOptions;
+};
 
 const assertStaticPathPrefix = (pathPrefix: string | undefined) => {
 	if (pathPrefix && getPathParamNames(pathPrefix).length > 0) {
@@ -50,30 +62,6 @@ const createFactory = (options: RouteFactoryOptions = {}) => {
 	};
 };
 
-export const assertProtocolRouteComplete = (route: {
-	method: HttpMethod;
-	path: string;
-	mode?: string;
-	responses?: { 200?: unknown };
-}) => {
-	if (route.mode === "sse" && !route.responses?.[200]) {
-		throw new Error(
-			`SSE route declaration at path "${route.path}" is missing a response schema.`,
-		);
-	}
-	if (route.mode === "webSocket") {
-		const messages = Object.hasOwn(route, "messages")
-			? (route as unknown as { messages: Record<string, unknown> }).messages
-			: undefined;
-		if (!messages?.client && !messages?.server) {
-			throw new Error(
-				`WebSocket route declaration at path "${route.path}" must declare client or server messages.`,
-			);
-		}
-	}
-	return route as RouteDeclaration;
-};
-
 /** Route-first contract declaration factory. */
 export const route = {
 	...createFactory(),
@@ -92,7 +80,6 @@ export type {
 	FinalizedWebSocketRoute,
 	HttpBuilderFor,
 	RouteFactory,
-	RouteFactoryOptions,
 	SseBuilderFor,
 	WebSocketBuilderFor,
 };

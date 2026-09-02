@@ -1,4 +1,5 @@
-import { route, type as schemaType } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core";
+import { type as schemaType } from "@rest-rpc/core/contract";
 import {
 	createTanstackQueryHelpers,
 	type CreateTanstackQueryHelpersOptions,

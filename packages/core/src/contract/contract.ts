@@ -6,7 +6,6 @@ import type {
 	RequestBodySchema,
 	RequestKeys,
 	RequestHeadersDeclaration,
-	RequestHeadersSchema,
 } from "./request.ts";
 import type { RouteResponses } from "./response.ts";
 import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
@@ -65,6 +64,7 @@ export type BaseRouteDeclaration = {
 	path: string;
 	method: HttpMethod;
 	mode?: RouteMode;
+	strictStatusCodes?: boolean;
 	request?: RouteRequestDeclaration;
 	metadata?: RouteMetadata;
 	openApi?: OpenApiRouteOptions;
@@ -123,17 +123,6 @@ export type RouteDeclaration =
 
 /** A route declaration or nested object tree of route declarations. */
 export type Contract = RouteDeclaration | { [key: string]: Contract };
-
-/** Defaults applied locally by a configured route factory. */
-export type RouteFactoryOptions = {
-	flattenRequestKeys?: boolean;
-	strictStatusCodes?: boolean;
-	pathPrefix?: string;
-	metadata?: RouteMetadata;
-	responses?: RouteResponses;
-	headers?: RequestHeadersSchema;
-	openApi?: CommonOpenApiRouteOptions;
-};
 
 /** Returns whether a value has the canonical shape of a route declaration. */
 export function isRouteDeclaration(value: unknown): value is RouteDeclaration {

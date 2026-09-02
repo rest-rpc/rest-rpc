@@ -1,4 +1,4 @@
-import { route } from "@rest-rpc/core/contract";
+import { route } from "@rest-rpc/core";
 import z from "zod";
 
 const itemSchema = z.object({ id: z.string(), title: z.string() });

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import z from "zod";
 import { type } from "../standard-schema/index.ts";
 import { noBody } from "../contract/body.ts";
-import { assertProtocolRouteComplete, route } from "./index.ts";
+import { route } from "./index.ts";
 
 describe("HTTP route builder runtime", () => {
 	it("constructs every HTTP method and keeps methods non-enumerable", () => {
@@ -264,7 +264,6 @@ describe("protocol route builder runtime", () => {
 		assert.equal(Object.hasOwn(declaration, "response"), false);
 		assert.equal("body" in declaration, false);
 		assert.equal("headers" in declaration, false);
-		assert.equal(assertProtocolRouteComplete(declaration), declaration);
 	});
 
 	it("builds WebSocket routes from both message directions", () => {
@@ -278,7 +277,6 @@ describe("protocol route builder runtime", () => {
 			client: { command: client },
 			server: { event: server },
 		});
-		assert.equal(assertProtocolRouteComplete(directional), directional);
 	});
 
 	it("normalizes discriminated WebSocket messages", () => {
@@ -316,28 +314,6 @@ describe("protocol route builder runtime", () => {
 					.serverMessage("event", server)
 					.serverMessage("event", server),
 			/WebSocket server message type "event" is already declared/,
-		);
-	});
-
-	it("rejects incomplete protocol routes", () => {
-		const schema = type<string>();
-		assert.throws(
-			() => assertProtocolRouteComplete(route.sse("/events")),
-			/missing a response schema/,
-		);
-		assert.throws(
-			() => assertProtocolRouteComplete(route.ws("/socket")),
-			/client or server messages/,
-		);
-		assert.doesNotThrow(() =>
-			assertProtocolRouteComplete(
-				route.ws("/socket").clientMessage("message", schema),
-			),
-		);
-		assert.doesNotThrow(() =>
-			assertProtocolRouteComplete(
-				route.ws("/socket").serverMessage("message", schema),
-			),
 		);
 	});
 

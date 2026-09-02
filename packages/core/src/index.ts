@@ -19,9 +19,6 @@ export type {
 	CustomBodyContentType,
 	FormBody,
 	FormBodySchema,
-	FinalizedHttpRoute,
-	FinalizedSseRoute,
-	FinalizedWebSocketRoute,
 	HttpRouteDeclaration,
 	JsonQuery,
 	MultipartBody,
@@ -44,9 +41,14 @@ export {
 	jsonQuery,
 	multipartBody,
 	noBody,
-	route,
 	stream,
 } from "./contract/index.ts";
+export { route } from "./routebuilder/index.ts";
+export type {
+	FinalizedHttpRoute,
+	FinalizedSseRoute,
+	FinalizedWebSocketRoute,
+} from "./routebuilder/index.ts";
 export type {
 	CreateOpenApiDocumentOptions,
 	OpenApiDocument,

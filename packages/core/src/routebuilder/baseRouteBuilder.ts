@@ -10,10 +10,10 @@ import type {
 	HttpMethod,
 	OpenApiResponseOptions,
 	OpenApiRouteOptions,
-	RouteFactoryOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
 } from "../contract/contract.ts";
+import type { RouteFactoryOptions } from "./index.ts";
 import { getPathParamNames } from "../contract/path.ts";
 import type {
 	RequestKeys,

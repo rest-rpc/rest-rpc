@@ -31,7 +31,6 @@ export type {
 	OpenApiResponseOptions,
 	OpenApiRouteOptions,
 	RouteDeclaration,
-	RouteFactoryOptions,
 	RouteMetadata,
 	RouteMode,
 	RouteRequestDeclaration,
@@ -39,12 +38,6 @@ export type {
 	WebSocketRouteDeclaration,
 } from "./contract.ts";
 export { isRouteDeclaration } from "./contract.ts";
-export { route } from "../routebuilder/index.ts";
-export type {
-	FinalizedHttpRoute,
-	FinalizedSseRoute,
-	FinalizedWebSocketRoute,
-} from "../routebuilder/index.ts";
 export {
 	getPathParamNames,
 	getPathParamSegmentName,
