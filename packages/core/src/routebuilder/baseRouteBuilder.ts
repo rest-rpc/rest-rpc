@@ -24,7 +24,6 @@ import type {
 import {
 	getRequestHeaderSchemas,
 	isJsonQuery,
-	jsonQuery as declareJsonQuery,
 	REQUEST_CONTEXT_KEY,
 } from "../contract/request.ts";
 import { resolveBuiltInRequestKeys } from "../contract/requestKeys.ts";
@@ -306,7 +305,10 @@ export class BaseRouteBuilder {
 	}
 
 	jsonQuery(schema: StandardSchemaV1) {
-		this.requestForWrite().query = declareJsonQuery(schema);
+		this.requestForWrite().query = {
+			kind: "jsonQuery",
+			schema,
+		};
 		this.recalculateRequestKeys();
 		return this;
 	}
