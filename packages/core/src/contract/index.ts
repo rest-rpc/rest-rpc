@@ -4,10 +4,16 @@ export type {
 	FinalizedHttpRoute,
 	FinalizedSseRoute,
 	FinalizedWebSocketRoute,
+	HttpBuilderFor,
+	SseBuilderFor,
+	WebSocketBuilderFor,
 } from "./routeFactory.ts";
 export type {
 	CustomBody,
 	CustomBodyContentType,
+	CustomResponseBody,
+	CustomResponseInput,
+	BodyWithArrayKeysOptions,
 	FormBody,
 	FormBodySchema,
 	MultipartBody,
@@ -15,6 +21,14 @@ export type {
 	NoBody,
 	Stream,
 } from "./body.ts";
+export type {
+	BuilderState,
+	EmptyObject,
+	ProtocolRequestFor,
+	UseBuilderMethod,
+	WhenUnused,
+	WithRequest,
+} from "./baseRouteBuilder.ts";
 export {
 	isCustomBody,
 	isFormBody,
@@ -38,6 +52,7 @@ export type { HttpRouteDeclaration } from "./httpRouteBuilder.ts";
 export type {
 	ClientSseReceived,
 	ServerSseSent,
+	SseBuilder,
 	SseRouteDeclaration,
 } from "./sseRouteBuilder.ts";
 export type {
@@ -45,6 +60,7 @@ export type {
 	ClientSent,
 	ServerReceived,
 	ServerSent,
+	WebSocketBuilder,
 	WebSocketMessageSchemas,
 	WebSocketRouteDeclaration,
 } from "./websocketRouteBuilder.ts";
@@ -63,6 +79,8 @@ export type {
 	RequestKeys,
 	RequestHeadersDeclaration,
 	RequestHeadersSchema,
+	RequestParamsSchema,
+	RequestQuerySchema,
 	RequestScalar,
 	RequestSegment,
 	ServerRequest,
@@ -79,6 +97,7 @@ export type {
 	ResponseBodySchema,
 	ResponseDeclaration,
 	ResponseHeaders,
+	RegularResponseDeclaration,
 	RouteResponses,
 	ServerErrors,
 	ServerResponse,

@@ -415,6 +415,7 @@ type HttpBuilder<TState extends HttpBuilderState> =
 		HttpRequestSetters<TState> &
 		HttpFinalize<TState>;
 
+/** Creates the initial HTTP builder type for route factory options and a method. */
 export type HttpBuilderFor<TOptions, TMethod extends HttpMethod> = HttpBuilder<{
 	route: HttpRouteFor<TOptions, TMethod>;
 	request: RequestFor<TOptions>;

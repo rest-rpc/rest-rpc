@@ -237,6 +237,13 @@ type UseQueryArgs<E extends RouteDeclaration, TData = RouteQueryData<E>> =
 type GetKeyArgs<E extends RouteDeclaration> =
 	ClientRequest<E> extends never ? [] : [request: ClientRequest<E>];
 
+/** Creates query options for a route, including disabled requests. */
+export type RouteQueryOptionsMethod<E extends RouteDeclaration> = {
+	<TData = RouteQueryData<E>>(
+		...args: UseQueryArgs<E, TData>
+	): QueryOptionsResultFor<E, TData>;
+};
+
 type TanstackQueryBaseRouteValue<E extends RouteDeclaration> = {
 	mutationOptions: (
 		options?: MutationOptionsFor<E>,
@@ -245,9 +252,7 @@ type TanstackQueryBaseRouteValue<E extends RouteDeclaration> = {
 		RouteQueryError<E>,
 		RouteMutationVariables<E>
 	>;
-	queryOptions: <TData = RouteQueryData<E>>(
-		...args: UseQueryArgs<E, TData>
-	) => QueryOptionsResultFor<E, TData>;
+	queryOptions: RouteQueryOptionsMethod<E>;
 	infiniteQueryOptions: <TData = RouteInfiniteQueryData<E>>(
 		options: InfiniteQueryOptionsFor<E, TData>,
 	) => InfiniteQueryOptionsResultFor<E, TData>;

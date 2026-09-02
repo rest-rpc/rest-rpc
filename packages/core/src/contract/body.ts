@@ -63,6 +63,7 @@ export type MultipartBody<
  */
 export type CustomBodyContentType = string | readonly string[];
 
+/** Options for a structured body whose selected fields are encoded as arrays. */
 export type BodyWithArrayKeysOptions<
 	TSchema extends BodyWithArrayKeysSchema = BodyWithArrayKeysSchema,
 	TArrayKeys extends readonly string[] = readonly string[],
@@ -126,6 +127,7 @@ export type CustomResponseBody<
 	contentType: TContentType;
 };
 
+/** Input accepted when declaring a response with a custom content type. */
 export type CustomResponseInput<
 	TSchema extends StandardSchemaV1 = StandardSchemaV1,
 	TContentType extends CustomBodyContentType = CustomBodyContentType,

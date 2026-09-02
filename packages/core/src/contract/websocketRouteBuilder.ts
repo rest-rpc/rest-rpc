@@ -320,12 +320,14 @@ type WebSocketRequestSetters<TState extends WebSocketBuilderState> = WhenUnused<
 				): WebSocketBuilder<UseBuilderMethod<TState, "withMetadata">>;
 			});
 
+/** A fluent WebSocket route builder at a particular declaration state. */
 export type WebSocketBuilder<TState extends WebSocketBuilderState> =
 	WebSocketBuilderDeclaration<TState> &
 		WebSocketMessageSetters<TState> &
 		WebSocketRequestSetters<TState> &
 		WebSocketFinalize<TState>;
 
+/** Creates the initial WebSocket builder type for route factory options. */
 export type WebSocketBuilderFor<TOptions> = WebSocketBuilder<{
 	request: ProtocolRequestFor<TOptions>;
 	used: never;

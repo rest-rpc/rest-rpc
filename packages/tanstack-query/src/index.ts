@@ -2,6 +2,7 @@ export type {
 	CreateTanstackQueryHelpersOptions,
 	RouteInfiniteQueryData,
 	RouteMutationVariables,
+	RouteQueryOptionsMethod,
 	RouteQueryData,
 	RouteQueryError,
 	RouteStreamedQueryData,

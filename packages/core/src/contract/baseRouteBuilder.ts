@@ -23,8 +23,10 @@ import {
 } from "./request.ts";
 import { resolveBuiltInRequestKeys } from "./requestKeys.ts";
 
+/** An object type with no declared properties. */
 export type EmptyObject = Record<never, never>;
 
+/** Shared type state tracked by fluent route builders. */
 export type BuilderState<
 	TRequest = EmptyObject,
 	TUsed extends string = never,
@@ -33,12 +35,14 @@ export type BuilderState<
 	used: TUsed;
 };
 
+/** Resolves the initial protocol-route request state from factory options. */
 export type ProtocolRequestFor<TOptions> = TOptions extends {
 	flattenRequestKeys: infer TFlatten extends boolean;
 }
 	? { flattenKeys: TFlatten }
 	: EmptyObject;
 
+/** Returns builder state with one request declaration field updated. */
 export type WithRequest<
 	TState extends BuilderState<unknown, string>,
 	TKey extends keyof RouteRequestDeclaration,
@@ -47,6 +51,7 @@ export type WithRequest<
 	request: Omit<TState["request"], TKey> & Record<TKey, TValue>;
 };
 
+/** Marks a fluent builder method as used in builder state. */
 export type UseBuilderMethod<
 	TState extends BuilderState<unknown, string>,
 	TMethod extends string,
@@ -54,6 +59,7 @@ export type UseBuilderMethod<
 	used: TState["used"] | TMethod;
 };
 
+/** Exposes a builder member only while its method remains unused. */
 export type WhenUnused<
 	TState extends BuilderState<unknown, string>,
 	TMethod extends string,

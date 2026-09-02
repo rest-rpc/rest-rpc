@@ -172,11 +172,13 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 				): SseBuilder<UseBuilderMethod<TState, "withOpenApi">>;
 			});
 
+/** A fluent SSE route builder at a particular declaration state. */
 export type SseBuilder<TState extends SseBuilderState> =
 	SseBuilderDeclaration<TState> &
 		SseResponseSetter<TState> &
 		SseRequestSetters<TState>;
 
+/** Creates the initial SSE builder type for route factory options. */
 export type SseBuilderFor<TOptions> = SseBuilder<{
 	request: ProtocolRequestFor<TOptions>;
 	used: never;

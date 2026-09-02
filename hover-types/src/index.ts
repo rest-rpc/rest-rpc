@@ -29,7 +29,8 @@ export const hoverApi = {
 			.params(schemaType<{ id: string }>())
 			.query(schemaType<{ includeDone?: boolean }>())
 			.response(200, schemaType<{ id: string; title: string }>())
-			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
+			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>())
+			.finalize(),
 		page: route
 			.get("/todos/page")
 			.jsonQuery(
@@ -45,33 +46,41 @@ export const hoverApi = {
 					items: Array<{ id: string; title: string }>;
 					nextCursor?: string;
 				}>(),
-			),
+			)
+			.finalize(),
 		create: route
 			.post("/todos")
 			.body(schemaType<{ title: string }>())
 			.response(201, {
 				body: schemaType<{ id: string; title: string }>(),
-				headers: {
-					location: schemaType<string>(),
-					"x-next-cursor": schemaType<string | undefined>(),
-				},
+				headers: schemaType<{ location: string; "x-next-cursor"?: string }>(),
 			})
-			.response(400, schemaType<{ code: "INVALID_TODO" }>()),
+			.response(400, schemaType<{ code: "INVALID_TODO" }>())
+			.finalize(),
 		download: route
 			.get("/todos/:id/export")
 			.params(schemaType<{ id: string }>())
 			.customResponse(200, {
 				schema: schemaType<Blob>(),
 				contentType: ["text/csv", "application/json"] as const,
-			}),
+			})
+			.finalize(),
 		events: route
 			.get("/todos/events")
-			.streamResponse(200, schemaType<{ id: string; message: string }>()),
+			.streamResponse(200, schemaType<{ id: string; message: string }>())
+			.finalize(),
 		remove: route
 			.delete("/todos/:id")
 			.params(schemaType<{ id: string }>())
 			.response(204)
-			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
+			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>())
+			.finalize(),
+		sse: route
+			.sse("/todos/sse")
+			.response(schemaType<{ id: string; message: string }>()),
+		ws: route
+			.ws("/todos/ws")
+			.clientMessage("", schemaType<{ id: string; message: string }>()),
 	},
 };
 

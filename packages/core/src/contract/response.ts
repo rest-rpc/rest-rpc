@@ -20,6 +20,7 @@ export type ResponseHeaders = StandardSchemaV1<
 	Record<string, string | number | undefined>
 >;
 
+/** Declares a standard-schema response body with optional typed headers. */
 export type RegularResponseDeclaration =
 	| ResponseSchema
 	| {
