@@ -1,19 +1,16 @@
+import type { Contract, RouteDeclaration } from "../contract/contract.ts";
+import type { ClientRequest } from "../contract/request.ts";
 import type {
-	Contract,
-	RouteDeclaration,
-	WebSocketRouteDeclaration,
-} from "../contract/contract.ts";
-import type {
-	ClientReceived,
-	ClientRequest,
-	ClientSent,
-	IsWebSocketRoute,
-} from "../contract/request.ts";
-import type {
-	ClientSseReceived,
 	ClientResponseBody,
 	DeclaredClientResponse,
 } from "../contract/response.ts";
+import type { ClientSseReceived } from "../contract/sseRouteBuilder.ts";
+import type {
+	ClientReceived,
+	ClientSent,
+	IsWebSocketRoute,
+	WebSocketRouteDeclaration,
+} from "../contract/websocketRouteBuilder.ts";
 
 export type FetchOptions = Omit<RequestInit, "method" | "body" | "headers">;
 

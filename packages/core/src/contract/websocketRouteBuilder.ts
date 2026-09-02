@@ -1,13 +1,20 @@
-import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type { RouteMetadata } from "./contract.ts";
-import type { RouteFactoryOptions } from "./routeBuilder.ts";
+import {
+	type StandardSchemaV1,
+	validateStandardSchemaSync,
+} from "../standard-schema/index.ts";
+import type { RouteDeclaration } from "./contract.ts";
+import type {
+	BaseRouteDeclaration,
+	RouteMetadata,
+	RouteRequestDeclaration,
+} from "./baseRouteDeclaration.ts";
+import type { RouteFactoryOptions } from "./routeFactory.ts";
 import type {
 	JsonQuery,
 	RequestKeys,
 	RequestParamsSchema,
 	RequestQuerySchema,
 } from "./request.ts";
-import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
 import {
 	BaseRouteBuilder,
 	type BuilderState,
@@ -18,6 +25,126 @@ import {
 	type WhenUnused,
 	type WithRequest,
 } from "./baseRouteBuilder.ts";
+
+/** Maps WebSocket message discriminator values to their schemas. */
+export type WebSocketMessageSchemas = Record<string, StandardSchemaV1>;
+
+const messageIssue = (message: string): StandardSchemaV1.FailureResult => ({
+	issues: [{ message }],
+});
+
+const isRecord = (value: unknown): value is Record<PropertyKey, unknown> =>
+	typeof value === "object" && value !== null;
+
+/** Validates a WebSocket message envelope synchronously. */
+export function validateWebSocketMessageSync(
+	declaration: WebSocketMessageSchemas,
+	value: unknown,
+): StandardSchemaV1.Result<unknown> {
+	if (!isRecord(value)) {
+		return messageIssue("Expected WebSocket message envelope.");
+	}
+
+	const discriminatorValue = value.type;
+	if (typeof discriminatorValue !== "string") {
+		return messageIssue("Expected WebSocket message discriminator.");
+	}
+
+	const schema = Object.hasOwn(declaration, discriminatorValue)
+		? declaration[discriminatorValue]
+		: undefined;
+	if (!schema) {
+		return messageIssue("Unknown WebSocket message discriminator.");
+	}
+
+	const result = validateStandardSchemaSync(schema, value.message);
+	if (result.issues) return result;
+
+	return {
+		value: {
+			type: discriminatorValue,
+			message: result.value,
+		},
+	};
+}
+
+type WebSocketRouteMessages =
+	| { client: WebSocketMessageSchemas; server?: never }
+	| { client?: never; server: WebSocketMessageSchemas }
+	| {
+			client: WebSocketMessageSchemas;
+			server: WebSocketMessageSchemas;
+	  };
+
+/** A canonical WebSocket route declaration. */
+export type WebSocketRouteDeclaration = Omit<
+	BaseRouteDeclaration,
+	"method" | "mode"
+> & {
+	method: "GET";
+	mode: "webSocket";
+	request?: Omit<RouteRequestDeclaration, "body" | "headers"> & {
+		body?: never;
+		headers?: never;
+	};
+	messages: WebSocketRouteMessages;
+	responses?: never;
+};
+
+/** Returns whether a route declaration is a WebSocket route. */
+export type IsWebSocketRoute<E extends RouteDeclaration> = E extends {
+	mode: "webSocket";
+}
+	? true
+	: false;
+
+type InferDiscriminatedWebSocketMessage<
+	TSchemas extends WebSocketMessageSchemas,
+	TIO extends "input" | "output",
+> = {
+	[TKey in keyof TSchemas & string]: {
+		type: TKey;
+	} & {
+		message: TIO extends "input"
+			? StandardSchemaV1.InferInput<TSchemas[TKey]>
+			: StandardSchemaV1.InferOutput<TSchemas[TKey]>;
+	};
+}[keyof TSchemas & string];
+
+type InferWebSocketMessage<
+	TMessage,
+	TIO extends "input" | "output",
+> = TMessage extends WebSocketMessageSchemas
+	? InferDiscriminatedWebSocketMessage<TMessage, TIO>
+	: never;
+
+/** Infers the message type a client can send on a WebSocket route. */
+export type ClientSent<E extends RouteDeclaration> = E extends {
+	messages: { client: infer R };
+}
+	? InferWebSocketMessage<R, "input">
+	: never;
+
+/** Infers the message type a server receives on a WebSocket route. */
+export type ServerReceived<E extends RouteDeclaration> = E extends {
+	messages: { client: infer R };
+}
+	? InferWebSocketMessage<R, "output">
+	: never;
+
+/** Infers the message type a server can send on a WebSocket route. */
+export type ServerSent<E extends RouteDeclaration> = E extends {
+	messages: { server: infer R };
+}
+	? InferWebSocketMessage<R, "input">
+	: never;
+
+/** Infers the message type a client receives from a WebSocket route. */
+export type ClientReceived<E extends RouteDeclaration> = E extends {
+	messages: { server: infer R };
+}
+	? InferWebSocketMessage<R, "output">
+	: never;
 
 class WebSocketRouteBuilder extends BaseRouteBuilder {
 	declare messages?: Partial<

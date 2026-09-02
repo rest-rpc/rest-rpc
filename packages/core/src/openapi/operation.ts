@@ -5,11 +5,9 @@ import {
 	isNoBody,
 	isStream,
 } from "../contract/body.ts";
-import type {
-	HttpRouteDeclaration,
-	OpenApiResponseOptions,
-	SseRouteDeclaration,
-} from "../contract/contract.ts";
+import type { OpenApiResponseOptions } from "../contract/baseRouteDeclaration.ts";
+import type { HttpRouteDeclaration } from "../contract/httpRouteBuilder.ts";
+import type { SseRouteDeclaration } from "../contract/sseRouteBuilder.ts";
 import type {
 	JsonQuery,
 	RequestHeadersDeclaration,

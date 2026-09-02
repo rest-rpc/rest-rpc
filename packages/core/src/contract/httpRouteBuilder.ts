@@ -17,12 +17,12 @@ import {
 } from "./body.ts";
 import type {
 	HttpMethod,
-	HttpRouteDeclaration,
+	BaseRouteDeclaration,
 	OpenApiRouteOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
-} from "./contract.ts";
-import type { RouteFactoryOptions } from "./routeBuilder.ts";
+} from "./baseRouteDeclaration.ts";
+import type { RouteFactoryOptions } from "./routeFactory.ts";
 import type {
 	JsonQuery,
 	RequestHeadersDeclaration,
@@ -77,6 +77,13 @@ const httpRequestDefaults = (
 					: {}),
 			}
 		: undefined;
+
+/** A canonical ordinary HTTP route declaration. */
+export type HttpRouteDeclaration = BaseRouteDeclaration & {
+	mode?: "http";
+	responses: RouteResponses;
+	messages?: never;
+};
 
 class HttpRouteBuilder extends BaseRouteBuilder {
 	#localResponseStatuses = new Set<number>();

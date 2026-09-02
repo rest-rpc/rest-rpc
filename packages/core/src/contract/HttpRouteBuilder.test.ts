@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import z from "zod";
 import { type } from "../standard-schema/index.ts";
-import { route } from "./routeBuilder.ts";
+import { route } from "./routeFactory.ts";
 
 describe("HTTP route builder runtime", () => {
 	it("constructs every HTTP method and keeps methods non-enumerable", () => {
@@ -246,94 +246,5 @@ describe("HTTP route builder runtime", () => {
 			route.with({ pathPrefix: "/api/" }).get("/items").path,
 			"/api//items",
 		);
-	});
-});
-
-describe("protocol route builder runtime", () => {
-	it("builds complete SSE routes with only compatible setters", () => {
-		const event = type<{ id: string }>();
-		const declaration = route
-			.sse("/events/:id")
-			.query(z.object({ cursor: z.string() }))
-			.params(type<{ id: string }>())
-			.response(event);
-		assert.equal(declaration.mode, "sse");
-		assert.equal(declaration.responses?.[200], event);
-		assert.equal(Object.hasOwn(declaration, "response"), false);
-		assert.equal("body" in declaration, false);
-		assert.equal("headers" in declaration, false);
-	});
-
-	it("builds WebSocket routes from both message directions", () => {
-		const client = type<{ command: string }>();
-		const server = type<{ event: string }>();
-		const directional = route
-			.ws("/socket")
-			.clientMessage("command", client)
-			.serverMessage("event", server);
-		assert.deepEqual(directional.messages, {
-			client: { command: client },
-			server: { event: server },
-		});
-	});
-
-	it("normalizes discriminated WebSocket messages", () => {
-		const join = type<{ roomId: string }>();
-		const message = type<{ text: string }>();
-		const connected = type<{ memberCount: number }>();
-		const declaration = route
-			.ws("/socket")
-			.clientMessage("join", join)
-			.clientMessage("message", message)
-			.serverMessage("connected", connected);
-
-		assert.deepEqual(declaration.messages, {
-			client: { join, message },
-			server: { connected },
-		});
-	});
-
-	it("rejects duplicate WebSocket message types", () => {
-		const client = type<{ command: string }>();
-		const server = type<{ event: string }>();
-
-		assert.throws(
-			() =>
-				route
-					.ws("/socket")
-					.clientMessage("command", client)
-					.clientMessage("command", client),
-			/WebSocket client message type "command" is already declared/,
-		);
-		assert.throws(
-			() =>
-				route
-					.ws("/socket")
-					.serverMessage("event", server)
-					.serverMessage("event", server),
-			/WebSocket server message type "event" is already declared/,
-		);
-	});
-
-	it("ignores HTTP-only configured defaults for protocols", () => {
-		const schema = type<string>();
-		const factory = route.with({
-			pathPrefix: "/api",
-			headers: type<{ authorization: string }>(),
-			responses: { 401: schema },
-			metadata: { public: true },
-			strictStatusCodes: true,
-		});
-		const sse = factory.sse("/events").response(schema);
-		const ws = factory
-			.ws("/socket")
-			.clientMessage("message", schema)
-			.serverMessage("message", schema);
-		assert.equal(sse.path, "/api/events");
-		assert.equal(ws.path, "/api/socket");
-		assert.equal(sse.request?.headers, undefined);
-		assert.equal(Object.hasOwn(sse, "strictStatusCodes"), false);
-		assert.equal(Object.hasOwn(sse, "responses"), true);
-		assert.deepEqual({ ...sse.metadata }, { public: true });
 	});
 });

@@ -1,8 +1,7 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { CustomBody, FormBody, MultipartBody, NoBody } from "./body.ts";
-import type { RouteDeclaration } from "./contract.ts";
+import type { BaseRouteDeclaration } from "./baseRouteDeclaration.ts";
 import type { InferCustomBody } from "./response.ts";
-import type { WebSocketMessageSchemas } from "./websocketMessages.ts";
 
 export type RequestSegment = "body" | "query" | "params" | "headers";
 export type RequestKeys = Record<string, RequestSegment>;
@@ -213,7 +212,7 @@ type InferGroupedRequestSegments<R, TIO extends "input" | "output"> = {
 };
 
 type RouteRequest<
-	E extends RouteDeclaration,
+	E extends BaseRouteDeclaration,
 	TIO extends "input" | "output",
 > = E extends { request: infer TRequest }
 	? TRequest extends { flattenKeys: false }
@@ -238,7 +237,7 @@ type HasRequestInput<TRequest> = [
 	: true;
 
 type InferRequestFor<
-	E extends RouteDeclaration,
+	E extends BaseRouteDeclaration,
 	TIO extends "input" | "output",
 > =
 	RouteRequest<E, TIO> extends infer R
@@ -281,71 +280,11 @@ type OptionalRequestKeys<T, TOptionalKeys extends PropertyKey> = [T] extends [
  * @see {@link https://rest-rpc.dev/docs/type-helpers#fetch-client}
  */
 export type ClientRequest<
-	E extends RouteDeclaration,
+	E extends BaseRouteDeclaration,
 	TOptionalKeys extends PropertyKey = never,
 > = OptionalRequestKeys<InferRequestFor<E, "input">, TOptionalKeys>;
 
-export type ServerRequest<E extends RouteDeclaration> = InferRequestFor<
+export type ServerRequest<E extends BaseRouteDeclaration> = InferRequestFor<
 	E,
 	"output"
 >;
-
-export type IsWebSocketRoute<E extends RouteDeclaration> = E extends {
-	mode: "webSocket";
-}
-	? true
-	: false;
-
-type InferDiscriminatedWebSocketMessage<
-	TSchemas extends WebSocketMessageSchemas,
-	TIO extends "input" | "output",
-> = {
-	[TKey in keyof TSchemas & string]: {
-		type: TKey;
-	} & {
-		message: TIO extends "input"
-			? StandardSchemaV1.InferInput<TSchemas[TKey]>
-			: StandardSchemaV1.InferOutput<TSchemas[TKey]>;
-	};
-}[keyof TSchemas & string];
-
-type InferWebSocketMessage<
-	TMessage,
-	TIO extends "input" | "output",
-> = TMessage extends WebSocketMessageSchemas
-	? InferDiscriminatedWebSocketMessage<TMessage, TIO>
-	: never;
-
-/**
- * Infers the message type a client can send on a WebSocket route.
- *
- * @see {@link https://rest-rpc.dev/docs/type-helpers#fetch-client}
- */
-export type ClientSent<E extends RouteDeclaration> = E extends {
-	messages: { client: infer R };
-}
-	? InferWebSocketMessage<R, "input">
-	: never;
-
-export type ServerReceived<E extends RouteDeclaration> = E extends {
-	messages: { client: infer R };
-}
-	? InferWebSocketMessage<R, "output">
-	: never;
-
-export type ServerSent<E extends RouteDeclaration> = E extends {
-	messages: { server: infer R };
-}
-	? InferWebSocketMessage<R, "input">
-	: never;
-
-/**
- * Infers the message type a client receives from a WebSocket route.
- *
- * @see {@link https://rest-rpc.dev/docs/type-helpers#fetch-client}
- */
-export type ClientReceived<E extends RouteDeclaration> = E extends {
-	messages: { server: infer R };
-}
-	? InferWebSocketMessage<R, "output">
-	: never;

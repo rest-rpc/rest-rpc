@@ -7,8 +7,8 @@ import type {
 	OpenApiRouteOptions,
 	RouteMetadata,
 	RouteRequestDeclaration,
-} from "./contract.ts";
-import type { RouteFactoryOptions } from "./routeBuilder.ts";
+} from "./baseRouteDeclaration.ts";
+import type { RouteFactoryOptions } from "./routeFactory.ts";
 import { getPathParamNames } from "./path.ts";
 import type {
 	RequestKeys,

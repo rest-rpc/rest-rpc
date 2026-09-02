@@ -1,9 +1,9 @@
-import type {
-	RouteDeclaration,
-	WebSocketRouteDeclaration,
-} from "../contract/contract.ts";
-import type { ClientReceived } from "../contract/request.ts";
-import { validateWebSocketMessageSync } from "../contract/websocketMessages.ts";
+import type { RouteDeclaration } from "../contract/contract.ts";
+import {
+	type ClientReceived,
+	validateWebSocketMessageSync,
+	type WebSocketRouteDeclaration,
+} from "../contract/websocketRouteBuilder.ts";
 import type { ClientSocket } from "./types.ts";
 
 export const buildWebSocketUrl = (url: string) => {

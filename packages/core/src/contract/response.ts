@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { CustomBody, CustomResponseBody, NoBody, Stream } from "./body.ts";
-import type { RouteDeclaration } from "./contract.ts";
+import type { BaseRouteDeclaration } from "./baseRouteDeclaration.ts";
 
 export type ResponseSchema = StandardSchemaV1;
 
@@ -238,7 +238,7 @@ export type HasMultipleSuccessfulResponses<TResponses> = IsUnion<
 	SuccessfulResponseKeys<TResponses>
 >;
 
-export type DeclaredClientResponse<E extends RouteDeclaration> = E extends {
+export type DeclaredClientResponse<E extends BaseRouteDeclaration> = E extends {
 	responses: infer TResponses;
 }
 	? {
@@ -248,7 +248,7 @@ export type DeclaredClientResponse<E extends RouteDeclaration> = E extends {
 		}[keyof TResponses]
 	: never;
 
-export type ServerResponse<E extends RouteDeclaration> = E extends {
+export type ServerResponse<E extends BaseRouteDeclaration> = E extends {
 	responses: infer TResponses;
 }
 	? {
@@ -258,7 +258,7 @@ export type ServerResponse<E extends RouteDeclaration> = E extends {
 		}[keyof TResponses]
 	: never;
 
-export type SuccessfulDeclaredClientResponse<E extends RouteDeclaration> =
+export type SuccessfulDeclaredClientResponse<E extends BaseRouteDeclaration> =
 	E extends {
 		responses: infer TResponses;
 	}
@@ -271,7 +271,7 @@ export type SuccessfulDeclaredClientResponse<E extends RouteDeclaration> =
 			}[keyof TResponses]
 		: never;
 
-type ServerSuccessResponse<E extends RouteDeclaration> = E extends {
+type ServerSuccessResponse<E extends BaseRouteDeclaration> = E extends {
 	responses: infer TResponses;
 }
 	? {
@@ -301,21 +301,13 @@ type InferSingleServerResponseBody<TResponse> = [TResponse] extends [never]
 				? TBody
 				: never;
 
-type SseResponseDeclaration<E extends RouteDeclaration> = E extends {
+type SseResponseDeclaration<E extends BaseRouteDeclaration> = E extends {
 	responses: { 200: infer TResponse };
 }
 	? TResponse
 	: never;
 
-type InferSseClientResponseBody<E extends RouteDeclaration> = [
-	SseResponseDeclaration<E>,
-] extends [never]
-	? InferSingleResponseBody<SuccessfulDeclaredClientResponse<E>>
-	: SseResponseDeclaration<E> extends ResponseDeclaration
-		? InferClientResponseBody<ResponseBody<SseResponseDeclaration<E>>>
-		: never;
-
-type InferSseServerResponseBody<E extends RouteDeclaration> = [
+type InferSseServerResponseBody<E extends BaseRouteDeclaration> = [
 	SseResponseDeclaration<E>,
 ] extends [never]
 	? InferSingleServerResponseBody<ServerSuccessResponse<E>>
@@ -328,46 +320,22 @@ type InferSseServerResponseBody<E extends RouteDeclaration> = [
  *
  * @see {@link https://rest-rpc.dev/docs/type-helpers#fetch-client}
  */
-export type ClientResponseBody<E extends RouteDeclaration> = E extends {
+export type ClientResponseBody<E extends BaseRouteDeclaration> = E extends {
 	mode: "sse";
 }
 	? never
 	: InferSingleResponseBody<SuccessfulDeclaredClientResponse<E>>;
 
-export type ServerSuccessBody<E extends RouteDeclaration> = E extends {
+export type ServerSuccessBody<E extends BaseRouteDeclaration> = E extends {
 	mode: "sse";
 }
 	? AsyncIterable<InferSseServerResponseBody<E>>
 	: InferSingleServerResponseBody<ServerSuccessResponse<E>>;
 
-/**
- * Infers the event payload type a client receives from an SSE route.
- *
- * @see {@link https://rest-rpc.dev/docs/type-helpers#server-sent-events}
- */
-export type ClientSseReceived<E extends RouteDeclaration> = E extends {
-	mode: "sse";
-}
-	? InferSseClientResponseBody<E>
-	: never;
+export type ErrorDeclaredClientResponse<E extends BaseRouteDeclaration> =
+	Exclude<DeclaredClientResponse<E>, SuccessfulDeclaredClientResponse<E>>;
 
-/**
- * Infers the event payload type a server sends from an SSE route.
- *
- * @see {@link https://rest-rpc.dev/docs/type-helpers#server-sent-events}
- */
-export type ServerSseSent<E extends RouteDeclaration> = E extends {
-	mode: "sse";
-}
-	? InferSseServerResponseBody<E>
-	: never;
-
-export type ErrorDeclaredClientResponse<E extends RouteDeclaration> = Exclude<
-	DeclaredClientResponse<E>,
-	SuccessfulDeclaredClientResponse<E>
->;
-
-export type ServerErrors<E extends RouteDeclaration> = Exclude<
+export type ServerErrors<E extends BaseRouteDeclaration> = Exclude<
 	ServerResponse<E>,
 	ServerSuccessResponse<E>
 >;

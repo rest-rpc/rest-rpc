@@ -1,9 +1,6 @@
-import type {
-	Contract,
-	SseRouteDeclaration,
-	HttpRouteDeclaration,
-	RouteDeclaration,
-} from "../contract/contract.ts";
+import type { Contract, RouteDeclaration } from "../contract/contract.ts";
+import type { HttpRouteDeclaration } from "../contract/httpRouteBuilder.ts";
+import type { SseRouteDeclaration } from "../contract/sseRouteBuilder.ts";
 import { toOpenApiPath } from "../contract/path.ts";
 import { contractRouteEntries } from "../contract/traversal.ts";
 import type {

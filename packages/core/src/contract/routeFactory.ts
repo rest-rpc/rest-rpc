@@ -1,4 +1,7 @@
-import type { CommonOpenApiRouteOptions, RouteMetadata } from "./contract.ts";
+import type {
+	CommonOpenApiRouteOptions,
+	RouteMetadata,
+} from "./baseRouteDeclaration.ts";
 import { getPathParamNames } from "./path.ts";
 import type { RequestHeadersSchema } from "./request.ts";
 import type { RouteResponses } from "./response.ts";
@@ -16,7 +19,7 @@ import {
 	createWebSocketRoute,
 	type FinalizedWebSocketRoute,
 	type WebSocketBuilderFor,
-} from "./webSocketRouteBuilder.ts";
+} from "./websocketRouteBuilder.ts";
 export { joinPathPrefix } from "./baseRouteBuilder.ts";
 
 /** Defaults applied locally by a configured route factory. */
@@ -59,17 +62,21 @@ const createFactory = (options: RouteFactoryOptions = {}) => {
 	};
 };
 
+type Simplify<T> = T extends object ? { [K in keyof T]: T[K] } : T;
+
 /** Route-first contract declaration factory. */
 export const route = {
 	...createFactory(),
 	with<const TOptions extends RouteFactoryOptions>(options: TOptions) {
 		return createFactory(options);
 	},
-} as unknown as RouteFactory & {
-	with<const TOptions extends RouteFactoryOptions>(
-		options: TOptions,
-	): RouteFactory<TOptions>;
-};
+} as unknown as Simplify<
+	RouteFactory & {
+		with<const TOptions extends RouteFactoryOptions>(
+			options: TOptions,
+		): RouteFactory<TOptions>;
+	}
+>;
 
 export type {
 	FinalizedHttpRoute,

@@ -1,6 +1,12 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type { OpenApiRouteOptions, RouteMetadata } from "./contract.ts";
-import type { RouteFactoryOptions } from "./routeBuilder.ts";
+import type { RouteDeclaration } from "./contract.ts";
+import type {
+	BaseRouteDeclaration,
+	OpenApiRouteOptions,
+	RouteMetadata,
+	RouteRequestDeclaration,
+} from "./baseRouteDeclaration.ts";
+import type { RouteFactoryOptions } from "./routeFactory.ts";
 import type { JsonQuery, RequestKeys } from "./request.ts";
 import type { RequestParamsSchema, RequestQuerySchema } from "./request.ts";
 import {
@@ -12,6 +18,36 @@ import {
 	type WhenUnused,
 	type WithRequest,
 } from "./baseRouteBuilder.ts";
+
+/** A canonical server-sent event route declaration. */
+export type SseRouteDeclaration = Omit<
+	BaseRouteDeclaration,
+	"method" | "mode"
+> & {
+	method: "GET";
+	mode: "sse";
+	request?: Omit<RouteRequestDeclaration, "body" | "headers"> & {
+		body?: never;
+		headers?: never;
+	};
+	responses: { 200: StandardSchemaV1 };
+	messages?: never;
+};
+
+type SseResponseSchema<E extends RouteDeclaration> = E extends {
+	mode: "sse";
+	responses: { 200: infer TResponse extends StandardSchemaV1 };
+}
+	? TResponse
+	: never;
+
+/** Infers the event payload type a client receives from an SSE route. */
+export type ClientSseReceived<E extends RouteDeclaration> =
+	StandardSchemaV1.InferOutput<SseResponseSchema<E>>;
+
+/** Infers the event payload type a server sends from an SSE route. */
+export type ServerSseSent<E extends RouteDeclaration> =
+	StandardSchemaV1.InferInput<SseResponseSchema<E>>;
 
 class SseRouteBuilder extends BaseRouteBuilder {
 	declare responses?: Record<200, StandardSchemaV1>;
