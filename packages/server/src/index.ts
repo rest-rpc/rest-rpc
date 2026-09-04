@@ -59,8 +59,13 @@ export { formatSseEvent, sseEvent } from "./sse.ts";
 export type { RequestSegments, ValidationIssue } from "./validation.ts";
 export type {
 	Implement,
+	ImplicitResponseEnvelope,
+	ImplicitResponseKind,
+	InferredRouteResponse,
 	ImplementationBuildersFor,
 	ServerImplementationTree,
+	ServerFirstResponseKind,
+	ServerFirstRouteResponseKind,
 	ServerRouteFactory,
 	ServerRouteImplementation,
 } from "./serverFirst.ts";

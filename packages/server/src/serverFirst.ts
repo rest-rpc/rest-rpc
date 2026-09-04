@@ -23,6 +23,72 @@ import type {
 
 type EmptyObject = Record<never, never>;
 type AnyRouteHandler = (...args: never[]) => unknown;
+type MaybePromise<T> = T | Promise<T>;
+
+/** Explicit HTTP response envelope accepted from an inferred route handler. */
+export type ImplicitResponseEnvelope =
+	| { status: number; body?: never; contentType?: string }
+	| { status: number; body: unknown; contentType?: string };
+
+/** Wire response classifications available to server-first HTTP routes. */
+export type ServerFirstResponseKind =
+	| "empty"
+	| "json"
+	| "ndjson"
+	| "custom"
+	| "custom-stream"
+	| "sse";
+
+type BodyResponseKind<TResponse, TBody> =
+	TBody extends AsyncIterable<unknown>
+		? TResponse extends { contentType: string }
+			? "custom-stream"
+			: "ndjson"
+		: TResponse extends { contentType: string }
+			? "custom"
+			: "json";
+
+/** Classifies one inferred response envelope by its statically known shape. */
+export type ImplicitResponseKind<TResponse> = TResponse extends unknown
+	? "body" extends keyof TResponse
+		? TResponse extends { body: infer TBody }
+			? BodyResponseKind<TResponse, TBody>
+			: "empty"
+		: "empty"
+	: never;
+
+type ImplementationParts<TImplementation> =
+	TImplementation extends RouteImplementation<infer TRoute, infer THandler>
+		? { route: TRoute; handler: THandler }
+		: never;
+
+type HandlerResult<THandler> = THandler extends AnyRouteHandler
+	? Awaited<ReturnType<THandler>>
+	: never;
+
+/** Infers the source response union retained by an implicit route implementation. */
+export type InferredRouteResponse<TImplementation> =
+	ImplementationParts<TImplementation> extends {
+		route: infer TRoute;
+		handler: infer THandler;
+	}
+		? TRoute extends { responses: Record<number, unknown> }
+			? never
+			: HandlerResult<THandler>
+		: never;
+
+/** Infers the wire response kinds represented by a server-first implementation. */
+export type ServerFirstRouteResponseKind<TImplementation> =
+	ImplementationParts<TImplementation> extends {
+		route: infer TRoute;
+		handler: infer THandler;
+	}
+		? TRoute extends { mode: "sse" }
+			? "sse"
+			: TRoute extends { responses: Record<number, unknown> }
+				? never
+				: ImplicitResponseKind<HandlerResult<THandler>>
+		: never;
 
 type Merge<T> = {
 	[K in keyof T]: T[K];
@@ -78,7 +144,7 @@ type HttpImplementationBuilder<
 				>;
 			}
 		: {
-				handler<const TResult>(
+				handler<const TResult extends MaybePromise<ImplicitResponseEnvelope>>(
 					handler: (request: ServerFirstRequest<TRoute, TContext>) => TResult,
 				): RouteImplementation<
 					TRoute,
