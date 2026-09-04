@@ -55,7 +55,7 @@ const create = apiRoute
 	.response(201, todo);
 
 expectType<"POST">(create.method);
-expectType<string>(create.path);
+expectType<"/api/todos">(create.path);
 expectType<RouteMetadata>(create.metadata);
 expectType<OpenApiRouteOptions>(create.openApi);
 expectType<typeof input>(create.request.body);

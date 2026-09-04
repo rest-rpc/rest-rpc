@@ -247,10 +247,11 @@ export type Contract<TRoute extends RouteDeclaration = RouteDeclaration> =
  * @see {@link https://rest-rpc.dev/docs/advanced/building-server-adapters#registration-adapters}
  */
 export type RouteImplementation<
-	TRoute extends RouteDeclaration = RouteDeclaration,
+	TRoute = RouteDeclaration,
+	THandler = RuntimeRouteHandler,
 > = {
 	route: TRoute;
-	handler: RuntimeRouteHandler;
+	handler: THandler;
 };
 
 /**

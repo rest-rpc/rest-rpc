@@ -37,7 +37,9 @@ import type {
 	RouteResponses,
 } from "./response.ts";
 import {
+	type ApplyBuilderExtension,
 	BaseRouteBuilder,
+	type BuilderExtension,
 	type BuilderState,
 	type EmptyObject,
 	type UseBuilderMethod,
@@ -57,8 +59,19 @@ type RequestFor<TOptions> = (TOptions extends {
 		? { flattenKeys: TFlatten }
 		: EmptyObject);
 
-type HttpRouteFor<TOptions, TMethod extends HttpMethod> = {
+type ResolvedPath<TOptions, TPath extends string> = TOptions extends {
+	pathPrefix: infer TPrefix extends string;
+}
+	? `${TPrefix}${TPath}`
+	: TPath;
+
+type HttpRouteFor<
+	TOptions,
+	TMethod extends HttpMethod,
+	TPath extends string,
+> = {
 	readonly method: TMethod;
+	readonly path: ResolvedPath<TOptions, TPath>;
 	readonly strictStatusCodes?: boolean;
 } & (TOptions extends {
 	strictStatusCodes: infer TStrictStatusCodes extends boolean;
@@ -190,9 +203,11 @@ type HttpBuilderMethod =
 	| "withMetadata"
 	| "withOpenApi";
 
-type HttpBuilderState = BuilderState<unknown, HttpBuilderMethod> & {
-	route: { readonly method: HttpMethod };
+/** Type state carried by an ordinary HTTP route builder. */
+export type HttpBuilderState = BuilderState<unknown, HttpBuilderMethod> & {
+	route: { readonly method: HttpMethod; readonly path: string };
 	responses: unknown;
+	extension: BuilderExtension | never;
 };
 
 type SetHttpRequest<
@@ -210,15 +225,15 @@ type WithResponse<
 	responses: TState["responses"] & Record<TStatus, TResponse>;
 };
 
-type HttpBuilderDeclaration<TState extends HttpBuilderState> = {
-	readonly path: string;
-} & TState["route"] &
-	(keyof TState["request"] extends never
-		? { request?: never }
-		: { request: TState["request"] }) &
-	(keyof TState["responses"] extends never
-		? { responses?: never }
-		: { responses: TState["responses"] });
+/** Resolves the route declaration represented by an HTTP builder state. */
+export type HttpBuilderDeclaration<TState extends HttpBuilderState> =
+	TState["route"] &
+		(keyof TState["request"] extends never
+			? { request?: never }
+			: { request: TState["request"] }) &
+		(keyof TState["responses"] extends never
+			? { responses?: never }
+			: { responses: TState["responses"] });
 
 type HttpResponseSetters<TState extends HttpBuilderState> = {
 	/** Declares a response status and schema. @see {@link https://rest-rpc.dev/docs/contract/declaration#responses} */
@@ -400,14 +415,21 @@ export type HttpBuilder<TState extends HttpBuilderState> =
 	HttpBuilderDeclaration<TState> &
 		HttpResponseSetters<TState> &
 		HttpBodySetters<TState> &
-		HttpRequestSetters<TState>;
+		HttpRequestSetters<TState> &
+		ApplyBuilderExtension<TState["extension"], TState>;
 
 /** Creates the initial HTTP builder type for route factory options and a method. */
-export type HttpBuilderFor<TOptions, TMethod extends HttpMethod> = HttpBuilder<{
-	route: HttpRouteFor<TOptions, TMethod>;
+export type HttpBuilderFor<
+	TOptions,
+	TMethod extends HttpMethod,
+	TPath extends string = string,
+	TExtension extends BuilderExtension | never = never,
+> = HttpBuilder<{
+	route: HttpRouteFor<TOptions, TMethod, TPath>;
 	request: RequestFor<TOptions>;
 	responses: OptionValue<TOptions, "responses", EmptyObject>;
 	used: never;
+	extension: TExtension;
 }>;
 
 export const createHttpRoute = (

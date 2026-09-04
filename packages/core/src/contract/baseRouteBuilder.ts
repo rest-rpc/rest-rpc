@@ -26,6 +26,20 @@ import { resolveBuiltInRequestKeys } from "./requestKeys.ts";
 /** An object type with no declared properties. */
 export type EmptyObject = Record<never, never>;
 
+/** Type-level hook used by packages that add operations to fluent builders. */
+export interface BuilderExtension {
+	readonly state: unknown;
+	readonly result: unknown;
+}
+
+/** Applies a type-level builder extension to the current builder state. */
+export type ApplyBuilderExtension<
+	TExtension extends BuilderExtension | never,
+	TState,
+> = [TExtension] extends [never]
+	? EmptyObject
+	: (TExtension & { readonly state: TState })["result"];
+
 /** Shared type state tracked by fluent route builders. */
 export type BuilderState<
 	TRequest = EmptyObject,
