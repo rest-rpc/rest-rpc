@@ -1,5 +1,7 @@
 # @rest-rpc/hono
 
+## 0.1.0-beta.20
+
 ## 0.1.0-beta.19
 
 ### Minor Changes
