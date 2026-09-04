@@ -1,5 +1,11 @@
 # @rest-rpc/fetch
 
+## 0.1.0-beta.20
+
+### Minor Changes
+
+- f1e7102: Replace automatic 404 handling for non-matched route with a result type, giving more control for user on how to handle non-matched routes
+
 ## 0.1.0-beta.19
 
 ### Minor Changes
