@@ -44,6 +44,7 @@ export type {
 export type { Contract, RouteDeclaration } from "./contract.ts";
 export type {
 	HttpBuilder,
+	HttpBuilderAtPath,
 	HttpBuilderDeclaration,
 	HttpBuilderState,
 	HttpRouteDeclaration,
@@ -52,6 +53,7 @@ export type {
 	ClientSseReceived,
 	ServerSseSent,
 	SseBuilder,
+	SseBuilderAtPath,
 	SseBuilderDeclaration,
 	SseBuilderState,
 	SseRouteDeclaration,

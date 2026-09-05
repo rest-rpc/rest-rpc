@@ -294,6 +294,7 @@ expectError(sseConfiguredBeforeResponse.withMetadata({ public: false }));
 expectError(sseConfiguredBeforeResponse.withOpenApi({ summary: "again" }));
 // Preserves protocol request configuration after response().
 const sseConfigured = sseConfiguredBeforeResponse.response(event);
+expectType<"/configured-events">(sseConfigured.path);
 expectType<false>(sseConfigured.request.flattenKeys);
 expectType<typeof input>(sseConfigured.request.query);
 expectType<typeof event>(sseConfigured.responses[200]);
@@ -326,6 +327,7 @@ const sse = incompleteSse
 	.withMetadata({ public: true as const });
 
 expectType<"GET">(sse.method);
+expectType<"/events">(sse.path);
 expectType<"sse">(sse.mode);
 expectType<typeof event>(sse.responses[200]);
 expectType<RouteMetadata>(sse.metadata);

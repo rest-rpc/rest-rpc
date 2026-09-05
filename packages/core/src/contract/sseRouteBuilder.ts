@@ -83,7 +83,6 @@ type SseBuilderMethod =
 
 /** Type state carried by an SSE route builder. */
 export type SseBuilderState = BuilderState<unknown, SseBuilderMethod> & {
-	route: { readonly path: string };
 	response: unknown;
 	extension: BuilderExtension | never;
 };
@@ -98,20 +97,37 @@ type SetSseRequest<
 /** Resolves the route declaration represented by an SSE builder state. */
 export type SseBuilderDeclaration<TState extends SseBuilderState> = {
 	readonly method: "GET";
+	readonly path: string;
 	readonly mode: "sse";
-} & TState["route"] &
-	(keyof TState["request"] extends never
-		? { request?: never }
-		: { request: TState["request"] });
+} & (keyof TState["request"] extends never
+	? { request?: never }
+	: { request: TState["request"] });
+
+/** An SSE builder paired with its resolved literal path. */
+export type SseBuilderAtPath<
+	TState extends SseBuilderState,
+	TPath extends string,
+> = SseBuilder<TState> & { readonly path: TPath } & ApplyBuilderExtension<
+		TState["extension"],
+		TState,
+		TPath
+	>;
 
 type SseResponseSetter<TState extends SseBuilderState> = [
 	TState["response"],
 ] extends [never]
 	? {
 			/** Declares the event schema. @see {@link https://rest-rpc.dev/docs/http-responses#server-sent-event-responses} */
-			response<const TSchema extends StandardSchemaV1>(
+			response<
+				const TSchema extends StandardSchemaV1,
+				const TPath extends string = string,
+			>(
+				this: { readonly path: TPath },
 				schema: TSchema,
-			): SseBuilder<Omit<TState, "response"> & { response: TSchema }>;
+			): SseBuilderAtPath<
+				Omit<TState, "response"> & { response: TSchema },
+				TPath
+			>;
 		}
 	: {
 			responses: { 200: TState["response"] };
@@ -122,13 +138,27 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 	"query",
 	{
 		/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
-		query<const TSchema extends RequestQuerySchema>(
+		query<
+			const TSchema extends RequestQuerySchema,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): SseBuilder<SetSseRequest<TState, "query", TSchema, "query">>;
+		): SseBuilderAtPath<
+			SetSseRequest<TState, "query", TSchema, "query">,
+			TPath
+		>;
 		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
-		jsonQuery<const TSchema extends StandardSchemaV1>(
+		jsonQuery<
+			const TSchema extends StandardSchemaV1,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): SseBuilder<SetSseRequest<TState, "query", JsonQuery<TSchema>, "query">>;
+		): SseBuilderAtPath<
+			SetSseRequest<TState, "query", JsonQuery<TSchema>, "query">,
+			TPath
+		>;
 	}
 > &
 	WhenUnused<
@@ -136,9 +166,16 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 		"params",
 		{
 			/** Declares path parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#path-params} */
-			params<const TSchema extends RequestParamsSchema>(
+			params<
+				const TSchema extends RequestParamsSchema,
+				const TPath extends string = string,
+			>(
+				this: { readonly path: TPath },
 				schema: TSchema,
-			): SseBuilder<SetSseRequest<TState, "params", TSchema, "params">>;
+			): SseBuilderAtPath<
+				SetSseRequest<TState, "params", TSchema, "params">,
+				TPath
+			>;
 		}
 	> &
 	WhenUnused<
@@ -146,53 +183,59 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 		"requestKeys",
 		{
 			/** Maps flattened request keys. @see {@link https://rest-rpc.dev/docs/contract/declaration#flattened-key-collisions} */
-			requestKeys<const TKeys extends RequestKeys>(
+			requestKeys<
+				const TKeys extends RequestKeys,
+				const TPath extends string = string,
+			>(
+				this: { readonly path: TPath },
 				keys: TKeys,
-			): SseBuilder<SetSseRequest<TState, "keys", TKeys, "requestKeys">>;
+			): SseBuilderAtPath<
+				SetSseRequest<TState, "keys", TKeys, "requestKeys">,
+				TPath
+			>;
 		}
 	> &
 	("withMetadata" extends TState["used"]
 		? { metadata: RouteMetadata }
 		: {
 				/** Adds application metadata. @see {@link https://rest-rpc.dev/docs/contract/declaration#shared-route-options} */
-				withMetadata(
+				withMetadata<const TPath extends string>(
+					this: { readonly path: TPath },
 					metadata: RouteMetadata,
-				): SseBuilder<UseBuilderMethod<TState, "withMetadata">>;
+				): SseBuilderAtPath<UseBuilderMethod<TState, "withMetadata">, TPath>;
 			}) &
 	("withOpenApi" extends TState["used"]
 		? { openApi: OpenApiRouteOptions }
 		: {
 				/** Adds OpenAPI metadata. @see {@link https://rest-rpc.dev/docs/openapi#route-metadata} */
-				withOpenApi(
+				withOpenApi<const TPath extends string>(
+					this: { readonly path: TPath },
 					openApi: OpenApiRouteOptions,
-				): SseBuilder<UseBuilderMethod<TState, "withOpenApi">>;
+				): SseBuilderAtPath<UseBuilderMethod<TState, "withOpenApi">, TPath>;
 			});
 
 /** A fluent SSE route builder at a particular declaration state. */
 export type SseBuilder<TState extends SseBuilderState> =
 	SseBuilderDeclaration<TState> &
 		SseResponseSetter<TState> &
-		SseRequestSetters<TState> &
-		ApplyBuilderExtension<TState["extension"], TState>;
+		SseRequestSetters<TState>;
 
 /** Creates the initial SSE builder type for route factory options. */
 export type SseBuilderFor<
 	TOptions,
 	TPath extends string = string,
 	TExtension extends BuilderExtension | never = never,
-> = SseBuilder<{
-	route: {
-		readonly path: TOptions extends {
-			pathPrefix: infer TPrefix extends string;
-		}
-			? `${TPrefix}${TPath}`
-			: TPath;
-	};
-	request: ProtocolRequestFor<TOptions>;
-	used: never;
-	response: never;
-	extension: TExtension;
-}>;
+> = SseBuilderAtPath<
+	{
+		request: ProtocolRequestFor<TOptions>;
+		used: never;
+		response: never;
+		extension: TExtension;
+	},
+	TOptions extends { pathPrefix: infer TPrefix extends string }
+		? `${TPrefix}${TPath}`
+		: TPath
+>;
 
 export const createSseRoute = (path: string, options?: RouteFactoryOptions) =>
 	new SseRouteBuilder(path, options);

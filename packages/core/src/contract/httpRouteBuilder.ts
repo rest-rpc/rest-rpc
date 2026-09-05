@@ -65,13 +65,8 @@ type ResolvedPath<TOptions, TPath extends string> = TOptions extends {
 	? `${TPrefix}${TPath}`
 	: TPath;
 
-type HttpRouteFor<
-	TOptions,
-	TMethod extends HttpMethod,
-	TPath extends string,
-> = {
+type HttpRouteFor<TOptions, TMethod extends HttpMethod> = {
 	readonly method: TMethod;
-	readonly path: ResolvedPath<TOptions, TPath>;
 	readonly strictStatusCodes?: boolean;
 } & (TOptions extends {
 	strictStatusCodes: infer TStrictStatusCodes extends boolean;
@@ -205,7 +200,7 @@ type HttpBuilderMethod =
 
 /** Type state carried by an ordinary HTTP route builder. */
 export type HttpBuilderState = BuilderState<unknown, HttpBuilderMethod> & {
-	route: { readonly method: HttpMethod; readonly path: string };
+	route: { readonly method: HttpMethod };
 	responses: unknown;
 	extension: BuilderExtension | never;
 };
@@ -226,63 +221,85 @@ type WithResponse<
 };
 
 /** Resolves the route declaration represented by an HTTP builder state. */
-export type HttpBuilderDeclaration<TState extends HttpBuilderState> =
-	TState["route"] &
-		(keyof TState["request"] extends never
-			? { request?: never }
-			: { request: TState["request"] }) &
-		(keyof TState["responses"] extends never
-			? { responses?: never }
-			: { responses: TState["responses"] });
+export type HttpBuilderDeclaration<TState extends HttpBuilderState> = {
+	readonly path: string;
+} & TState["route"] &
+	(keyof TState["request"] extends never
+		? { request?: never }
+		: { request: TState["request"] }) &
+	(keyof TState["responses"] extends never
+		? { responses?: never }
+		: { responses: TState["responses"] });
+
+/** An HTTP builder paired with its resolved literal path. */
+export type HttpBuilderAtPath<
+	TState extends HttpBuilderState,
+	TPath extends string,
+> = HttpBuilder<TState> & { readonly path: TPath } & ApplyBuilderExtension<
+		TState["extension"],
+		TState,
+		TPath
+	>;
 
 type HttpResponseSetters<TState extends HttpBuilderState> = {
 	/** Declares a response status and schema. @see {@link https://rest-rpc.dev/docs/contract/declaration#responses} */
 	response<
 		const TStatus extends number,
 		const TSchema extends RegularResponseDeclaration | undefined = undefined,
+		const TPath extends string = string,
 	>(
+		this: { readonly path: TPath },
 		status: TStatus,
 		schema?: TSchema,
-	): HttpBuilder<
+	): HttpBuilderAtPath<
 		WithResponse<
 			TState,
 			TStatus,
 			TSchema extends RegularResponseDeclaration ? TSchema : NoBody
-		>
+		>,
+		TPath
 	>;
 	/** Declares a custom-content response. @see {@link https://rest-rpc.dev/docs/http-responses#response-with-custom-content-type} */
 	customResponse<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1,
 		const TContentType extends CustomBodyContentType,
+		const TPath extends string = string,
 	>(
+		this: { readonly path: TPath },
 		status: TStatus,
 		input: CustomResponseInput<TSchema, TContentType>,
-	): HttpBuilder<
-		WithResponse<TState, TStatus, CustomResponseBody<TSchema, TContentType>>
+	): HttpBuilderAtPath<
+		WithResponse<TState, TStatus, CustomResponseBody<TSchema, TContentType>>,
+		TPath
 	>;
 	/** Declares an NDJSON response stream. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-ndjson-responses} */
 	streamResponse<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1,
+		const TPath extends string = string,
 	>(
+		this: { readonly path: TPath },
 		status: TStatus,
 		schema: TSchema,
-	): HttpBuilder<WithResponse<TState, TStatus, Stream<TSchema>>>;
+	): HttpBuilderAtPath<WithResponse<TState, TStatus, Stream<TSchema>>, TPath>;
 	/** Declares a custom-content response stream. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-responses-with-custom-content-type} */
 	customStreamResponse<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1,
 		const TContentType extends CustomBodyContentType,
+		const TPath extends string = string,
 	>(
+		this: { readonly path: TPath },
 		status: TStatus,
 		input: CustomResponseInput<TSchema, TContentType>,
-	): HttpBuilder<
+	): HttpBuilderAtPath<
 		WithResponse<
 			TState,
 			TStatus,
 			Stream<CustomResponseBody<TSchema, TContentType>>
-		>
+		>,
+		TPath
 	>;
 };
 
@@ -291,48 +308,86 @@ type HttpBodySetters<TState extends HttpBuilderState> = WhenUnused<
 	"body",
 	{
 		/** Declares a JSON request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-json-body} */
-		body<const TSchema extends StandardSchemaV1>(
+		body<
+			const TSchema extends StandardSchemaV1,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): HttpBuilder<SetHttpRequest<TState, "body", TSchema, "body">>;
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "body", TSchema, "body">,
+			TPath
+		>;
 		/** Declares a URL-encoded form body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-form-body} */
-		formBody<const TSchema extends FormBodySchema>(
+		formBody<
+			const TSchema extends FormBodySchema,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): HttpBuilder<SetHttpRequest<TState, "body", FormBody<TSchema>, "body">>;
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "body", FormBody<TSchema>, "body">,
+			TPath
+		>;
 		formBody<
 			const TSchema extends FormBodySchema,
 			const TArrayKeys extends readonly string[],
+			const TPath extends string = string,
 		>(
+			this: { readonly path: TPath },
 			input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
-		): HttpBuilder<
-			SetHttpRequest<TState, "body", FormBody<TSchema, TArrayKeys>, "body">
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "body", FormBody<TSchema, TArrayKeys>, "body">,
+			TPath
 		>;
 		/** Declares a multipart form body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-multipart-body} */
-		multipartBody<const TSchema extends MultipartBodySchema>(
+		multipartBody<
+			const TSchema extends MultipartBodySchema,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): HttpBuilder<
-			SetHttpRequest<TState, "body", MultipartBody<TSchema>, "body">
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "body", MultipartBody<TSchema>, "body">,
+			TPath
 		>;
 		multipartBody<
 			const TSchema extends MultipartBodySchema,
 			const TArrayKeys extends readonly string[],
+			const TPath extends string = string,
 		>(
+			this: { readonly path: TPath },
 			input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
-		): HttpBuilder<
-			SetHttpRequest<TState, "body", MultipartBody<TSchema, TArrayKeys>, "body">
+		): HttpBuilderAtPath<
+			SetHttpRequest<
+				TState,
+				"body",
+				MultipartBody<TSchema, TArrayKeys>,
+				"body"
+			>,
+			TPath
 		>;
 		/** Declares a custom-content request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-custom-content-type} */
-		customBody<const TSchema extends StandardSchemaV1>(
+		customBody<
+			const TSchema extends StandardSchemaV1,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): HttpBuilder<
-			SetHttpRequest<TState, "body", CustomBody<TSchema, undefined>, "body">
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "body", CustomBody<TSchema, undefined>, "body">,
+			TPath
 		>;
 		customBody<
 			const TSchema extends StandardSchemaV1,
 			const TContentType extends CustomBodyContentType,
+			const TPath extends string = string,
 		>(
+			this: { readonly path: TPath },
 			input: CustomResponseInput<TSchema, TContentType>,
-		): HttpBuilder<
-			SetHttpRequest<TState, "body", CustomBody<TSchema, TContentType>, "body">
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "body", CustomBody<TSchema, TContentType>, "body">,
+			TPath
 		>;
 	}
 >;
@@ -342,14 +397,26 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 	"query",
 	{
 		/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
-		query<const TSchema extends RequestQuerySchema>(
+		query<
+			const TSchema extends RequestQuerySchema,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): HttpBuilder<SetHttpRequest<TState, "query", TSchema, "query">>;
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "query", TSchema, "query">,
+			TPath
+		>;
 		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
-		jsonQuery<const TSchema extends StandardSchemaV1>(
+		jsonQuery<
+			const TSchema extends StandardSchemaV1,
+			const TPath extends string = string,
+		>(
+			this: { readonly path: TPath },
 			schema: TSchema,
-		): HttpBuilder<
-			SetHttpRequest<TState, "query", JsonQuery<TSchema>, "query">
+		): HttpBuilderAtPath<
+			SetHttpRequest<TState, "query", JsonQuery<TSchema>, "query">,
+			TPath
 		>;
 	}
 > &
@@ -358,9 +425,16 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 		"params",
 		{
 			/** Declares path parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#path-params} */
-			params<const TSchema extends RequestParamsSchema>(
+			params<
+				const TSchema extends RequestParamsSchema,
+				const TPath extends string = string,
+			>(
+				this: { readonly path: TPath },
 				schema: TSchema,
-			): HttpBuilder<SetHttpRequest<TState, "params", TSchema, "params">>;
+			): HttpBuilderAtPath<
+				SetHttpRequest<TState, "params", TSchema, "params">,
+				TPath
+			>;
 		}
 	> &
 	WhenUnused<
@@ -368,9 +442,13 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 		"headers",
 		{
 			/** Declares request headers. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
-			headers<const THeaders extends RequestHeadersSchema>(
+			headers<
+				const THeaders extends RequestHeadersSchema,
+				const TPath extends string = string,
+			>(
+				this: { readonly path: TPath },
 				schema: THeaders,
-			): HttpBuilder<
+			): HttpBuilderAtPath<
 				SetHttpRequest<
 					TState,
 					"headers",
@@ -380,7 +458,8 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 						? TCommon & { local: THeaders }
 						: { local: THeaders },
 					"headers"
-				>
+				>,
+				TPath
 			>;
 		}
 	> &
@@ -389,34 +468,42 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 		"requestKeys",
 		{
 			/** Maps flattened request keys. @see {@link https://rest-rpc.dev/docs/contract/declaration#flattened-key-collisions} */
-			requestKeys<const TKeys extends RequestKeys>(
+			requestKeys<
+				const TKeys extends RequestKeys,
+				const TPath extends string = string,
+			>(
+				this: { readonly path: TPath },
 				keys: TKeys,
-			): HttpBuilder<SetHttpRequest<TState, "keys", TKeys, "requestKeys">>;
+			): HttpBuilderAtPath<
+				SetHttpRequest<TState, "keys", TKeys, "requestKeys">,
+				TPath
+			>;
 		}
 	> &
 	("withMetadata" extends TState["used"]
 		? { metadata: RouteMetadata }
 		: {
 				/** Adds application metadata. @see {@link https://rest-rpc.dev/docs/contract/declaration#shared-route-options} */
-				withMetadata(
+				withMetadata<const TPath extends string>(
+					this: { readonly path: TPath },
 					metadata: RouteMetadata,
-				): HttpBuilder<UseBuilderMethod<TState, "withMetadata">>;
+				): HttpBuilderAtPath<UseBuilderMethod<TState, "withMetadata">, TPath>;
 			}) &
 	("withOpenApi" extends TState["used"]
 		? { openApi: OpenApiRouteOptions }
 		: {
 				/** Adds OpenAPI metadata. @see {@link https://rest-rpc.dev/docs/openapi#route-metadata} */
-				withOpenApi(
+				withOpenApi<const TPath extends string>(
+					this: { readonly path: TPath },
 					openApi: OpenApiRouteOptions,
-				): HttpBuilder<UseBuilderMethod<TState, "withOpenApi">>;
+				): HttpBuilderAtPath<UseBuilderMethod<TState, "withOpenApi">, TPath>;
 			});
 
 export type HttpBuilder<TState extends HttpBuilderState> =
 	HttpBuilderDeclaration<TState> &
 		HttpResponseSetters<TState> &
 		HttpBodySetters<TState> &
-		HttpRequestSetters<TState> &
-		ApplyBuilderExtension<TState["extension"], TState>;
+		HttpRequestSetters<TState>;
 
 /** Creates the initial HTTP builder type for route factory options and a method. */
 export type HttpBuilderFor<
@@ -424,13 +511,16 @@ export type HttpBuilderFor<
 	TMethod extends HttpMethod,
 	TPath extends string = string,
 	TExtension extends BuilderExtension | never = never,
-> = HttpBuilder<{
-	route: HttpRouteFor<TOptions, TMethod, TPath>;
-	request: RequestFor<TOptions>;
-	responses: OptionValue<TOptions, "responses", EmptyObject>;
-	used: never;
-	extension: TExtension;
-}>;
+> = HttpBuilderAtPath<
+	{
+		route: HttpRouteFor<TOptions, TMethod>;
+		request: RequestFor<TOptions>;
+		responses: OptionValue<TOptions, "responses", EmptyObject>;
+		used: never;
+		extension: TExtension;
+	},
+	ResolvedPath<TOptions, TPath>
+>;
 
 export const createHttpRoute = (
 	method: HttpMethod,

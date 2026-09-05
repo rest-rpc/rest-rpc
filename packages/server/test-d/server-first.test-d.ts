@@ -135,6 +135,7 @@ const routes = {
 	todos: { create, declaredCreate, get, contractCreate, events },
 };
 
+expectType<"/todos/events">(events.route.path);
 expectAssignable<ServerImplementationTree>(routes);
 
 // the general server-first construction model intentionally excludes WebSockets

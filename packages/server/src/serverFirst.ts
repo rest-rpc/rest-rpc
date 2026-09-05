@@ -1,14 +1,14 @@
 import type {
 	BaseRouteDeclaration,
 	BuilderExtension,
-	HttpBuilder,
+	HttpBuilderAtPath,
 	HttpBuilderDeclaration,
 	HttpBuilderFor,
 	HttpBuilderState,
 	HttpMethod,
 	RouteFactoryOptions,
 	ServerRequest,
-	SseBuilder,
+	SseBuilderAtPath,
 	SseBuilderDeclaration,
 	SseBuilderFor,
 	SseBuilderState,
@@ -118,20 +118,28 @@ type DeclaredHandlerResult<
 
 type WithHttpBuilderContext<
 	TState extends HttpBuilderState,
+	TPath extends string,
 	TContext extends HttpRouteHandlerContext,
-> = HttpBuilder<
+> = HttpBuilderAtPath<
 	Omit<TState, "extension"> & {
 		extension: ServerHttpBuilderExtension<TContext>;
-	}
+	},
+	TPath
 >;
+
+type HttpRouteForState<
+	TState extends HttpBuilderState,
+	TPath extends string,
+> = HttpBuilderDeclaration<TState> & { readonly path: TPath };
 
 type HttpImplementationBuilder<
 	TState extends HttpBuilderState,
+	TPath extends string,
 	TContext extends HttpRouteHandlerContext,
 > = {
 	context<
 		TNextContext extends HttpRouteHandlerContext,
-	>(): WithHttpBuilderContext<TState, TNextContext>;
+	>(): WithHttpBuilderContext<TState, TPath, TNextContext>;
 } & (HttpBuilderDeclaration<TState> extends infer TRoute extends
 	BaseRouteDeclaration
 	? TRoute extends ServerHttpRouteDeclaration
@@ -139,7 +147,7 @@ type HttpImplementationBuilder<
 				handler<const TResult extends DeclaredHandlerResult<TRoute, TContext>>(
 					handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
 				): RouteImplementation<
-					TRoute,
+					HttpRouteForState<TState, TPath>,
 					(request: DeclaredRequest<TRoute, TContext>) => TResult
 				>;
 			}
@@ -147,7 +155,7 @@ type HttpImplementationBuilder<
 				handler<const TResult extends MaybePromise<ImplicitResponseEnvelope>>(
 					handler: (request: ServerFirstRequest<TRoute, TContext>) => TResult,
 				): RouteImplementation<
-					TRoute,
+					HttpRouteForState<TState, TPath>,
 					(request: ServerFirstRequest<TRoute, TContext>) => TResult
 				>;
 			}
@@ -157,39 +165,48 @@ interface ServerHttpBuilderExtension<
 	TContext extends HttpRouteHandlerContext,
 > extends BuilderExtension {
 	readonly result: this["state"] extends infer TState extends HttpBuilderState
-		? HttpImplementationBuilder<TState, TContext>
+		? this["path"] extends infer TPath extends string
+			? HttpImplementationBuilder<TState, TPath, TContext>
+			: never
 		: never;
 }
 
 type WithSseBuilderContext<
 	TState extends SseBuilderState,
+	TPath extends string,
 	TContext extends HttpRouteHandlerContext,
-> = SseBuilder<
+> = SseBuilderAtPath<
 	Omit<TState, "extension"> & {
 		extension: ServerSseBuilderExtension<TContext>;
-	}
+	},
+	TPath
 >;
 
-type SseRouteForState<TState extends SseBuilderState> =
-	SseBuilderDeclaration<TState> &
-		([TState["response"]] extends [never]
-			? EmptyObject
-			: { responses: { 200: TState["response"] } });
+type SseRouteForState<
+	TState extends SseBuilderState,
+	TPath extends string,
+> = SseBuilderDeclaration<TState> & { readonly path: TPath } & ([
+		TState["response"],
+	] extends [never]
+		? EmptyObject
+		: { responses: { 200: TState["response"] } });
 
 type SseImplementationBuilder<
 	TState extends SseBuilderState,
+	TPath extends string,
 	TContext extends HttpRouteHandlerContext,
 > = {
 	context<
 		TNextContext extends HttpRouteHandlerContext,
-	>(): WithSseBuilderContext<TState, TNextContext>;
-} & (SseRouteForState<TState> extends infer TRoute extends BaseRouteDeclaration
+	>(): WithSseBuilderContext<TState, TPath, TNextContext>;
+} & (SseRouteForState<TState, TPath> extends infer TRoute extends
+	BaseRouteDeclaration
 	? TRoute extends ServerHttpRouteDeclaration
 		? {
 				handler<const TResult extends DeclaredHandlerResult<TRoute, TContext>>(
 					handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
 				): RouteImplementation<
-					TRoute,
+					SseRouteForState<TState, TPath>,
 					(request: DeclaredRequest<TRoute, TContext>) => TResult
 				>;
 			}
@@ -200,7 +217,9 @@ interface ServerSseBuilderExtension<
 	TContext extends HttpRouteHandlerContext,
 > extends BuilderExtension {
 	readonly result: this["state"] extends infer TState extends SseBuilderState
-		? SseImplementationBuilder<TState, TContext>
+		? this["path"] extends infer TPath extends string
+			? SseImplementationBuilder<TState, TPath, TContext>
+			: never
 		: never;
 }
 

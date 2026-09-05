@@ -29,6 +29,7 @@ export type EmptyObject = Record<never, never>;
 /** Type-level hook used by packages that add operations to fluent builders. */
 export interface BuilderExtension {
 	readonly state: unknown;
+	readonly path: string;
 	readonly result: unknown;
 }
 
@@ -36,9 +37,10 @@ export interface BuilderExtension {
 export type ApplyBuilderExtension<
 	TExtension extends BuilderExtension | never,
 	TState,
+	TPath extends string,
 > = [TExtension] extends [never]
 	? EmptyObject
-	: (TExtension & { readonly state: TState })["result"];
+	: (TExtension & { readonly state: TState; readonly path: TPath })["result"];
 
 /** Shared type state tracked by fluent route builders. */
 export type BuilderState<
