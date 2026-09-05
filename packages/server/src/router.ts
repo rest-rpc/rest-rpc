@@ -355,7 +355,7 @@ export const isRouteDeclaration = (value: unknown): value is RouteDeclaration =>
 
 export const isHttpRoute = (
 	route: RouteDeclaration,
-): route is ServerHttpRouteDeclaration => "responses" in route;
+): route is ServerHttpRouteDeclaration => route.mode !== "webSocket";
 
 export const isWebSocketRoute = (
 	route: RouteDeclaration,

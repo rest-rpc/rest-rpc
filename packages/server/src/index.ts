@@ -69,6 +69,7 @@ export type {
 	ServerRouteFactory,
 	ServerRouteImplementation,
 } from "./serverFirst.ts";
+export { implement, serverFirstRoute } from "./serverFirst.ts";
 export { createFetchResponse } from "./fetchResponse.ts";
 export type {
 	BeforeWebSocketUpgrade,

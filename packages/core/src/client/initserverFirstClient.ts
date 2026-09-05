@@ -24,13 +24,8 @@ import type {
 
 type AnyHandler = (...args: never[]) => unknown;
 
-type ServerFirstRoute = BaseRouteDeclaration & {
-	readonly method: HttpMethod;
-	readonly path: string;
-};
-
 type ServerFirstImplementation = {
-	readonly route: ServerFirstRoute;
+	readonly route: BaseRouteDeclaration;
 	readonly handler: AnyHandler;
 	readonly clientRoute?: RouteDeclaration;
 };
@@ -120,7 +115,7 @@ type ImplementationUnion<TTree> = TTree extends ServerFirstImplementation
 		: never;
 
 type SelectorName<TImplementation> = TImplementation extends {
-	route: infer TRoute extends ServerFirstRoute;
+	route: infer TRoute extends BaseRouteDeclaration;
 }
 	? TRoute extends { mode: "sse" }
 		? "sse"
@@ -131,7 +126,7 @@ type SelectorPath<
 	TImplementation,
 	TSelector extends string,
 > = TImplementation extends {
-	route: infer TRoute extends ServerFirstRoute;
+	route: infer TRoute extends BaseRouteDeclaration;
 }
 	? SelectorName<TImplementation> extends TSelector
 		? TRoute["path"]
@@ -143,7 +138,7 @@ type SelectedImplementation<
 	TSelector extends string,
 	TPath extends string,
 > = TImplementation extends {
-	route: infer TRoute extends ServerFirstRoute;
+	route: infer TRoute extends BaseRouteDeclaration;
 }
 	? SelectorName<TImplementation> extends TSelector
 		? TRoute["path"] extends TPath

@@ -18,18 +18,24 @@ import type {
 	SseBuilderState,
 	Stream,
 } from "@rest-rpc/core/contract";
+import { route as coreRoute } from "@rest-rpc/core";
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 import type {
 	HttpRouteHandlerContext,
 	RouteHandler,
 	RouteImplementation,
 	RouteRequest,
+	RuntimeRouteHandler,
 	ServerHttpRouteDeclaration,
 } from "./router.ts";
+import { isRouteDeclaration } from "./router.ts";
 
 type EmptyObject = Record<never, never>;
 type AnyRouteHandler = (...args: never[]) => unknown;
 type MaybePromise<T> = T | Promise<T>;
+type ServerFirstContext<TContext extends HttpRouteHandlerContext> = TContext & {
+	signal: AbortSignal;
+};
 
 /** A server-first implementation carrying erased client route metadata. */
 export type ServerRouteImplementation<
@@ -150,15 +156,14 @@ type ServerFirstRequest<
 	(ServerRequest<TRoute> extends never
 		? EmptyObject
 		: ServerRequest<TRoute>) & {
-		context: TContext;
-		signal: AbortSignal;
+		context: ServerFirstContext<TContext>;
 	}
 >;
 
 type DeclaredRequest<
 	TRoute extends ServerHttpRouteDeclaration,
 	TContext extends HttpRouteHandlerContext,
-> = Merge<RouteRequest<TRoute, TContext> & { signal: AbortSignal }>;
+> = Merge<RouteRequest<TRoute, ServerFirstContext<TContext>>>;
 
 type DeclaredHandlerResult<
 	TRoute extends ServerHttpRouteDeclaration,
@@ -369,3 +374,70 @@ export type ServerImplementationTree =
 			ServerHttpRouteDeclaration
 	  >
 	| { readonly [key: string]: ServerImplementationTree };
+
+const attachHandler = (
+	route: BaseRouteDeclaration,
+	handler: RuntimeRouteHandler,
+): RouteImplementation<BaseRouteDeclaration> => ({ route, handler });
+
+const extendBuilder = (builder: BaseRouteDeclaration) =>
+	Object.assign(builder, {
+		$context() {
+			return builder;
+		},
+		handler(handler: RuntimeRouteHandler) {
+			return attachHandler(builder, handler);
+		},
+	});
+
+const createServerRouteFactory = (options: RouteFactoryOptions = {}) => {
+	const resolvedOptions = { flattenRequestKeys: true, ...options };
+	const factory = coreRoute.with(resolvedOptions);
+
+	return {
+		get: (path: string) => extendBuilder(factory.get(path)),
+		post: (path: string) => extendBuilder(factory.post(path)),
+		put: (path: string) => extendBuilder(factory.put(path)),
+		patch: (path: string) => extendBuilder(factory.patch(path)),
+		delete: (path: string) => extendBuilder(factory.delete(path)),
+		sse: (path: string) => extendBuilder(factory.sse(path)),
+		with: (nextOptions: RouteFactoryOptions) =>
+			createServerRouteFactory(nextOptions),
+	};
+};
+
+const serverRouteFactory = createServerRouteFactory();
+
+/** Core route builders extended with terminal server-first handler attachment. */
+export const serverFirstRoute =
+	serverRouteFactory as unknown as ServerRouteFactory;
+
+const createImplementationBuilder = (contract: BaseRouteDeclaration) => {
+	const builder = {
+		$context: () => builder,
+		handler: (handler: RuntimeRouteHandler) => attachHandler(contract, handler),
+	};
+	return builder;
+};
+
+const implementationBuildersFor = (contract: ServerContract): unknown => {
+	if (isRouteDeclaration(contract)) {
+		return createImplementationBuilder(contract);
+	}
+
+	return Object.fromEntries(
+		Object.entries(contract).map(([key, child]) => [
+			key,
+			implementationBuildersFor(child),
+		]),
+	);
+};
+
+/** Creates handler-attachment builders for an HTTP contract route or tree. */
+export function implement<const TNode extends ServerContract>(
+	contract: TNode,
+): ImplementationBuildersFor<TNode> {
+	return implementationBuildersFor(
+		contract,
+	) as ImplementationBuildersFor<TNode>;
+}

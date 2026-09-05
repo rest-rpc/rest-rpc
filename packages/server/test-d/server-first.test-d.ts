@@ -1,15 +1,11 @@
 import { route as coreRoute } from "@rest-rpc/core";
 import type {
-	Implement,
 	ServerImplementationTree,
-	ServerRouteFactory,
+	SseRouteHandlerContext,
 } from "@rest-rpc/server";
-import { sseEvent } from "@rest-rpc/server";
+import { implement, serverFirstRoute, sseEvent } from "@rest-rpc/server";
 import { expectAssignable, expectError, expectType } from "tsd";
 import { z } from "zod";
-
-declare const implement: Implement;
-declare const serverRoute: ServerRouteFactory;
 
 type ApplicationContext = {
 	todos: {
@@ -22,14 +18,14 @@ const todo = z.object({ id: z.string(), title: z.string() });
 
 // server-first builders preserve core request methods, flatten request segments,
 // and retain literal methods and paths through handler attachment
-const create = serverRoute
+const create = serverFirstRoute
 	.post("/todos")
 	.body(todoInput)
 	.$context<ApplicationContext>()
-	.handler(({ title, context, signal }) => {
+	.handler(({ title, context }) => {
 		expectType<string>(title);
-		expectType<ApplicationContext>(context);
-		expectType<AbortSignal>(signal);
+		expectType<ApplicationContext & { signal: AbortSignal }>(context);
+		expectType<AbortSignal>(context.signal);
 
 		return {
 			status: 201,
@@ -42,20 +38,24 @@ expectType<"/todos">(create.route.path);
 expectType<201>(
 	create.handler({
 		title: "write tests",
-		context: { todos: { find: () => ({ id: "todo-1", title: "todo" }) } },
-		signal: new AbortController().signal,
+		context: {
+			signal: new AbortController().signal,
+			todos: { find: () => ({ id: "todo-1", title: "todo" }) },
+		},
 	}).status,
 );
 
 // declared responses remain authoritative on the server-first builder
-const declaredCreate = serverRoute
+const declaredCreate = serverFirstRoute
 	.post("/declared-todos")
 	.body(todoInput)
 	.response(201, todo)
-	.handler(({ title, context, signal }) => {
+	.handler((request) => {
+		const { title, context } = request;
 		expectType<string>(title);
-		expectType<Record<string, unknown>>(context);
-		expectType<AbortSignal>(signal);
+		expectType<Record<string, unknown> & { signal: AbortSignal }>(context);
+		expectType<AbortSignal>(context.signal);
+		expectError(request.signal);
 
 		return {
 			status: 201,
@@ -64,14 +64,14 @@ const declaredCreate = serverRoute
 	});
 
 expectError(
-	serverRoute
+	serverFirstRoute
 		.get("/invalid-declared-response")
 		.response(200, todo)
 		.handler(() => ({ status: 404 as const, body: { code: "NOT_FOUND" } })),
 );
 
 // configured factories preserve prefixes and may opt out of flattened keys
-const prefixed = serverRoute
+const prefixed = serverFirstRoute
 	.with({
 		pathPrefix: "/v1",
 		flattenRequestKeys: false,
@@ -105,21 +105,21 @@ const contract = {
 // contract-first attachment mirrors trees and preserves the contract's request shape
 const get = implement(contract)
 	.todos.get.$context<ApplicationContext>()
-	.handler(({ id, context, signal }) => {
+	.handler(({ id, context }) => {
 		expectType<string>(id);
-		expectType<ApplicationContext>(context);
-		expectType<AbortSignal>(signal);
+		expectType<ApplicationContext & { signal: AbortSignal }>(context);
+		expectType<AbortSignal>(context.signal);
 		return { status: 200 as const, body: context.todos.find(id) };
 	});
 
-const contractCreate = implement(contract.todos.create).handler(
-	({ title, context, signal }) => {
-		expectType<string>(title);
-		expectType<Record<string, unknown>>(context);
-		expectType<AbortSignal>(signal);
-		return { status: 201 as const, body: { id: "todo-1", title } };
-	},
-);
+const contractCreate = implement(contract.todos.create).handler((request) => {
+	const { title, context } = request;
+	expectType<string>(title);
+	expectType<Record<string, unknown> & { signal: AbortSignal }>(context);
+	expectType<AbortSignal>(context.signal);
+	expectError(request.signal);
+	return { status: 201 as const, body: { id: "todo-1", title } };
+});
 
 expectType<typeof contract.todos.get>(get.route);
 expectType<typeof contract.todos.create>(contractCreate.route);
@@ -131,13 +131,15 @@ expectError(
 );
 
 // HTTP and SSE implementations compose as ordinary nested objects
-const events = serverRoute
+const events = serverFirstRoute
 	.sse("/todos/events")
 	.response(todo)
 	.$context<ApplicationContext>()
-	.handler(async function* ({ context, signal }) {
-		expectType<ApplicationContext & { lastEventId?: string }>(context);
-		expectType<AbortSignal>(signal);
+	.handler(async function* ({ context }) {
+		expectType<
+			ApplicationContext & { signal: AbortSignal } & SseRouteHandlerContext
+		>(context);
+		expectType<AbortSignal>(context.signal);
 		yield sseEvent(context.todos.find("todo-1"));
 	});
 

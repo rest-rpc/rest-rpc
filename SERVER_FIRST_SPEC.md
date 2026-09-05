@@ -12,9 +12,9 @@ export const routes = {
 	create: route
 		.post("/todos")
 		.body(todoInput)
-		.handler(async ({ body, context, signal }) => ({
+		.handler(async ({ body, context }) => ({
 			status: 201,
-			body: await context.todos.create(body, { signal }),
+			body: await context.todos.create(body, { signal: context.signal }),
 		})),
 };
 
@@ -96,8 +96,9 @@ export const routes = {
 No new `router()` participates in this model. Framework adapters may retain
 their existing routers.
 
-`.$context<T>()` may select the arbitrary handler context. `signal` is a fixed
-handler input supplied by the executing adapter and is not part of `T`.
+`.$context<T>()` may select the arbitrary handler context. The handler receives
+`context` as `T & { signal: AbortSignal }`; the executing adapter supplies the
+signal rather than requiring it in `T`.
 Middleware and accumulated middleware context are post-POC work.
 
 ## Implicit Responses

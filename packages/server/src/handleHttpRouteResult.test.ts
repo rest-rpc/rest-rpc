@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { SERVER_FIRST_RESPONSE_KIND_HEADER } from "@rest-rpc/core/client";
 import type { HttpRouteResult } from "./handleHttpRoute.ts";
 import { handleHttpRouteResult } from "./handleHttpRouteResult.ts";
 import { sseEvent } from "./sse.ts";
@@ -35,6 +36,7 @@ describe("handleHttpRouteResult", () => {
 
 		assert.deepEqual(headers, {
 			"x-request-id": "request-1",
+			[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=json",
 		});
 		assert.deepEqual(sent, {
 			status: 201,
@@ -101,6 +103,7 @@ describe("handleHttpRouteResult", () => {
 		);
 
 		assert.deepEqual(headers, {
+			[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=custom",
 			"content-type": "text/csv",
 		});
 		assert.deepEqual(sent, {

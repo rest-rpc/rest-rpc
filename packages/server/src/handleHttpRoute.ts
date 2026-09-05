@@ -23,6 +23,7 @@ import type {
 	RuntimeRouteHandler,
 	ServerHttpRouteDeclaration,
 } from "./router.ts";
+import type { ImplicitResponseEnvelope } from "./serverFirst.ts";
 import { validateSseEvents } from "./sse.ts";
 import {
 	getHeaderValue,
@@ -76,6 +77,40 @@ export type HandleHttpRouteOptions<TContext extends HttpRouteHandlerContext> = {
 	context: TContext;
 	errorContext?: Record<string, unknown>;
 	errorHandlers?: ServerErrorHandlers<TContext>;
+};
+
+const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
+	value !== null &&
+	(typeof value === "object" || typeof value === "function") &&
+	Symbol.asyncIterator in value &&
+	typeof value[Symbol.asyncIterator] === "function";
+
+const classifyImplicitResponse = (
+	result: ImplicitResponseEnvelope,
+): HttpRouteResult => {
+	if (!("body" in result)) {
+		return { kind: "empty", status: result.status };
+	}
+
+	const body = result.body;
+	const { contentType } = result;
+
+	if (isAsyncIterable(body)) {
+		return {
+			kind: "stream",
+			status: result.status,
+			body,
+			...(contentType !== undefined
+				? { contentType, mode: "raw" as const }
+				: { mode: "ndjson" as const }),
+		};
+	}
+
+	if (contentType !== undefined) {
+		return { kind: "custom", status: result.status, body, contentType };
+	}
+
+	return { kind: "json", status: result.status, body };
 };
 
 const getResponseSchema = (
@@ -409,6 +444,12 @@ export async function handleHttpRoute<
 						}
 					: options.context,
 		});
+
+		if (!("responses" in route)) {
+			return classifyImplicitResponse(
+				handlerResult as ImplicitResponseEnvelope,
+			);
+		}
 
 		return normalizeHandlerResult(route, handlerResult, options, errorContext);
 	} catch (error) {
