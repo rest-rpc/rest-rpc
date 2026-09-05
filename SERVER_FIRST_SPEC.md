@@ -96,7 +96,7 @@ export const routes = {
 No new `router()` participates in this model. Framework adapters may retain
 their existing routers.
 
-`.context<T>()` may select the arbitrary handler context. `signal` is a fixed
+`.$context<T>()` may select the arbitrary handler context. `signal` is a fixed
 handler input supplied by the executing adapter and is not part of `T`.
 Middleware and accumulated middleware context are post-POC work.
 

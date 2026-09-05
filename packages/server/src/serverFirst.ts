@@ -2,11 +2,13 @@ import type {
 	BaseRouteDeclaration,
 	BuilderExtension,
 	BuilderMetadata,
+	CustomResponseBody,
 	HttpBuilderAtPath,
 	HttpBuilderDeclaration,
 	HttpBuilderFor,
 	HttpBuilderState,
 	HttpMethod,
+	NoBody,
 	RouteFactoryOptions,
 	RouteMetadata,
 	ServerRequest,
@@ -14,7 +16,9 @@ import type {
 	SseBuilderDeclaration,
 	SseBuilderFor,
 	SseBuilderState,
+	Stream,
 } from "@rest-rpc/core/contract";
+import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 import type {
 	HttpRouteHandlerContext,
 	RouteHandler,
@@ -26,6 +30,15 @@ import type {
 type EmptyObject = Record<never, never>;
 type AnyRouteHandler = (...args: never[]) => unknown;
 type MaybePromise<T> = T | Promise<T>;
+
+/** A server-first implementation carrying erased client route metadata. */
+export type ServerRouteImplementation<
+	TRoute = BaseRouteDeclaration,
+	THandler = AnyRouteHandler,
+	TClientRoute = TRoute,
+> = RouteImplementation<TRoute, THandler> & {
+	readonly clientRoute?: TClientRoute;
+};
 
 /** Explicit HTTP response envelope accepted from an inferred route handler. */
 export type ImplicitResponseEnvelope =
@@ -60,13 +73,47 @@ export type ImplicitResponseKind<TResponse> = TResponse extends unknown
 	: never;
 
 type ImplementationParts<TImplementation> =
-	TImplementation extends RouteImplementation<infer TRoute, infer THandler>
+	TImplementation extends ServerRouteImplementation<
+		infer TRoute,
+		infer THandler,
+		unknown
+	>
 		? { route: TRoute; handler: THandler }
 		: never;
 
 type HandlerResult<THandler> = THandler extends AnyRouteHandler
 	? Awaited<ReturnType<THandler>>
 	: never;
+
+type ClientSchema<TOutput> = StandardSchemaV1<unknown, TOutput>;
+
+type ImplicitResponseDeclaration<TResponse> = TResponse extends {
+	body: infer TBody;
+}
+	? TBody extends AsyncIterable<infer TItem>
+		? TResponse extends { contentType: infer TContentType extends string }
+			? Stream<CustomResponseBody<ClientSchema<TItem>, TContentType>>
+			: Stream<ClientSchema<TItem>>
+		: TResponse extends { contentType: infer TContentType extends string }
+			? CustomResponseBody<ClientSchema<TBody>, TContentType>
+			: ClientSchema<TBody>
+	: NoBody;
+
+type ResponseStatuses<TResponse> = TResponse extends {
+	status: infer TStatus extends number;
+}
+	? TStatus
+	: never;
+
+type InferredResponses<TResponse> = {
+	[TStatus in ResponseStatuses<TResponse>]: ImplicitResponseDeclaration<
+		Extract<TResponse, { status: TStatus }>
+	>;
+};
+
+type InferredClientRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
+	responses: InferredResponses<Awaited<TResult>>;
+};
 
 /** Infers the source response union retained by an implicit route implementation. */
 export type InferredRouteResponse<TImplementation> =
@@ -145,7 +192,7 @@ type HttpImplementationBuilder<
 	TMetadata extends RouteMetadata | never,
 	TContext extends HttpRouteHandlerContext,
 > = {
-	context<
+	$context<
 		TNextContext extends HttpRouteHandlerContext,
 	>(): WithHttpBuilderContext<TState, TPath, TMetadata, TNextContext>;
 } & (HttpBuilderDeclaration<TState> extends infer TRoute extends
@@ -154,7 +201,7 @@ type HttpImplementationBuilder<
 		? {
 				handler<const TResult extends DeclaredHandlerResult<TRoute, TContext>>(
 					handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
-				): RouteImplementation<
+				): ServerRouteImplementation<
 					HttpRouteForState<TState, TPath, TMetadata>,
 					(request: DeclaredRequest<TRoute, TContext>) => TResult
 				>;
@@ -162,9 +209,13 @@ type HttpImplementationBuilder<
 		: {
 				handler<const TResult extends MaybePromise<ImplicitResponseEnvelope>>(
 					handler: (request: ServerFirstRequest<TRoute, TContext>) => TResult,
-				): RouteImplementation<
+				): ServerRouteImplementation<
 					HttpRouteForState<TState, TPath, TMetadata>,
-					(request: ServerFirstRequest<TRoute, TContext>) => TResult
+					(request: ServerFirstRequest<TRoute, TContext>) => TResult,
+					InferredClientRoute<
+						HttpRouteForState<TState, TPath, TMetadata>,
+						TResult
+					>
 				>;
 			}
 	: never);
@@ -214,7 +265,7 @@ type SseImplementationBuilder<
 	TMetadata extends RouteMetadata | never,
 	TContext extends HttpRouteHandlerContext,
 > = {
-	context<
+	$context<
 		TNextContext extends HttpRouteHandlerContext,
 	>(): WithSseBuilderContext<TState, TPath, TMetadata, TNextContext>;
 } & (SseRouteForState<TState, TPath, TMetadata> extends infer TRoute extends
@@ -223,7 +274,7 @@ type SseImplementationBuilder<
 		? {
 				handler<const TResult extends DeclaredHandlerResult<TRoute, TContext>>(
 					handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
-				): RouteImplementation<
+				): ServerRouteImplementation<
 					SseRouteForState<TState, TPath, TMetadata>,
 					(request: DeclaredRequest<TRoute, TContext>) => TResult
 				>;
@@ -278,12 +329,12 @@ type ImplementationBuilder<
 	TRoute extends ServerHttpRouteDeclaration,
 	TContext extends HttpRouteHandlerContext,
 > = {
-	context<
+	$context<
 		TNextContext extends HttpRouteHandlerContext,
 	>(): ImplementationBuilder<TRoute, TNextContext>;
 	handler<const TResult extends DeclaredHandlerResult<TRoute, TContext>>(
 		handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
-	): RouteImplementation<
+	): ServerRouteImplementation<
 		TRoute,
 		(request: DeclaredRequest<TRoute, TContext>) => TResult
 	>;
@@ -310,13 +361,11 @@ export type Implement = <const TNode extends ServerContract>(
 	contract: TNode,
 ) => ImplementationBuildersFor<TNode>;
 
-/** An HTTP or SSE implementation retaining its concrete handler type. */
-export type ServerRouteImplementation = RouteImplementation<
-	BaseRouteDeclaration,
-	AnyRouteHandler
->;
-
 /** An ordinary object tree containing server-first route implementations. */
 export type ServerImplementationTree =
-	| ServerRouteImplementation
+	| ServerRouteImplementation<
+			BaseRouteDeclaration,
+			AnyRouteHandler,
+			ServerHttpRouteDeclaration
+	  >
 	| { readonly [key: string]: ServerImplementationTree };

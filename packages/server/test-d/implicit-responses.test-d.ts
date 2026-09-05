@@ -1,10 +1,11 @@
+import type { RouteDeclaration } from "@rest-rpc/core";
 import type {
 	InferredRouteResponse,
 	ServerFirstRouteResponseKind,
 	ServerRouteFactory,
 } from "@rest-rpc/server";
 import { sseEvent } from "@rest-rpc/server";
-import { expectError, expectNever, expectType } from "tsd";
+import { expectAssignable, expectError, expectNever, expectType } from "tsd";
 import { z } from "zod";
 
 declare const route: ServerRouteFactory;
@@ -20,6 +21,9 @@ type JsonResponse = InferredRouteResponse<typeof json>;
 declare const jsonResponse: JsonResponse;
 expectType<200>(jsonResponse.status);
 expectType<"todo">(jsonResponse.body.type);
+expectAssignable<RouteDeclaration>(
+	null as unknown as NonNullable<typeof json.clientRoute>,
+);
 expectType<"json">(
 	null as unknown as ServerFirstRouteResponseKind<typeof json>,
 );
@@ -137,6 +141,9 @@ const declared = route
 	.response(200, z.object({ id: z.string() }))
 	.handler(() => ({ status: 200, body: { id: "todo-1" } }));
 expectNever(null as unknown as InferredRouteResponse<typeof declared>);
+expectAssignable<RouteDeclaration>(
+	null as unknown as NonNullable<typeof declared.clientRoute>,
+);
 
 // implicit HTTP handlers must return explicit status envelopes
 expectError(route.get("/direct-body").handler(() => ({ id: "todo-1" })));

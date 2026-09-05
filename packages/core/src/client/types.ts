@@ -26,7 +26,7 @@ export type FetchLike = (
 	init?: RequestInit,
 ) => Promise<Response>;
 
-type HeaderRecord = Record<string, string>;
+export type HeaderRecord = Record<string, string>;
 
 export type GetHeadersFn<THeaders extends HeaderRecord = HeaderRecord> = () =>
 	| THeaders

@@ -25,7 +25,7 @@ const todo = z.object({ id: z.string(), title: z.string() });
 const create = serverRoute
 	.post("/todos")
 	.body(todoInput)
-	.context<ApplicationContext>()
+	.$context<ApplicationContext>()
 	.handler(({ title, context, signal }) => {
 		expectType<string>(title);
 		expectType<ApplicationContext>(context);
@@ -104,7 +104,7 @@ const contract = {
 
 // contract-first attachment mirrors trees and preserves the contract's request shape
 const get = implement(contract)
-	.todos.get.context<ApplicationContext>()
+	.todos.get.$context<ApplicationContext>()
 	.handler(({ id, context, signal }) => {
 		expectType<string>(id);
 		expectType<ApplicationContext>(context);
@@ -134,7 +134,7 @@ expectError(
 const events = serverRoute
 	.sse("/todos/events")
 	.response(todo)
-	.context<ApplicationContext>()
+	.$context<ApplicationContext>()
 	.handler(async function* ({ context, signal }) {
 		expectType<ApplicationContext & { lastEventId?: string }>(context);
 		expectType<AbortSignal>(signal);
