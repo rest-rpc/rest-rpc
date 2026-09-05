@@ -1,11 +1,10 @@
-import type { ServerFirstClientInitializer } from "@rest-rpc/core";
+import { initServerFirstClient, request } from "@rest-rpc/core";
 import type { ServerRouteFactory } from "@rest-rpc/server";
 import { sseEvent } from "@rest-rpc/server";
 import { expectError, expectType } from "tsd";
 import { z } from "zod";
 
 declare const route: ServerRouteFactory;
-declare const initClient: ServerFirstClientInitializer;
 
 const todo = z.object({ id: z.string(), title: z.string() });
 
@@ -53,9 +52,53 @@ const routes = {
 		.handler(async function* () {
 			yield sseEvent({ id: "todo-1" });
 		}),
+	form: route
+		.post("/form")
+		.formBody(
+			z.object({ title: z.string(), tags: z.array(z.string()).optional() }),
+		)
+		.handler(({ body }) => ({ status: 204 as const, body: body.title })),
+	upload: route
+		.post("/upload")
+		.multipartBody(z.object({ title: z.string(), file: z.instanceof(Blob) }))
+		.handler(({ body }) => ({ status: 204 as const, body: body.title })),
+	search: route
+		.get("/search")
+		.jsonQuery(z.object({ page: z.number(), filters: z.array(z.string()) }))
+		.handler(({ query }) => ({ status: 200 as const, body: query.page })),
+	custom: route
+		.post("/custom")
+		.customBody({ contentType: "text/csv", schema: z.string() })
+		.handler(({ body }) => ({ status: 204 as const, body })),
+	selectableCustom: route
+		.post("/selectable-custom")
+		.customBody({
+			contentType: ["image/png", "image/jpeg"] as const,
+			schema: z.instanceof(Uint8Array),
+		})
+		.handler(({ body }) => ({ status: 204 as const, body: body.contentType })),
+	fetchManagedCustom: route
+		.post("/fetch-managed-custom")
+		.customBody(z.instanceof(URLSearchParams))
+		.handler(() => ({ status: 204 as const })),
 } as const;
 
-const client = initClient<typeof routes>({ baseUrl: "https://example.test" });
+const client = initServerFirstClient<typeof routes>({
+	baseUrl: "https://example.test",
+});
+
+expectError(
+	initServerFirstClient<typeof routes>({
+		baseUrl: "https://example.test",
+		validateResponses: true,
+	}),
+);
+expectError(
+	initServerFirstClient<typeof routes>({
+		baseUrl: "https://example.test",
+		strictRequestKeys: false,
+	}),
+);
 
 // Client inputs are grouped even though the server handler uses flattened keys.
 expectType<Promise<{ id: string; title: string }>>(
@@ -117,3 +160,35 @@ client
 		expectType<{ id: string }>(message);
 	});
 expectError(client.get("/events"));
+
+// Specialized encodings are explicit and constrained by the server route.
+client.post("/form").fetch({
+	body: request.formBody({ title: "Todo", tags: ["docs", "api"] }),
+});
+expectError(client.post("/form").fetch({ body: { title: "Todo" } }));
+
+client.post("/upload").fetch({
+	body: request.multipartBody({ title: "Todo", file: new Blob() }),
+});
+client.get("/search").fetch({
+	query: request.jsonQuery({ page: 2, filters: ["open"] }),
+});
+client.post("/custom").fetch({
+	body: request.customBody("text/csv", "id,title\n1,Todo\n"),
+});
+expectError(
+	client.post("/custom").fetch({
+		body: request.customBody("application/json", "value"),
+	}),
+);
+client.post("/selectable-custom").fetch({
+	body: request.customBody("image/png", new Uint8Array()),
+});
+expectError(
+	client.post("/selectable-custom").fetch({
+		body: request.customBody("image/webp", new Uint8Array()),
+	}),
+);
+client.post("/fetch-managed-custom").fetch({
+	body: request.customBody(new URLSearchParams({ title: "Todo" })),
+});

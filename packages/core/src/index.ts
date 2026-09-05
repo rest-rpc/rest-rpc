@@ -8,8 +8,15 @@ export type {
 	NextFetchTagsOptions,
 	ServerFirstClientFor,
 	ServerFirstClientInitializer,
+	ServerFirstClientOptions,
 } from "./client/index.ts";
-export { getNextFetchTags, initClient } from "./client/index.ts";
+export {
+	getNextFetchTags,
+	initClient,
+	initServerFirstClient,
+	request,
+	SERVER_FIRST_RESPONSE_KIND_HEADER,
+} from "./client/index.ts";
 export type {
 	ClientReceived,
 	ClientSseReceived,

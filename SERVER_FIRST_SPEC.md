@@ -19,7 +19,7 @@ export const routes = {
 };
 
 // Client
-const client = initClient<typeof routes>({ baseUrl });
+const client = initServerFirstClient<typeof routes>({ baseUrl });
 const response = await client.post("/todos").fetchResponse({
 	body: { title: "Write docs" },
 });
@@ -140,7 +140,7 @@ The client proxy flattens `typeof routes` at the type level and selects a route
 by the explicitly supplied method and path:
 
 ```ts
-const client = initClient<typeof routes>({ baseUrl });
+const client = initServerFirstClient<typeof routes>({ baseUrl });
 
 client.post("/todos").fetch({ body });
 client.get("/todos/:id").fetchResponse({ params: { id } });
@@ -150,6 +150,20 @@ Invalid method/path combinations must fail type checking and valid paths should
 autocomplete. Specialized request encodings that cannot be inferred at runtime,
 such as JSON-encoded queries, use a small explicit request DSL that bridges to
 the existing Fetch client implementation.
+
+```ts
+client.post("/forms").fetch({ body: request.formBody(form) });
+client.post("/uploads").fetch({ body: request.multipartBody(formData) });
+client.get("/search").fetch({ query: request.jsonQuery(search) });
+client.post("/imports.csv").fetch({
+	body: request.customBody("text/csv", csv),
+});
+```
+
+`initServerFirstClient` accepts the ordinary client options except
+`validateResponses` and `strictRequestKeys`. Runtime response schemas are not
+available to the client, and request keys always use the grouped shape. Next.js
+fetch tags use `method:path` as the route identity.
 
 For inferred responses, the server sends a lightweight response-kind header so
 the client can choose empty, JSON, NDJSON, custom, custom-stream, or SSE handling.
