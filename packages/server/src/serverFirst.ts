@@ -247,14 +247,14 @@ interface ServerSseBuilderExtension<
 }
 
 type ServerRouteOptions<TOptions extends RouteFactoryOptions> = Omit<
-	{ flattenRequestKeys: false },
+	{ flattenRequestKeys: true },
 	keyof TOptions
 > &
 	TOptions;
 
 /** Type-level model of the server-first HTTP and SSE route factory. */
 export type ServerRouteFactory<
-	TOptions extends RouteFactoryOptions = { flattenRequestKeys: false },
+	TOptions extends RouteFactoryOptions = { flattenRequestKeys: true },
 	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
 > = {
 	[TMethod in Lowercase<HttpMethod>]: <const TPath extends string>(

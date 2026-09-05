@@ -20,20 +20,20 @@ type ApplicationContext = {
 const todoInput = z.object({ title: z.string() });
 const todo = z.object({ id: z.string(), title: z.string() });
 
-// server-first builders preserve core request methods, group request segments,
+// server-first builders preserve core request methods, flatten request segments,
 // and retain literal methods and paths through handler attachment
 const create = serverRoute
 	.post("/todos")
 	.body(todoInput)
 	.context<ApplicationContext>()
-	.handler(({ body, context, signal }) => {
-		expectType<{ title: string }>(body);
+	.handler(({ title, context, signal }) => {
+		expectType<string>(title);
 		expectType<ApplicationContext>(context);
 		expectType<AbortSignal>(signal);
 
 		return {
 			status: 201,
-			body: { id: "todo-1", title: body.title },
+			body: { id: "todo-1", title },
 		};
 	});
 
@@ -41,7 +41,7 @@ expectType<"POST">(create.route.method);
 expectType<"/todos">(create.route.path);
 expectType<201>(
 	create.handler({
-		body: { title: "write tests" },
+		title: "write tests",
 		context: { todos: { find: () => ({ id: "todo-1", title: "todo" }) } },
 		signal: new AbortController().signal,
 	}).status,
@@ -52,14 +52,14 @@ const declaredCreate = serverRoute
 	.post("/declared-todos")
 	.body(todoInput)
 	.response(201, todo)
-	.handler(({ body, context, signal }) => {
-		expectType<{ title: string }>(body);
+	.handler(({ title, context, signal }) => {
+		expectType<string>(title);
 		expectType<Record<string, unknown>>(context);
 		expectType<AbortSignal>(signal);
 
 		return {
 			status: 201,
-			body: { id: "todo-1", title: body.title },
+			body: { id: "todo-1", title },
 		};
 	});
 
@@ -70,18 +70,18 @@ expectError(
 		.handler(() => ({ status: 404 as const, body: { code: "NOT_FOUND" } })),
 );
 
-// configured factories preserve prefixes and may opt back into flattened keys
+// configured factories preserve prefixes and may opt out of flattened keys
 const prefixed = serverRoute
 	.with({
 		pathPrefix: "/v1",
-		flattenRequestKeys: true,
+		flattenRequestKeys: false,
 		metadata: { apiVersion: "v1", access: "shared" },
 	})
 	.post("/todos")
 	.body(todoInput)
 	.withMetadata({ access: "write", feature: "todos" })
-	.handler(({ title }) => {
-		expectType<string>(title);
+	.handler(({ body }) => {
+		expectType<{ title: string }>(body);
 		return { status: 204 as const };
 	});
 
