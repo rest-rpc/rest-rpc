@@ -109,7 +109,7 @@ const routeSource = (index) => {
 		builder.push(".body(bodySchema)");
 	builder.push(
 		".headers(routeHeadersSchema)",
-		`.withMetadata({ feature: 'group-${group}' })`,
+		`.withMetadata({ feature: 'route-${index}' })`,
 		".response(200, todoSchema)",
 		".response(400, errorSchema)",
 		".response(404, errorSchema)",

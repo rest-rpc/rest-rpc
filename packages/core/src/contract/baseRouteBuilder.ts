@@ -30,6 +30,7 @@ export type EmptyObject = Record<never, never>;
 export interface BuilderExtension {
 	readonly state: unknown;
 	readonly path: string;
+	readonly metadata: unknown;
 	readonly result: unknown;
 }
 
@@ -37,10 +38,45 @@ export interface BuilderExtension {
 export type ApplyBuilderExtension<
 	TExtension extends BuilderExtension | never,
 	TState,
-	TPath extends string,
+	TPath extends string = string,
+	TMetadata extends RouteMetadata | never = never,
 > = [TExtension] extends [never]
 	? EmptyObject
-	: (TExtension & { readonly state: TState; readonly path: TPath })["result"];
+	: (TExtension & {
+			readonly state: TState;
+			readonly path: TPath;
+			readonly metadata: TMetadata;
+		})["result"];
+
+/** Resolves metadata inherited by a route builder from factory options. */
+export type BuilderMetadataFor<TOptions> = TOptions extends {
+	metadata: infer TMetadata extends RouteMetadata;
+}
+	? TMetadata
+	: never;
+
+/** Adds preserved metadata to a route declaration when metadata exists. */
+export type BuilderMetadata<TMetadata extends RouteMetadata | never> = [
+	TMetadata,
+] extends [never]
+	? EmptyObject
+	: { readonly metadata: TMetadata };
+
+/** The invariant fields read by fluent builder methods. */
+export type BuilderReceiver<
+	TPath extends string,
+	TMetadata extends RouteMetadata | never,
+> = { readonly path: TPath; readonly metadata?: TMetadata };
+
+/** Merges locally declared metadata over inherited builder metadata. */
+export type MergeBuilderMetadata<
+	TMetadata extends RouteMetadata | never,
+	TLocal extends RouteMetadata,
+> = [TMetadata] extends [never]
+	? TLocal
+	: Omit<TMetadata, keyof TLocal> & TLocal extends infer TMerged
+		? { [TKey in keyof TMerged]: TMerged[TKey] }
+		: never;
 
 /** Shared type state tracked by fluent route builders. */
 export type BuilderState<

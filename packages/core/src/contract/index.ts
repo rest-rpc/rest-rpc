@@ -21,9 +21,13 @@ export type {
 export type {
 	ApplyBuilderExtension,
 	BuilderExtension,
+	BuilderMetadata,
+	BuilderMetadataFor,
+	BuilderReceiver,
 	BuilderState,
 	EmptyObject,
 	ProtocolRequestFor,
+	MergeBuilderMetadata,
 	UseBuilderMethod,
 	WhenUnused,
 	WithRequest,

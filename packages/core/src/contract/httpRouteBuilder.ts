@@ -40,8 +40,12 @@ import {
 	type ApplyBuilderExtension,
 	BaseRouteBuilder,
 	type BuilderExtension,
+	type BuilderMetadata,
+	type BuilderMetadataFor,
+	type BuilderReceiver,
 	type BuilderState,
 	type EmptyObject,
+	type MergeBuilderMetadata,
 	type UseBuilderMethod,
 	type WhenUnused,
 	type WithRequest,
@@ -235,11 +239,11 @@ export type HttpBuilderDeclaration<TState extends HttpBuilderState> = {
 export type HttpBuilderAtPath<
 	TState extends HttpBuilderState,
 	TPath extends string,
-> = HttpBuilder<TState> & { readonly path: TPath } & ApplyBuilderExtension<
-		TState["extension"],
-		TState,
-		TPath
-	>;
+	TMetadata extends RouteMetadata | never = never,
+> = HttpBuilder<TState> & {
+	readonly path: TPath;
+} & BuilderMetadata<TMetadata> &
+	ApplyBuilderExtension<TState["extension"], TState, TPath, TMetadata>;
 
 type HttpResponseSetters<TState extends HttpBuilderState> = {
 	/** Declares a response status and schema. @see {@link https://rest-rpc.dev/docs/contract/declaration#responses} */
@@ -247,8 +251,9 @@ type HttpResponseSetters<TState extends HttpBuilderState> = {
 		const TStatus extends number,
 		const TSchema extends RegularResponseDeclaration | undefined = undefined,
 		const TPath extends string = string,
+		const TMetadata extends RouteMetadata | never = never,
 	>(
-		this: { readonly path: TPath },
+		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
 		schema?: TSchema,
 	): HttpBuilderAtPath<
@@ -257,7 +262,8 @@ type HttpResponseSetters<TState extends HttpBuilderState> = {
 			TStatus,
 			TSchema extends RegularResponseDeclaration ? TSchema : NoBody
 		>,
-		TPath
+		TPath,
+		TMetadata
 	>;
 	/** Declares a custom-content response. @see {@link https://rest-rpc.dev/docs/http-responses#response-with-custom-content-type} */
 	customResponse<
@@ -265,32 +271,40 @@ type HttpResponseSetters<TState extends HttpBuilderState> = {
 		const TSchema extends StandardSchemaV1,
 		const TContentType extends CustomBodyContentType,
 		const TPath extends string = string,
+		const TMetadata extends RouteMetadata | never = never,
 	>(
-		this: { readonly path: TPath },
+		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
 		input: CustomResponseInput<TSchema, TContentType>,
 	): HttpBuilderAtPath<
 		WithResponse<TState, TStatus, CustomResponseBody<TSchema, TContentType>>,
-		TPath
+		TPath,
+		TMetadata
 	>;
 	/** Declares an NDJSON response stream. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-ndjson-responses} */
 	streamResponse<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1,
 		const TPath extends string = string,
+		const TMetadata extends RouteMetadata | never = never,
 	>(
-		this: { readonly path: TPath },
+		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
 		schema: TSchema,
-	): HttpBuilderAtPath<WithResponse<TState, TStatus, Stream<TSchema>>, TPath>;
+	): HttpBuilderAtPath<
+		WithResponse<TState, TStatus, Stream<TSchema>>,
+		TPath,
+		TMetadata
+	>;
 	/** Declares a custom-content response stream. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-responses-with-custom-content-type} */
 	customStreamResponse<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1,
 		const TContentType extends CustomBodyContentType,
 		const TPath extends string = string,
+		const TMetadata extends RouteMetadata | never = never,
 	>(
-		this: { readonly path: TPath },
+		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
 		input: CustomResponseInput<TSchema, TContentType>,
 	): HttpBuilderAtPath<
@@ -299,7 +313,8 @@ type HttpResponseSetters<TState extends HttpBuilderState> = {
 			TStatus,
 			Stream<CustomResponseBody<TSchema, TContentType>>
 		>,
-		TPath
+		TPath,
+		TMetadata
 	>;
 };
 
@@ -311,52 +326,61 @@ type HttpBodySetters<TState extends HttpBuilderState> = WhenUnused<
 		body<
 			const TSchema extends StandardSchemaV1,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "body", TSchema, "body">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		/** Declares a URL-encoded form body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-form-body} */
 		formBody<
 			const TSchema extends FormBodySchema,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "body", FormBody<TSchema>, "body">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		formBody<
 			const TSchema extends FormBodySchema,
 			const TArrayKeys extends readonly string[],
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "body", FormBody<TSchema, TArrayKeys>, "body">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		/** Declares a multipart form body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-multipart-body} */
 		multipartBody<
 			const TSchema extends MultipartBodySchema,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "body", MultipartBody<TSchema>, "body">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		multipartBody<
 			const TSchema extends MultipartBodySchema,
 			const TArrayKeys extends readonly string[],
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			input: BodyWithArrayKeysOptions<TSchema, TArrayKeys>,
 		): HttpBuilderAtPath<
 			SetHttpRequest<
@@ -365,29 +389,34 @@ type HttpBodySetters<TState extends HttpBuilderState> = WhenUnused<
 				MultipartBody<TSchema, TArrayKeys>,
 				"body"
 			>,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		/** Declares a custom-content request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-custom-content-type} */
 		customBody<
 			const TSchema extends StandardSchemaV1,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "body", CustomBody<TSchema, undefined>, "body">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		customBody<
 			const TSchema extends StandardSchemaV1,
 			const TContentType extends CustomBodyContentType,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			input: CustomResponseInput<TSchema, TContentType>,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "body", CustomBody<TSchema, TContentType>, "body">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 	}
 >;
@@ -400,23 +429,27 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 		query<
 			const TSchema extends RequestQuerySchema,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "query", TSchema, "query">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
 		jsonQuery<
 			const TSchema extends StandardSchemaV1,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): HttpBuilderAtPath<
 			SetHttpRequest<TState, "query", JsonQuery<TSchema>, "query">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 	}
 > &
@@ -428,12 +461,14 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 			params<
 				const TSchema extends RequestParamsSchema,
 				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
 			>(
-				this: { readonly path: TPath },
+				this: BuilderReceiver<TPath, TMetadata>,
 				schema: TSchema,
 			): HttpBuilderAtPath<
 				SetHttpRequest<TState, "params", TSchema, "params">,
-				TPath
+				TPath,
+				TMetadata
 			>;
 		}
 	> &
@@ -445,8 +480,9 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 			headers<
 				const THeaders extends RequestHeadersSchema,
 				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
 			>(
-				this: { readonly path: TPath },
+				this: BuilderReceiver<TPath, TMetadata>,
 				schema: THeaders,
 			): HttpBuilderAtPath<
 				SetHttpRequest<
@@ -459,7 +495,8 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 						: { local: THeaders },
 					"headers"
 				>,
-				TPath
+				TPath,
+				TMetadata
 			>;
 		}
 	> &
@@ -471,32 +508,49 @@ type HttpRequestSetters<TState extends HttpBuilderState> = WhenUnused<
 			requestKeys<
 				const TKeys extends RequestKeys,
 				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
 			>(
-				this: { readonly path: TPath },
+				this: BuilderReceiver<TPath, TMetadata>,
 				keys: TKeys,
 			): HttpBuilderAtPath<
 				SetHttpRequest<TState, "keys", TKeys, "requestKeys">,
-				TPath
+				TPath,
+				TMetadata
 			>;
 		}
 	> &
 	("withMetadata" extends TState["used"]
-		? { metadata: RouteMetadata }
+		? EmptyObject
 		: {
 				/** Adds application metadata. @see {@link https://rest-rpc.dev/docs/contract/declaration#shared-route-options} */
-				withMetadata<const TPath extends string>(
-					this: { readonly path: TPath },
-					metadata: RouteMetadata,
-				): HttpBuilderAtPath<UseBuilderMethod<TState, "withMetadata">, TPath>;
+				withMetadata<
+					const TLocal extends RouteMetadata,
+					const TPath extends string = string,
+					const TMetadata extends RouteMetadata | never = never,
+				>(
+					this: BuilderReceiver<TPath, TMetadata>,
+					metadata: TLocal,
+				): HttpBuilderAtPath<
+					UseBuilderMethod<TState, "withMetadata">,
+					TPath,
+					MergeBuilderMetadata<TMetadata, TLocal>
+				>;
 			}) &
 	("withOpenApi" extends TState["used"]
 		? { openApi: OpenApiRouteOptions }
 		: {
 				/** Adds OpenAPI metadata. @see {@link https://rest-rpc.dev/docs/openapi#route-metadata} */
-				withOpenApi<const TPath extends string>(
-					this: { readonly path: TPath },
+				withOpenApi<
+					const TPath extends string,
+					const TMetadata extends RouteMetadata | never = never,
+				>(
+					this: BuilderReceiver<TPath, TMetadata>,
 					openApi: OpenApiRouteOptions,
-				): HttpBuilderAtPath<UseBuilderMethod<TState, "withOpenApi">, TPath>;
+				): HttpBuilderAtPath<
+					UseBuilderMethod<TState, "withOpenApi">,
+					TPath,
+					TMetadata
+				>;
 			});
 
 export type HttpBuilder<TState extends HttpBuilderState> =
@@ -519,7 +573,8 @@ export type HttpBuilderFor<
 		used: never;
 		extension: TExtension;
 	},
-	ResolvedPath<TOptions, TPath>
+	ResolvedPath<TOptions, TPath>,
+	BuilderMetadataFor<TOptions>
 >;
 
 export const createHttpRoute = (

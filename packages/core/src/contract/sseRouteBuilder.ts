@@ -13,7 +13,12 @@ import {
 	type ApplyBuilderExtension,
 	BaseRouteBuilder,
 	type BuilderExtension,
+	type BuilderMetadata,
+	type BuilderMetadataFor,
+	type BuilderReceiver,
 	type BuilderState,
+	type EmptyObject,
+	type MergeBuilderMetadata,
 	type ProtocolRequestFor,
 	protocolRequestDefaults,
 	type UseBuilderMethod,
@@ -107,11 +112,9 @@ export type SseBuilderDeclaration<TState extends SseBuilderState> = {
 export type SseBuilderAtPath<
 	TState extends SseBuilderState,
 	TPath extends string,
-> = SseBuilder<TState> & { readonly path: TPath } & ApplyBuilderExtension<
-		TState["extension"],
-		TState,
-		TPath
-	>;
+	TMetadata extends RouteMetadata | never = never,
+> = SseBuilder<TState> & { readonly path: TPath } & BuilderMetadata<TMetadata> &
+	ApplyBuilderExtension<TState["extension"], TState, TPath, TMetadata>;
 
 type SseResponseSetter<TState extends SseBuilderState> = [
 	TState["response"],
@@ -121,12 +124,14 @@ type SseResponseSetter<TState extends SseBuilderState> = [
 			response<
 				const TSchema extends StandardSchemaV1,
 				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
 			>(
-				this: { readonly path: TPath },
+				this: BuilderReceiver<TPath, TMetadata>,
 				schema: TSchema,
 			): SseBuilderAtPath<
 				Omit<TState, "response"> & { response: TSchema },
-				TPath
+				TPath,
+				TMetadata
 			>;
 		}
 	: {
@@ -141,23 +146,27 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 		query<
 			const TSchema extends RequestQuerySchema,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): SseBuilderAtPath<
 			SetSseRequest<TState, "query", TSchema, "query">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
 		jsonQuery<
 			const TSchema extends StandardSchemaV1,
 			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
 		>(
-			this: { readonly path: TPath },
+			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
 		): SseBuilderAtPath<
 			SetSseRequest<TState, "query", JsonQuery<TSchema>, "query">,
-			TPath
+			TPath,
+			TMetadata
 		>;
 	}
 > &
@@ -169,12 +178,14 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 			params<
 				const TSchema extends RequestParamsSchema,
 				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
 			>(
-				this: { readonly path: TPath },
+				this: BuilderReceiver<TPath, TMetadata>,
 				schema: TSchema,
 			): SseBuilderAtPath<
 				SetSseRequest<TState, "params", TSchema, "params">,
-				TPath
+				TPath,
+				TMetadata
 			>;
 		}
 	> &
@@ -186,32 +197,49 @@ type SseRequestSetters<TState extends SseBuilderState> = WhenUnused<
 			requestKeys<
 				const TKeys extends RequestKeys,
 				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
 			>(
-				this: { readonly path: TPath },
+				this: BuilderReceiver<TPath, TMetadata>,
 				keys: TKeys,
 			): SseBuilderAtPath<
 				SetSseRequest<TState, "keys", TKeys, "requestKeys">,
-				TPath
+				TPath,
+				TMetadata
 			>;
 		}
 	> &
 	("withMetadata" extends TState["used"]
-		? { metadata: RouteMetadata }
+		? EmptyObject
 		: {
 				/** Adds application metadata. @see {@link https://rest-rpc.dev/docs/contract/declaration#shared-route-options} */
-				withMetadata<const TPath extends string>(
-					this: { readonly path: TPath },
-					metadata: RouteMetadata,
-				): SseBuilderAtPath<UseBuilderMethod<TState, "withMetadata">, TPath>;
+				withMetadata<
+					const TLocal extends RouteMetadata,
+					const TPath extends string = string,
+					const TMetadata extends RouteMetadata | never = never,
+				>(
+					this: BuilderReceiver<TPath, TMetadata>,
+					metadata: TLocal,
+				): SseBuilderAtPath<
+					UseBuilderMethod<TState, "withMetadata">,
+					TPath,
+					MergeBuilderMetadata<TMetadata, TLocal>
+				>;
 			}) &
 	("withOpenApi" extends TState["used"]
 		? { openApi: OpenApiRouteOptions }
 		: {
 				/** Adds OpenAPI metadata. @see {@link https://rest-rpc.dev/docs/openapi#route-metadata} */
-				withOpenApi<const TPath extends string>(
-					this: { readonly path: TPath },
+				withOpenApi<
+					const TPath extends string,
+					const TMetadata extends RouteMetadata | never = never,
+				>(
+					this: BuilderReceiver<TPath, TMetadata>,
 					openApi: OpenApiRouteOptions,
-				): SseBuilderAtPath<UseBuilderMethod<TState, "withOpenApi">, TPath>;
+				): SseBuilderAtPath<
+					UseBuilderMethod<TState, "withOpenApi">,
+					TPath,
+					TMetadata
+				>;
 			});
 
 /** A fluent SSE route builder at a particular declaration state. */
@@ -234,7 +262,8 @@ export type SseBuilderFor<
 	},
 	TOptions extends { pathPrefix: infer TPrefix extends string }
 		? `${TPrefix}${TPath}`
-		: TPath
+		: TPath,
+	BuilderMetadataFor<TOptions>
 >;
 
 export const createSseRoute = (path: string, options?: RouteFactoryOptions) =>

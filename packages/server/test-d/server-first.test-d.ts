@@ -72,15 +72,25 @@ expectError(
 
 // configured factories preserve prefixes and may opt back into flattened keys
 const prefixed = serverRoute
-	.with({ pathPrefix: "/v1", flattenRequestKeys: true })
+	.with({
+		pathPrefix: "/v1",
+		flattenRequestKeys: true,
+		metadata: { apiVersion: "v1", access: "shared" },
+	})
 	.post("/todos")
 	.body(todoInput)
+	.withMetadata({ access: "write", feature: "todos" })
 	.handler(({ title }) => {
 		expectType<string>(title);
 		return { status: 204 as const };
 	});
 
 expectType<"/v1/todos">(prefixed.route.path);
+expectType<{
+	readonly apiVersion: "v1";
+	readonly access: "write";
+	readonly feature: "todos";
+}>(prefixed.route.metadata);
 
 const contract = {
 	todos: {
