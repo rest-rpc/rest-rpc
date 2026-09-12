@@ -49,9 +49,8 @@ export type RouteHandler<TRoute extends ContractRoute> = ServerRouteHandler<
 >;
 
 /** Starts a Fastify server-first route builder chain. */
-export const route = serverFirstRoute as unknown as ServerRouteBuilder<
-	FastifyHandlerFields
->;
+export const route =
+	serverFirstRoute as unknown as ServerRouteBuilder<FastifyHandlerFields>;
 
 /** Exposes Fastify handler attachment on every route in a core contract. */
 export function implement<const TContract extends Contract>(

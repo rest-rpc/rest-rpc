@@ -81,9 +81,7 @@ export type RouteHandler<
 	TAdditionalHandlerFields extends object = EmptyObject,
 	TContext extends object = EmptyObject,
 > = (
-	...args: [
-		request: RouteRequest<TRoute, TAdditionalHandlerFields, TContext>,
-	]
+	...args: [request: RouteRequest<TRoute, TAdditionalHandlerFields, TContext>]
 ) => HandlerResult<TRoute>;
 
 type Merge<T> = { [TKey in keyof T]: T[TKey] };

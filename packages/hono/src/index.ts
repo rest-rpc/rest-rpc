@@ -50,9 +50,8 @@ export type RouteHandler<
 > = ServerRouteHandler<TRoute["~restrpc"], HonoHandlerFields<TEnv>>;
 
 /** Starts a Hono server-first route builder chain. */
-export const route = serverFirstRoute as unknown as ServerRouteBuilder<
-	HonoHandlerFields
->;
+export const route =
+	serverFirstRoute as unknown as ServerRouteBuilder<HonoHandlerFields>;
 
 /** Exposes Hono handler attachment on every route in a core contract. */
 export function implement<const TContract extends Contract>(

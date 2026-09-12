@@ -37,5 +37,6 @@ export type {
 	InferredRouteResponse,
 	ServerFirstResponseKind,
 	ServerFirstRouteResponseKind,
+	ServerBuilderExtension,
 	ServerRouteBuilder,
 } from "./routeBuilder.types.ts";

@@ -234,7 +234,7 @@ export const api = {
 
 type BenchmarkRoute = typeof api.group0.route0;
 export type BenchmarkOptionTypes = {
-	request: BenchmarkRoute extends { request: infer TRequest }
+	request: BenchmarkRoute["~restrpc"] extends { request: infer TRequest }
 		? TRequest
 		: never;
 };

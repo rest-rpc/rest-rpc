@@ -58,22 +58,24 @@ type RouteRequestValue<E extends QueryRoute> = ClientRequest<RouteFor<E>>;
  *
  * @see {@link https://rest-rpc.dev/docs/type-helpers#tanstack-query}
  */
-export type RouteQueryData<E extends QueryRoute> = RouteFor<E> extends {
-	kind: "procedure";
-}
-	? ClientResponse<RouteFor<E>>
-	: DeclaredRouteQueryData<RouteFor<E>>;
+export type RouteQueryData<E extends QueryRoute> =
+	RouteFor<E> extends {
+		kind: "procedure";
+	}
+		? ClientResponse<RouteFor<E>>
+		: DeclaredRouteQueryData<RouteFor<E>>;
 
 /**
  * Infers the error value surfaced by generated TanStack Query options.
  *
  * @see {@link https://rest-rpc.dev/docs/type-helpers#tanstack-query}
  */
-export type RouteQueryError<E extends QueryRoute> = RouteFor<E> extends {
-	kind: "procedure";
-}
-	? Error
-	: DeclaredRouteQueryError<RouteFor<E>>;
+export type RouteQueryError<E extends QueryRoute> =
+	RouteFor<E> extends {
+		kind: "procedure";
+	}
+		? Error
+		: DeclaredRouteQueryError<RouteFor<E>>;
 
 /**
  * Infers mutation variables for a route.
@@ -96,10 +98,10 @@ export type RouteInfiniteQueryData<E extends QueryRoute> = InfiniteData<
 type RouteStreamChunk<E extends QueryRoute> = [
 	DeclaredRouteResponseBody<RouteFor<E>>,
 ] extends [never]
-		? never
-		: DeclaredRouteResponseBody<RouteFor<E>> extends AsyncIterable<infer TChunk>
-			? TChunk
-			: never;
+	? never
+	: DeclaredRouteResponseBody<RouteFor<E>> extends AsyncIterable<infer TChunk>
+		? TChunk
+		: never;
 
 /**
  * Infers the accumulated data returned by generated stream query options.
@@ -291,19 +293,20 @@ type TanstackQueryBaseRouteValue<E extends QueryRoute> = {
 	) => DataTag<QueryKey, RouteQueryData<E>, RouteQueryError<E>>;
 };
 
-type TanstackQueryStreamRouteValue<E extends QueryRoute> =
-	[DeclaredRouteResponseBody<RouteFor<E>>] extends [never]
-		? Record<never, never>
-		: DeclaredRouteResponseBody<RouteFor<E>> extends AsyncIterable<unknown>
-			? {
-					streamedQueryOptions: <
-						TData = RouteStreamedQueryData<E>,
-						TSelectedData = TData,
-					>(
-						...args: StreamedQueryArgs<E, TData, TSelectedData>
-					) => streamedQueryOptionsResultFor<E, TData, TSelectedData>;
-				}
-			: Record<never, never>;
+type TanstackQueryStreamRouteValue<E extends QueryRoute> = [
+	DeclaredRouteResponseBody<RouteFor<E>>,
+] extends [never]
+	? Record<never, never>
+	: DeclaredRouteResponseBody<RouteFor<E>> extends AsyncIterable<unknown>
+		? {
+				streamedQueryOptions: <
+					TData = RouteStreamedQueryData<E>,
+					TSelectedData = TData,
+				>(
+					...args: StreamedQueryArgs<E, TData, TSelectedData>
+				) => streamedQueryOptionsResultFor<E, TData, TSelectedData>;
+			}
+		: Record<never, never>;
 
 type TanstackQueryRouteValue<E extends QueryRoute> =
 	TanstackQueryBaseRouteValue<E> & TanstackQueryStreamRouteValue<E>;
@@ -325,10 +328,9 @@ type TanstackQueryTreeFor<T extends Contract> = {
  *
  * @see {@link https://rest-rpc.dev/docs/client/tanstack-query}
  */
-export type TanstackQueryHelpersFor<T extends Contract> =
-	T extends QueryRoute
-		? TanstackQueryRouteValue<T>
-		: TanstackQueryTreeFor<T>;
+export type TanstackQueryHelpersFor<T extends Contract> = T extends QueryRoute
+	? TanstackQueryRouteValue<T>
+	: TanstackQueryTreeFor<T>;
 
 type AnyHandler = (...args: never[]) => unknown;
 
