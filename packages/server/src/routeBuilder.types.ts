@@ -6,6 +6,7 @@ import type {
 	NoBody,
 	PublicDeclarationFor,
 	RouteDeclaration,
+	RouteMetadata,
 	ServerErrors,
 	ServerRequest,
 	ServerResponse,
@@ -321,7 +322,11 @@ export interface ServerBuilderExtension<
 	TContext extends object = EmptyObject,
 > extends BuilderExtension {
 	readonly result: this["state"] extends infer TState extends BuilderState
-		? PublicDeclarationFor<TState> extends infer TRoute extends RouteDeclaration
+		? PublicDeclarationFor<
+				TState,
+				this["path"],
+				Extract<this["metadata"], RouteMetadata>
+			> extends infer TRoute extends RouteDeclaration
 			? HandlerMethodFor<TRoute, TAdditionalHandlerFields, TContext>
 			: never
 		: never;

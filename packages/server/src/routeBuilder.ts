@@ -34,4 +34,4 @@ if (!prototype.handler) {
 }
 
 /** Core route builder with server-first handler attachment enabled. */
-export const serverFirstRoute = coreRoute as ServerRouteBuilder;
+export const serverFirstRoute = coreRoute as unknown as ServerRouteBuilder;
