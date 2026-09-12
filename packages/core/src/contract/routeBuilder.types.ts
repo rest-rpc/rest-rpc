@@ -26,10 +26,7 @@ import type {
 	RequestParamsSchema,
 	RequestQuerySchema,
 } from "./request.ts";
-import type {
-	RegularResponseDeclaration,
-	RouteResponses,
-} from "./response.ts";
+import type { RegularResponseDeclaration, RouteResponses } from "./response.ts";
 
 type EmptyObject = Record<never, never>;
 
@@ -360,14 +357,20 @@ type HttpMethods<
 	RequestMethods<TState, TExtension> &
 	ApplyExtension<TState, TExtension>;
 
-type ProcedureMethods<TState extends BuilderState> = WhenUnused<
+type ProcedureMethods<
+	TState extends BuilderState,
+	TExtension extends BuilderExtension | never,
+> = WhenUnused<
 	TState,
 	"input",
 	{
 		/** Declares the procedure's JSON input schema. */
 		input<const TSchema extends StandardSchemaV1>(
 			schema: TSchema,
-		): RouteBuilderView<WithRequest<TState, "body", TSchema, "input">>;
+		): RouteBuilderView<
+			WithRequest<TState, "body", TSchema, "input">,
+			TExtension
+		>;
 	}
 > &
 	WhenUnused<
@@ -378,14 +381,16 @@ type ProcedureMethods<TState extends BuilderState> = WhenUnused<
 			output<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): RouteBuilderView<
-				WithResponse<UseMethod<TState, "output">, 200, TSchema>
+				WithResponse<UseMethod<TState, "output">, 200, TSchema>,
+				TExtension
 			>;
 		}
-	>;
+	> &
+	ApplyExtension<TState, TExtension>;
 
 type AvailableMethods<TState, TExtension> = TState extends BuilderState
 	? TState["route"]["kind"] extends "procedure"
-		? ProcedureMethods<TState>
+		? ProcedureMethods<TState, Extract<TExtension, BuilderExtension>>
 		: HttpMethods<TState, Extract<TExtension, BuilderExtension>>
 	: never;
 
@@ -438,11 +443,7 @@ type HttpStateFor<
 	used: never;
 };
 
-type ProcedureState<
-	TRequest,
-	TResponses,
-	TUsed extends BuilderMethod,
-> = {
+type ProcedureState<TRequest, TResponses, TUsed extends BuilderMethod> = {
 	route: {
 		readonly kind: "procedure";
 		readonly method: "POST";
@@ -455,10 +456,7 @@ type ProcedureState<
 	used: TUsed;
 };
 
-type HttpRootMethods<
-	TOptions,
-	TExtension extends BuilderExtension | never,
-> = {
+type HttpRootMethods<TOptions, TExtension extends BuilderExtension | never> = {
 	[TMethod in Lowercase<HttpMethod>]: <const TPath extends string>(
 		path: TPath,
 	) => RouteBuilderView<
@@ -467,20 +465,22 @@ type HttpRootMethods<
 	>;
 };
 
-type ProcedureRootMethods = {
+type ProcedureRootMethods<TExtension extends BuilderExtension | never> = {
 	/** Declares the procedure's JSON input schema. */
 	input<const TInput extends StandardSchemaV1>(
 		schema: TInput,
 	): RouteBuilderView<
-		ProcedureState<{ body: TInput }, EmptyObject, "input">
+		ProcedureState<{ body: TInput }, EmptyObject, "input">,
+		TExtension
 	>;
 	/** Declares a no-input procedure with a `200` JSON response. */
 	output<const TOutput extends StandardSchemaV1>(
 		schema: TOutput,
 	): RouteBuilderView<
-		ProcedureState<EmptyObject, { 200: TOutput }, "output">
+		ProcedureState<EmptyObject, { 200: TOutput }, "output">,
+		TExtension
 	>;
-};
+} & ApplyExtension<ProcedureState<EmptyObject, EmptyObject, never>, TExtension>;
 
 type RouteBuilderInput<TOptions extends RouteBuilderOptions> = TOptions & {
 	[TKey in Extract<keyof TOptions, "strictStatusCodes">]: never;
@@ -497,4 +497,4 @@ export type RootRouteBuilder<
 		options: RouteBuilderInput<TNextOptions>,
 	): RootRouteBuilder<TNextOptions, TExtension>;
 } & HttpRootMethods<TOptions, TExtension> &
-	(TOptions extends undefined ? ProcedureRootMethods : EmptyObject);
+	(TOptions extends undefined ? ProcedureRootMethods<TExtension> : EmptyObject);

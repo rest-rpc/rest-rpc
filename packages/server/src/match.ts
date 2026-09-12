@@ -3,7 +3,6 @@ import {
 	isPathParamSegment,
 	type RouteDeclaration,
 } from "@rest-rpc/core/contract";
-import type { ImplementationTree, RouteImplementation } from "./router.ts";
 
 const splitPath = (path: string) => path.split("/").filter(Boolean);
 
@@ -69,24 +68,34 @@ export const createPathMatcher = (path: string) => {
 	};
 };
 
-export type RuntimeImplementation = {
+type RuntimeImplementation = {
 	route: RouteDeclaration;
 	handler: (...args: never[]) => unknown;
 };
 
 /** An implementation or nested implementation tree consumed at runtime. */
 export type RuntimeImplementationTree =
-	| RuntimeImplementation
+	| {
+			readonly "~restrpc": RouteDeclaration & {
+				readonly handler: (...args: never[]) => unknown;
+			};
+	  }
 	| readonly RuntimeImplementationTree[]
 	| { readonly [key: string]: RuntimeImplementationTree };
 
-const isRuntimeImplementation = (
+const isBuilderImplementation = (
 	value: unknown,
-): value is RuntimeImplementation =>
+): value is {
+	readonly "~restrpc": RouteDeclaration & {
+		readonly handler: (...args: never[]) => unknown;
+	};
+} =>
 	typeof value === "object" &&
 	value !== null &&
-	"route" in value &&
-	"handler" in value;
+	"~restrpc" in value &&
+	typeof value["~restrpc"] === "object" &&
+	value["~restrpc"] !== null &&
+	"handler" in value["~restrpc"];
 
 const flattenImplementationTree = (
 	implementation: RuntimeImplementationTree,
@@ -97,17 +106,18 @@ const flattenImplementationTree = (
 			flattenImplementationTree(child, path),
 		);
 	}
-	if (isRuntimeImplementation(implementation)) {
-		if (implementation.route.kind !== "procedure") {
-			return [implementation];
+	if (isBuilderImplementation(implementation)) {
+		const { handler, ...route } = implementation["~restrpc"];
+		if (route.kind !== "procedure") {
+			return [{ route, handler }];
 		}
 		return [
 			{
 				route: {
-					...implementation.route,
+					...route,
 					path: `/${path.join("/")}`,
 				},
-				handler: implementation.handler,
+				handler,
 			},
 		];
 	}
@@ -118,17 +128,11 @@ const flattenImplementationTree = (
 
 /** Flattens and orders an implementation tree for route registration. */
 export function flattenRouteImplementations(
-	implementation: ImplementationTree,
-): RouteImplementation[];
-export function flattenRouteImplementations(
 	implementation: RuntimeImplementationTree,
-): RuntimeImplementation[];
-export function flattenRouteImplementations(
-	implementation: ImplementationTree | RuntimeImplementationTree,
 ): RuntimeImplementation[] {
-	return flattenImplementationTree(
-		implementation as RuntimeImplementationTree,
-	).sort((left, right) => compareRouteSpecificity(left.route, right.route));
+	return flattenImplementationTree(implementation).sort((left, right) =>
+		compareRouteSpecificity(left.route, right.route),
+	);
 }
 
 /** A matched route implementation and its decoded URL parameters. */

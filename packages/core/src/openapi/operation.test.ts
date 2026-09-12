@@ -669,8 +669,9 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("applies operation transforms", () => {
-		const route: RouteDeclaration =
-			createRoute.get("/todos").response(204)["~restrpc"];
+		const route: RouteDeclaration = createRoute.get("/todos").response(204)[
+			"~restrpc"
+		];
 
 		const operation = createOperation(
 			route,

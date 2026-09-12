@@ -25,6 +25,13 @@ export type {
 	RouteMetadata,
 } from "./routeDeclaration.ts";
 export type { Contract } from "./contract.ts";
+export type {
+	BuilderExtension,
+	BuilderState,
+	PublicDeclarationFor,
+	RootRouteBuilder,
+	RouteBuilderView,
+} from "./routeBuilder.types.ts";
 export {
 	getPathParamSegmentName,
 	isPathParamSegment,
@@ -67,4 +74,3 @@ export {
 } from "./response.ts";
 export type { ContractRouteEntry } from "./traversal.ts";
 export { contractRouteEntries, flattenContractRoutes } from "./traversal.ts";
-

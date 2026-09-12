@@ -14,8 +14,11 @@ import {
 import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
 import { RequestValidationError } from "./validationErrors.ts";
-import type { HttpRouteHandlerContext, RuntimeRouteHandler } from "./router.ts";
-import type { ImplicitResponseEnvelope } from "./serverFirst.ts";
+import type {
+	HttpRouteHandlerContext,
+	RuntimeRouteHandler,
+} from "./routeBuilder.types.ts";
+import type { ImplicitResponseEnvelope } from "./routeBuilder.types.ts";
 import {
 	resolveCustomResponseBody,
 	type RequestSegments,
@@ -159,7 +162,7 @@ const normalizeHandlerResultEnvelopeOrShorthand = (
 	const status = getSingleSuccessfulStatus(route);
 	if (status === undefined) {
 		throw new Error(
-			`Service for "${route.method} ${route.path}" must return a declared response object.`,
+			`Handler for "${route.method} ${route.path}" must return a declared response object.`,
 		);
 	}
 

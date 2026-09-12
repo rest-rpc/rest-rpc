@@ -54,14 +54,10 @@ expectError(
 expectError(shorthandClient.todos.get.fetch);
 
 expectType<{ title: string }>(
-	null as unknown as ClientRequest<
-		(typeof shorthandApi.todos.add)["~restrpc"]
-	>,
+	null as unknown as ClientRequest<(typeof shorthandApi.todos.add)["~restrpc"]>,
 );
 expectType<never>(
-	null as unknown as ClientRequest<
-		(typeof shorthandApi.todos.get)["~restrpc"]
-	>,
+	null as unknown as ClientRequest<(typeof shorthandApi.todos.get)["~restrpc"]>,
 );
 expectType<{ id: number; title: string }>(
 	null as unknown as ClientResponse<
@@ -462,12 +458,8 @@ const streamResponseClient = initClient(streamResponseApi, {
 });
 
 expectType<
-	Promise<
-		ClientResponse<(typeof streamResponseApi.todos.events)["~restrpc"]>
-	>
->(
-	streamResponseClient.todos.events(),
-);
+	Promise<ClientResponse<(typeof streamResponseApi.todos.events)["~restrpc"]>>
+>(streamResponseClient.todos.events());
 expectError(streamResponseClient.todos.events.fetch);
 
 const csvResponseApi = {

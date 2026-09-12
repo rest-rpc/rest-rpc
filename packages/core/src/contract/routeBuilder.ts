@@ -259,10 +259,7 @@ export class RouteBuilder {
 		});
 	}
 
-	response(
-		status: number,
-		schema?: RegularResponseDeclaration,
-	): RouteBuilder {
+	response(status: number, schema?: RegularResponseDeclaration): RouteBuilder {
 		return addResponse(this["~restrpc"], status, schema ?? { kind: "noBody" });
 	}
 
@@ -270,20 +267,14 @@ export class RouteBuilder {
 		return addResponse(procedureState(this["~restrpc"]), 200, schema);
 	}
 
-	customResponse(
-		status: number,
-		input: CustomResponseInput,
-	): RouteBuilder {
+	customResponse(status: number, input: CustomResponseInput): RouteBuilder {
 		return addResponse(this["~restrpc"], status, {
 			kind: "customBody",
 			...input,
 		});
 	}
 
-	streamResponse(
-		status: number,
-		schema: StandardSchemaV1,
-	): RouteBuilder {
+	streamResponse(status: number, schema: StandardSchemaV1): RouteBuilder {
 		return addResponse(this["~restrpc"], status, { kind: "stream", schema });
 	}
 

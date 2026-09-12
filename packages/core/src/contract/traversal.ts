@@ -28,11 +28,7 @@ export const mapObjectValues = <TLeaf>(
 export const isContractRouteDeclaration = (
 	value: unknown,
 ): value is { readonly "~restrpc": RouteDeclaration } => {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		"~restrpc" in value
-	);
+	return typeof value === "object" && value !== null && "~restrpc" in value;
 };
 
 export const mapContractRoutes = (

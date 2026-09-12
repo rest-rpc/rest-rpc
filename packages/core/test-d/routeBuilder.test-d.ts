@@ -5,11 +5,7 @@ import {
 } from "@rest-rpc/core/contract";
 import { route, type as schemaType } from "@rest-rpc/core";
 import z from "zod";
-import {
-	expectAssignable,
-	expectError,
-	expectType,
-} from "tsd";
+import { expectAssignable, expectError, expectType } from "tsd";
 
 const todo = schemaType<{ id: string; title: string }>();
 const input = schemaType<{ title: string }>();
@@ -168,7 +164,9 @@ const customRequestBodySchema = route
 	.post("/custom-body-schema")
 	.customBody(input)
 	.response(201);
-expectType<typeof input>(customRequestBodySchema["~restrpc"].request.body.schema);
+expectType<typeof input>(
+	customRequestBodySchema["~restrpc"].request.body.schema,
+);
 
 // Custom response schemas constrain their output while preserving their input.
 const transformedCustomText = z.number().transform(String);
@@ -287,9 +285,7 @@ expectType<typeof customText>(mixedResponses["~restrpc"].responses[201].schema);
 expectType<"stream">(mixedResponses["~restrpc"].responses[202].kind);
 expectType<typeof event>(mixedResponses["~restrpc"].responses[202].schema);
 expectType<"stream">(mixedResponses["~restrpc"].responses[203].kind);
-expectType<"customBody">(
-	mixedResponses["~restrpc"].responses[203].schema.kind,
-);
+expectType<"customBody">(mixedResponses["~restrpc"].responses[203].schema.kind);
 expectType<typeof customBytes>(
 	mixedResponses["~restrpc"].responses[203].schema.schema,
 );
@@ -307,9 +303,7 @@ const configuredAfterResponse = route
 	.openAPI({ summary: "Configured after response" })
 	.streamResponse(201, event);
 expectType<typeof input>(configuredAfterResponse["~restrpc"].request.body);
-expectType<"jsonQuery">(
-	configuredAfterResponse["~restrpc"].request.query.kind,
-);
+expectType<"jsonQuery">(configuredAfterResponse["~restrpc"].request.query.kind);
 expectType<typeof customText>(
 	configuredAfterResponse["~restrpc"].responses[200].schema,
 );

@@ -12,7 +12,7 @@ import {
 const routeWithDeclaredErrorResponse = coreRoute
 	.get("/todos/:id")
 	.response(200, z.object({ id: z.string() }))
-	.response(404, z.object({ code: z.literal("not_found") }));
+	.response(404, z.object({ code: z.literal("not_found") }))["~restrpc"];
 
 describe("handleHttpRoute", () => {
 	it("passes validated request data and context to the handler", async () => {
@@ -20,7 +20,7 @@ describe("handleHttpRoute", () => {
 			coreRoute
 				.get("/todos/:id")
 				.params(z.object({ id: z.coerce.number<number>() }))
-				.response(200, z.object({ id: z.number() })),
+				.response(200, z.object({ id: z.number() }))["~restrpc"],
 			(request) => {
 				assert.deepEqual(request, {
 					params: { id: 123 },
@@ -50,7 +50,7 @@ describe("handleHttpRoute", () => {
 			coreRoute
 				.get("/todos")
 				.query(z.object({ q: z.string() }).transform(() => ["todo"]))
-				.response(204),
+				.response(204)["~restrpc"],
 			(request) => {
 				assert.deepEqual(request, {
 					query: ["todo"],
@@ -80,7 +80,7 @@ describe("handleHttpRoute", () => {
 					coreRoute
 						.get("/todos/:id")
 						.params(z.object({ id: z.number() }))
-						.response(204),
+						.response(204)["~restrpc"],
 					() => {
 						called = true;
 					},
@@ -109,7 +109,9 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					coreRoute.get("/todos").response(200, z.object({ id: z.string() })),
+					coreRoute.get("/todos").response(200, z.object({ id: z.string() }))[
+						"~restrpc"
+					],
 					() => {
 						throw expected;
 					},
@@ -126,7 +128,9 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					coreRoute.get("/todos").response(200, z.object({ id: z.string() })),
+					coreRoute.get("/todos").response(200, z.object({ id: z.string() }))[
+						"~restrpc"
+					],
 					() => ({ id: 123 }),
 					{
 						request: {},
@@ -149,7 +153,7 @@ describe("handleHttpRoute", () => {
 					coreRoute
 						.post("/todos")
 						.response(200, z.object({ id: z.string() }))
-						.response(202, z.object({ id: z.string() })),
+						.response(202, z.object({ id: z.string() }))["~restrpc"],
 					() => ({ id: "todo-1" }),
 					{
 						request: {},
@@ -173,7 +177,7 @@ describe("handleHttpRoute", () => {
 							status: z.number(),
 							body: z.string(),
 						}),
-					),
+					)["~restrpc"],
 					() => ({ status: 123, body: "running" }),
 					{
 						request: {},
@@ -195,7 +199,7 @@ describe("handleHttpRoute", () => {
 					etag: z.string(),
 					"x-optional": z.string().optional(),
 				}),
-			}),
+			})["~restrpc"],
 			() => ({
 				status: 200 as const,
 				body: { id: "todo-1" },
@@ -274,7 +278,9 @@ describe("handleHttpRoute", () => {
 				create: coreRoute
 					.post("/todos")
 					.response(201, z.object({ id: z.string() }))
-					.response(409, z.object({ code: z.literal("already_exists") })),
+					.response(409, z.object({ code: z.literal("already_exists") }))[
+					"~restrpc"
+				],
 			},
 		};
 
@@ -307,7 +313,7 @@ describe("handleHttpRoute custom responses", () => {
 			coreRoute.get("/report.csv").customResponse(200, {
 				contentType: "text/csv",
 				schema: z.string(),
-			}),
+			})["~restrpc"],
 			() => ({ status: 200, body: "id,title\n1,First\n" }),
 			{
 				request: {},
@@ -326,7 +332,7 @@ describe("handleHttpRoute custom responses", () => {
 			coreRoute.get("/images/:id").customResponse(200, {
 				contentType: ["image/png", "image/jpeg"],
 				schema: z.string(),
-			}),
+			})["~restrpc"],
 			() => ({
 				status: 200,
 				body: {
@@ -356,7 +362,7 @@ describe("handleHttpRoute custom responses", () => {
 			coreRoute.get("/report.csv").customStreamResponse(200, {
 				contentType: "text/csv",
 				schema: z.string(),
-			}),
+			})["~restrpc"],
 			() => ({ status: 200, body: rows() }),
 			{
 				request: {},

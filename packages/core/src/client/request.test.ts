@@ -266,11 +266,7 @@ describe("ApiClient requests", () => {
 
 		assert.throws(
 			() =>
-				constructBaseRequest(
-					"https://api.test",
-					declaration["~restrpc"],
-					{},
-				),
+				constructBaseRequest("https://api.test", declaration["~restrpc"], {}),
 			/Missing path param "id" for GET \/items\/:id\./,
 		);
 	});
@@ -803,11 +799,15 @@ describe("ApiClient requests", () => {
 			.query(z.object({ id: z.string() }))
 			.body(z.object({ id: z.string(), context: z.string() }))
 			.response(204);
-		const request = constructBaseRequest("https://api.test", declaration["~restrpc"], {
-			params: { id: "path-id" },
-			query: { id: "query-id" },
-			body: { id: "body-id", context: "body-context" },
-		});
+		const request = constructBaseRequest(
+			"https://api.test",
+			declaration["~restrpc"],
+			{
+				params: { id: "path-id" },
+				query: { id: "query-id" },
+				body: { id: "body-id", context: "body-context" },
+			},
+		);
 		assert.equal(request.url, "https://api.test/items/path-id?id=query-id");
 		assert.equal(
 			request.body,
@@ -821,9 +821,13 @@ describe("ApiClient requests", () => {
 			.body(type<false | 0 | "" | null>())
 			.response(204);
 		for (const body of [false, 0, "", null]) {
-			const request = constructBaseRequest("https://api.test", declaration["~restrpc"], {
-				body,
-			});
+			const request = constructBaseRequest(
+				"https://api.test",
+				declaration["~restrpc"],
+				{
+					body,
+				},
+			);
 			assert.equal(request.body, JSON.stringify(body));
 			assert.equal(request.contentType, "application/json");
 		}

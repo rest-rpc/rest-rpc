@@ -1,0 +1,339 @@
+import type {
+	BuilderExtension,
+	BuilderState,
+	CustomResponseBody,
+	CustomResponseValue,
+	NoBody,
+	PublicDeclarationFor,
+	RouteDeclaration,
+	ServerErrors,
+	ServerRequest,
+	ServerResponse,
+	ServerSuccessBody,
+	Stream,
+} from "@rest-rpc/core/contract";
+import { REQUEST_CONTEXT_KEY } from "@rest-rpc/core/contract";
+import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
+
+type EmptyObject = Record<never, never>;
+type AnyRouteHandler = (...args: never[]) => unknown;
+type MaybePromise<T> = T | Promise<T>;
+
+/** Base context object accepted by HTTP route handlers. */
+export type HttpRouteHandlerContext = Record<string, unknown>;
+
+/** Untyped route handler stored in a completed runtime route declaration. */
+export type RuntimeRouteHandler = (
+	request: unknown,
+) => unknown | Promise<unknown>;
+
+/** Infers the validated request data for a route declaration. */
+export type RouteRequestData<TRoute extends RouteDeclaration> =
+	ServerRequest<TRoute>;
+
+/** Infers the shorthand successful response body for a route. */
+export type RouteResponseShorthand<TRoute extends RouteDeclaration> =
+	ServerSuccessBody<TRoute>;
+
+/** Infers the declared non-success responses for a route. */
+export type RouteErrors<TRoute extends RouteDeclaration> = ServerErrors<TRoute>;
+
+/** Infers the declared explicit response union for a route. */
+export type RouteResponse<TRoute extends RouteDeclaration> =
+	ServerResponse<TRoute>;
+
+type RequestValue<TRoute extends RouteDeclaration> =
+	RouteRequestData<TRoute> extends never
+		? EmptyObject
+		: RouteRequestData<TRoute>;
+
+type ExcludeResponseEnvelopeLike<TValue> = TValue extends unknown
+	? TValue extends Record<string, unknown>
+		? "status" extends keyof TValue
+			? never
+			: TValue
+		: TValue
+	: never;
+
+type HandlerResult<TRoute extends RouteDeclaration> = MaybePromise<
+	| RouteResponse<TRoute>
+	| ExcludeResponseEnvelopeLike<RouteResponseShorthand<TRoute>>
+>;
+
+/** Infers the route handler request type for a route declaration. */
+export type RouteRequest<
+	TRoute extends RouteDeclaration,
+	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
+> = Merge<
+	RequestValue<TRoute> & {
+		[REQUEST_CONTEXT_KEY]: TContext;
+	}
+>;
+
+/** Infers the route handler function type for a route declaration. */
+export type RouteHandler<
+	TRoute extends RouteDeclaration,
+	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
+> = (
+	...args: [request: RouteRequest<TRoute, TContext>]
+) => HandlerResult<TRoute>;
+
+/** Application context accepted by server-first handlers. */
+export interface ContextShape {
+	// oxlint-disable-next-line typescript/no-explicit-any -- `any` permits named context interfaces without requiring an index signature.
+	[key: string]: any;
+}
+
+type ServerFirstContext<TContext extends ContextShape> = TContext & {
+	signal: AbortSignal;
+};
+
+type Merge<T> = { [TKey in keyof T]: T[TKey] };
+
+/** Explicit HTTP response envelope accepted from an inferred route handler. */
+export type ImplicitResponseEnvelope =
+	| {
+			status: number;
+			body?: never;
+			contentType?: string;
+			responseHeaders?: Record<string, string | number | undefined>;
+	  }
+	| {
+			status: number;
+			body: unknown;
+			contentType?: string;
+			responseHeaders?: Record<string, string | number | undefined>;
+	  };
+
+/** Wire response classifications available to server-first HTTP routes. */
+export type ServerFirstResponseKind =
+	| "empty"
+	| "json"
+	| "ndjson"
+	| "custom"
+	| "custom-stream";
+
+type BodyResponseKind<TResponse, TBody> =
+	TBody extends AsyncIterable<unknown>
+		? TResponse extends { contentType: string }
+			? "custom-stream"
+			: "ndjson"
+		: TResponse extends { contentType: string }
+			? "custom"
+			: "json";
+
+/** Classifies one inferred response envelope by its statically known shape. */
+export type ImplicitResponseKind<TResponse> = TResponse extends unknown
+	? "body" extends keyof TResponse
+		? TResponse extends { body: infer TBody }
+			? BodyResponseKind<TResponse, TBody>
+			: "empty"
+		: "empty"
+	: never;
+
+type ClientSchema<TOutput> = StandardSchemaV1<unknown, TOutput>;
+
+type SerializedResponseHeader<TValue> = TValue extends string
+	? TValue
+	: TValue extends number
+		? `${TValue}`
+		: TValue extends undefined
+			? undefined
+			: never;
+
+type SerializedResponseHeaders<THeaders> = {
+	[TKey in keyof THeaders]: SerializedResponseHeader<THeaders[TKey]>;
+};
+
+type ImplicitResponseBodyDeclaration<TResponse> = TResponse extends {
+	body: infer TBody;
+}
+	? TBody extends AsyncIterable<infer TItem>
+		? TResponse extends { contentType: infer TContentType extends string }
+			? Stream<
+					CustomResponseBody<ClientSchema<CustomResponseValue>, TContentType>
+				>
+			: Stream<ClientSchema<TItem>>
+		: TResponse extends { contentType: infer TContentType extends string }
+			? CustomResponseBody<ClientSchema<CustomResponseValue>, TContentType>
+			: ClientSchema<TBody>
+	: NoBody;
+
+type ImplicitResponseDeclaration<TResponse> =
+	ImplicitResponseBodyDeclaration<TResponse> extends infer TBody
+		? TResponse extends { responseHeaders: infer THeaders }
+			? {
+					body: TBody;
+					headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+				}
+			: TBody
+		: never;
+
+type ResponseStatuses<TResponse> = TResponse extends {
+	status: infer TStatus extends number;
+}
+	? TStatus
+	: never;
+
+type InferredResponses<TResponse> = {
+	[TStatus in ResponseStatuses<TResponse>]: ImplicitResponseDeclaration<
+		Extract<TResponse, { status: TStatus }>
+	>;
+};
+
+type InferredHttpRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
+	responses: InferredResponses<Awaited<TResult>>;
+};
+
+type InferredProcedureRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
+	responses: { 200: ClientSchema<Awaited<TResult>> };
+};
+
+/** Terminal builder shape containing a route declaration and its handler. */
+export type CompletedRoute<TRoute, THandler> = {
+	readonly "~restrpc": TRoute & { readonly handler: THandler };
+};
+
+type HasDeclaredResponses<TRoute> = TRoute extends {
+	responses: infer TResponses;
+}
+	? keyof TResponses extends never
+		? false
+		: true
+	: false;
+
+type HttpRequest<
+	TRoute extends RouteDeclaration,
+	TContext extends ContextShape,
+> = Merge<
+	(ServerRequest<TRoute> extends never
+		? EmptyObject
+		: ServerRequest<TRoute>) & {
+		context: ServerFirstContext<TContext>;
+	}
+>;
+
+type DeclaredRequest<
+	TRoute extends RouteDeclaration,
+	TContext extends ContextShape,
+> = Merge<
+	RouteRequest<TRoute, ServerFirstContext<TContext> & HttpRouteHandlerContext>
+>;
+
+type ProcedureRequest<
+	TRoute extends RouteDeclaration,
+	TContext extends ContextShape,
+> = Merge<
+	(TRoute extends { request: { body: infer TInput extends StandardSchemaV1 } }
+		? { input: StandardSchemaV1.InferOutput<TInput> }
+		: EmptyObject) & { context: ServerFirstContext<TContext> }
+>;
+
+type ProcedureHandlerMethod<
+	TRoute extends RouteDeclaration,
+	TContext extends ContextShape,
+> =
+	HasDeclaredResponses<TRoute> extends true
+		? TRoute extends {
+				responses: { 200: infer TOutput extends StandardSchemaV1 };
+			}
+			? {
+					handler<
+						const TResult extends MaybePromise<
+							StandardSchemaV1.InferInput<TOutput>
+						>,
+					>(
+						handler: (request: ProcedureRequest<TRoute, TContext>) => TResult,
+					): CompletedRoute<
+						TRoute,
+						(request: ProcedureRequest<TRoute, TContext>) => TResult
+					>;
+				}
+			: never
+		: {
+				handler<const TResult>(
+					handler: (request: ProcedureRequest<TRoute, TContext>) => TResult,
+				): CompletedRoute<
+					InferredProcedureRoute<TRoute, TResult>,
+					(request: ProcedureRequest<TRoute, TContext>) => TResult
+				>;
+			};
+
+type HttpHandlerMethod<
+	TRoute extends RouteDeclaration,
+	TContext extends ContextShape,
+> =
+	HasDeclaredResponses<TRoute> extends true
+		? {
+				handler<
+					const TResult extends ReturnType<
+						RouteHandler<TRoute, TContext & HttpRouteHandlerContext>
+					>,
+				>(
+					handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
+				): CompletedRoute<
+					TRoute,
+					(request: DeclaredRequest<TRoute, TContext>) => TResult
+				>;
+			}
+		: {
+				handler<const TResult extends MaybePromise<ImplicitResponseEnvelope>>(
+					handler: (request: HttpRequest<TRoute, TContext>) => TResult,
+				): CompletedRoute<
+					InferredHttpRoute<TRoute, TResult>,
+					(request: HttpRequest<TRoute, TContext>) => TResult
+				>;
+			};
+
+/** Resolves the handler operation for a complete route declaration. */
+export type HandlerMethodFor<
+	TRoute extends RouteDeclaration,
+	TContext extends ContextShape,
+> = TRoute["kind"] extends "procedure"
+	? ProcedureHandlerMethod<TRoute, TContext>
+	: HttpHandlerMethod<TRoute, TContext>;
+
+/** Core builder extension that exposes server handler attachment. */
+export interface ServerBuilderExtension<
+	TContext extends ContextShape = EmptyObject,
+> extends BuilderExtension {
+	readonly result: this["state"] extends infer TState extends BuilderState
+		? PublicDeclarationFor<TState> extends infer TRoute extends RouteDeclaration
+			? HandlerMethodFor<TRoute, TContext>
+			: never
+		: never;
+}
+
+type ImplementationParts<TImplementation> = TImplementation extends {
+	readonly "~restrpc": infer TRoute extends RouteDeclaration & {
+		handler: infer THandler extends AnyRouteHandler;
+	};
+}
+	? { route: TRoute; handler: THandler }
+	: never;
+
+/** Infers the source response union retained by a server-first implementation. */
+export type InferredRouteResponse<TImplementation> =
+	ImplementationParts<TImplementation> extends { handler: infer THandler }
+		? THandler extends AnyRouteHandler
+			? Awaited<ReturnType<THandler>>
+			: never
+		: never;
+
+/** Infers the wire response kinds represented by a server-first implementation. */
+export type ServerFirstRouteResponseKind<TImplementation> =
+	ImplementationParts<TImplementation> extends {
+		route: infer TRoute;
+		handler: infer THandler extends AnyRouteHandler;
+	}
+		? TRoute extends { kind: "procedure" }
+			? "json"
+			: ImplicitResponseKind<Awaited<ReturnType<THandler>>>
+		: never;
+
+/** Shared core route builder with server-first handler typing. */
+export type ServerRouteBuilder<TContext extends ContextShape = EmptyObject> =
+	import("@rest-rpc/core/contract").RootRouteBuilder<
+		undefined,
+		ServerBuilderExtension<TContext>
+	>;

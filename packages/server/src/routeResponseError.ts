@@ -1,9 +1,11 @@
 import type { Contract, RouteDeclaration } from "@rest-rpc/core/contract";
-import type { RouteErrors } from "./router.ts";
+import type { RouteErrors } from "./routeBuilder.types.ts";
 
-type HttpRoutes<TContract> = TContract extends RouteDeclaration
-	? TContract extends { kind: "http" }
-		? TContract
+type HttpRoutes<TContract> = TContract extends {
+	readonly "~restrpc": infer TRoute extends RouteDeclaration;
+}
+	? TRoute extends { kind: "http" }
+		? TRoute
 		: never
 	: TContract extends Record<string, unknown>
 		? {

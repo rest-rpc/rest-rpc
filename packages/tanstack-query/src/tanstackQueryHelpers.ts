@@ -349,11 +349,10 @@ type ServerFirstShorthandTanstackQueryObject<TNode extends object> = {
 type ServerFirstShorthandTanstackQueryTree<TNode> = unknown extends TNode
 	? never
 	: TNode extends {
-				readonly route: unknown;
-				readonly handler: AnyHandler;
+				readonly "~restrpc": { readonly handler: AnyHandler };
 		  }
 		? TNode extends {
-				clientRoute?: infer TRoute extends RouteDeclaration & {
+				readonly "~restrpc": infer TRoute extends RouteDeclaration & {
 					kind: "procedure";
 				};
 			}
