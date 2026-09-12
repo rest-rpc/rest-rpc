@@ -19,9 +19,6 @@ type EmptyObject = Record<never, never>;
 type AnyRouteHandler = (...args: never[]) => unknown;
 type MaybePromise<T> = T | Promise<T>;
 
-/** Base context object accepted by HTTP route handlers. */
-export type HttpRouteHandlerContext = Record<string, unknown>;
-
 /** Untyped route handler stored in a completed runtime route declaration. */
 export type RuntimeRouteHandler = (
 	request: unknown,
@@ -63,30 +60,31 @@ type HandlerResult<TRoute extends RouteDeclaration> = MaybePromise<
 /** Infers the route handler request type for a route declaration. */
 export type RouteRequest<
 	TRoute extends RouteDeclaration,
-	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
+	TAdditionalHandlerFields extends object = EmptyObject,
+	TContext extends object = EmptyObject,
 > = Merge<
-	RequestValue<TRoute> & {
-		[REQUEST_CONTEXT_KEY]: TContext;
-	}
+	(TRoute["kind"] extends "procedure"
+		? TRoute extends {
+				request: { body: infer TInput extends StandardSchemaV1 };
+			}
+			? { input: StandardSchemaV1.InferOutput<TInput> }
+			: EmptyObject
+		: RequestValue<TRoute>) &
+		TAdditionalHandlerFields & {
+			[REQUEST_CONTEXT_KEY]: TContext;
+		}
 >;
 
 /** Infers the route handler function type for a route declaration. */
 export type RouteHandler<
 	TRoute extends RouteDeclaration,
-	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
+	TAdditionalHandlerFields extends object = EmptyObject,
+	TContext extends object = EmptyObject,
 > = (
-	...args: [request: RouteRequest<TRoute, TContext>]
+	...args: [
+		request: RouteRequest<TRoute, TAdditionalHandlerFields, TContext>,
+	]
 ) => HandlerResult<TRoute>;
-
-/** Application context accepted by server-first handlers. */
-export interface ContextShape {
-	// oxlint-disable-next-line typescript/no-explicit-any -- `any` permits named context interfaces without requiring an index signature.
-	[key: string]: any;
-}
-
-type ServerFirstContext<TContext extends ContextShape> = TContext & {
-	signal: AbortSignal;
-};
 
 type Merge<T> = { [TKey in keyof T]: T[TKey] };
 
@@ -202,36 +200,30 @@ type HasDeclaredResponses<TRoute> = TRoute extends {
 		: true
 	: false;
 
-type HttpRequest<
+type HandlerFor<
 	TRoute extends RouteDeclaration,
-	TContext extends ContextShape,
-> = Merge<
-	(ServerRequest<TRoute> extends never
-		? EmptyObject
-		: ServerRequest<TRoute>) & {
-		context: ServerFirstContext<TContext>;
-	}
->;
+	TAdditionalHandlerFields extends object,
+	TContext extends object,
+	TResult,
+> = (
+	request: RouteRequest<TRoute, TAdditionalHandlerFields, TContext>,
+) => TResult;
 
-type DeclaredRequest<
+type HandlerImplementation<
 	TRoute extends RouteDeclaration,
-	TContext extends ContextShape,
-> = Merge<
-	RouteRequest<TRoute, ServerFirstContext<TContext> & HttpRouteHandlerContext>
->;
-
-type ProcedureRequest<
-	TRoute extends RouteDeclaration,
-	TContext extends ContextShape,
-> = Merge<
-	(TRoute extends { request: { body: infer TInput extends StandardSchemaV1 } }
-		? { input: StandardSchemaV1.InferOutput<TInput> }
-		: EmptyObject) & { context: ServerFirstContext<TContext> }
+	TAdditionalHandlerFields extends object,
+	TContext extends object,
+	TResult,
+	TPublicRoute = TRoute,
+> = CompletedRoute<
+	TPublicRoute,
+	HandlerFor<TRoute, TAdditionalHandlerFields, TContext, TResult>
 >;
 
 type ProcedureHandlerMethod<
 	TRoute extends RouteDeclaration,
-	TContext extends ContextShape,
+	TAdditionalHandlerFields extends object,
+	TContext extends object,
 > =
 	HasDeclaredResponses<TRoute> extends true
 		? TRoute extends {
@@ -243,63 +235,96 @@ type ProcedureHandlerMethod<
 							StandardSchemaV1.InferInput<TOutput>
 						>,
 					>(
-						handler: (request: ProcedureRequest<TRoute, TContext>) => TResult,
-					): CompletedRoute<
+						handler: HandlerFor<
+							TRoute,
+							TAdditionalHandlerFields,
+							TContext,
+							TResult
+						>,
+					): HandlerImplementation<
 						TRoute,
-						(request: ProcedureRequest<TRoute, TContext>) => TResult
+						TAdditionalHandlerFields,
+						TContext,
+						TResult
 					>;
 				}
 			: never
 		: {
 				handler<const TResult>(
-					handler: (request: ProcedureRequest<TRoute, TContext>) => TResult,
-				): CompletedRoute<
-					InferredProcedureRoute<TRoute, TResult>,
-					(request: ProcedureRequest<TRoute, TContext>) => TResult
+					handler: HandlerFor<
+						TRoute,
+						TAdditionalHandlerFields,
+						TContext,
+						TResult
+					>,
+				): HandlerImplementation<
+					TRoute,
+					TAdditionalHandlerFields,
+					TContext,
+					TResult,
+					InferredProcedureRoute<TRoute, TResult>
 				>;
 			};
 
 type HttpHandlerMethod<
 	TRoute extends RouteDeclaration,
-	TContext extends ContextShape,
+	TAdditionalHandlerFields extends object,
+	TContext extends object,
 > =
 	HasDeclaredResponses<TRoute> extends true
 		? {
 				handler<
 					const TResult extends ReturnType<
-						RouteHandler<TRoute, TContext & HttpRouteHandlerContext>
+						RouteHandler<TRoute, TAdditionalHandlerFields, TContext>
 					>,
 				>(
-					handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
-				): CompletedRoute<
+					handler: HandlerFor<
+						TRoute,
+						TAdditionalHandlerFields,
+						TContext,
+						TResult
+					>,
+				): HandlerImplementation<
 					TRoute,
-					(request: DeclaredRequest<TRoute, TContext>) => TResult
+					TAdditionalHandlerFields,
+					TContext,
+					TResult
 				>;
 			}
 		: {
 				handler<const TResult extends MaybePromise<ImplicitResponseEnvelope>>(
-					handler: (request: HttpRequest<TRoute, TContext>) => TResult,
-				): CompletedRoute<
-					InferredHttpRoute<TRoute, TResult>,
-					(request: HttpRequest<TRoute, TContext>) => TResult
+					handler: HandlerFor<
+						TRoute,
+						TAdditionalHandlerFields,
+						TContext,
+						TResult
+					>,
+				): HandlerImplementation<
+					TRoute,
+					TAdditionalHandlerFields,
+					TContext,
+					TResult,
+					InferredHttpRoute<TRoute, TResult>
 				>;
 			};
 
 /** Resolves the handler operation for a complete route declaration. */
 export type HandlerMethodFor<
 	TRoute extends RouteDeclaration,
-	TContext extends ContextShape,
+	TAdditionalHandlerFields extends object = EmptyObject,
+	TContext extends object = EmptyObject,
 > = TRoute["kind"] extends "procedure"
-	? ProcedureHandlerMethod<TRoute, TContext>
-	: HttpHandlerMethod<TRoute, TContext>;
+	? ProcedureHandlerMethod<TRoute, TAdditionalHandlerFields, TContext>
+	: HttpHandlerMethod<TRoute, TAdditionalHandlerFields, TContext>;
 
 /** Core builder extension that exposes server handler attachment. */
 export interface ServerBuilderExtension<
-	TContext extends ContextShape = EmptyObject,
+	TAdditionalHandlerFields extends object = EmptyObject,
+	TContext extends object = EmptyObject,
 > extends BuilderExtension {
 	readonly result: this["state"] extends infer TState extends BuilderState
 		? PublicDeclarationFor<TState> extends infer TRoute extends RouteDeclaration
-			? HandlerMethodFor<TRoute, TContext>
+			? HandlerMethodFor<TRoute, TAdditionalHandlerFields, TContext>
 			: never
 		: never;
 }
@@ -332,8 +357,10 @@ export type ServerFirstRouteResponseKind<TImplementation> =
 		: never;
 
 /** Shared core route builder with server-first handler typing. */
-export type ServerRouteBuilder<TContext extends ContextShape = EmptyObject> =
-	import("@rest-rpc/core/contract").RootRouteBuilder<
-		undefined,
-		ServerBuilderExtension<TContext>
-	>;
+export type ServerRouteBuilder<
+	TAdditionalHandlerFields extends object = EmptyObject,
+	TContext extends object = EmptyObject,
+> = import("@rest-rpc/core/contract").RootRouteBuilder<
+	undefined,
+	ServerBuilderExtension<TAdditionalHandlerFields, TContext>
+>;

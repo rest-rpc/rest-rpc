@@ -15,7 +15,7 @@ const routeWithDeclaredErrorResponse = coreRoute
 	.response(404, z.object({ code: z.literal("not_found") }))["~restrpc"];
 
 describe("handleHttpRoute", () => {
-	it("passes validated request data and context to the handler", async () => {
+	it("passes validated request data, handler fields, and context", async () => {
 		const result = await handleHttpRoute(
 			coreRoute
 				.get("/todos/:id")
@@ -24,6 +24,7 @@ describe("handleHttpRoute", () => {
 			(request) => {
 				assert.deepEqual(request, {
 					params: { id: 123 },
+					frameworkValue: "framework-1",
 					context: { requestId: "request-1" },
 				});
 
@@ -33,6 +34,7 @@ describe("handleHttpRoute", () => {
 				request: {
 					params: { id: "123" },
 				},
+				handlerFields: { frameworkValue: "framework-1" },
 				context: { requestId: "request-1" },
 			},
 		);
@@ -61,6 +63,7 @@ describe("handleHttpRoute", () => {
 				request: {
 					query: new URLSearchParams({ q: "todos" }),
 				},
+				handlerFields: {},
 				context: {},
 			},
 		);
@@ -88,6 +91,7 @@ describe("handleHttpRoute", () => {
 						request: {
 							params: { id: "123" },
 						},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -117,6 +121,7 @@ describe("handleHttpRoute", () => {
 					},
 					{
 						request: {},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -134,6 +139,7 @@ describe("handleHttpRoute", () => {
 					() => ({ id: 123 }),
 					{
 						request: {},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -157,6 +163,7 @@ describe("handleHttpRoute", () => {
 					() => ({ id: "todo-1" }),
 					{
 						request: {},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -181,6 +188,7 @@ describe("handleHttpRoute", () => {
 					() => ({ status: 123, body: "running" }),
 					{
 						request: {},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -210,6 +218,7 @@ describe("handleHttpRoute", () => {
 			}),
 			{
 				request: {},
+				handlerFields: {},
 				context: {},
 			},
 		);
@@ -235,6 +244,7 @@ describe("handleHttpRoute", () => {
 			},
 			{
 				request: {},
+				handlerFields: {},
 				context: {},
 			},
 		);
@@ -260,6 +270,7 @@ describe("handleHttpRoute", () => {
 					},
 					{
 						request: {},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -296,6 +307,7 @@ describe("handleHttpRoute", () => {
 					},
 					{
 						request: {},
+						handlerFields: {},
 						context: {},
 					},
 				),
@@ -317,6 +329,7 @@ describe("handleHttpRoute custom responses", () => {
 			() => ({ status: 200, body: "id,title\n1,First\n" }),
 			{
 				request: {},
+				handlerFields: {},
 				context: {},
 			},
 		);
@@ -342,6 +355,7 @@ describe("handleHttpRoute custom responses", () => {
 			}),
 			{
 				request: {},
+				handlerFields: {},
 				context: {},
 			},
 		);
@@ -366,6 +380,7 @@ describe("handleHttpRoute custom responses", () => {
 			() => ({ status: 200, body: rows() }),
 			{
 				request: {},
+				handlerFields: {},
 				context: {},
 			},
 		);

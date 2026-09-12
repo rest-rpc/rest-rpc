@@ -12,7 +12,6 @@ export { createRouteMatcher, flattenRouteImplementations } from "./match.ts";
 export type { RouteMatch, RuntimeImplementationTree } from "./match.ts";
 export { RouteResponseError } from "./routeResponseError.ts";
 export type {
-	HttpRouteHandlerContext,
 	RouteErrors,
 	RouteHandler,
 	RouteRequest,
@@ -30,6 +29,7 @@ export {
 	ResponseValidationError,
 } from "./validationErrors.ts";
 export { implement } from "./implement.ts";
+export type { ContractImplementor } from "./implement.types.ts";
 export { serverFirstRoute } from "./routeBuilder.ts";
 export type {
 	ImplicitResponseEnvelope,

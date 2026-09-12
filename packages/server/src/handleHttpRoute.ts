@@ -14,10 +14,7 @@ import {
 import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
 import { RequestValidationError } from "./validationErrors.ts";
-import type {
-	HttpRouteHandlerContext,
-	RuntimeRouteHandler,
-} from "./routeBuilder.types.ts";
+import type { RuntimeRouteHandler } from "./routeBuilder.types.ts";
 import type { ImplicitResponseEnvelope } from "./routeBuilder.types.ts";
 import {
 	resolveCustomResponseBody,
@@ -66,9 +63,13 @@ export type HttpRouteResult =
  *
  * @see {@link https://rest-rpc.dev/docs/advanced/building-server-adapters#registering-http-routes}
  */
-export type HandleHttpRouteOptions<TContext extends HttpRouteHandlerContext> = {
+export type HandleHttpRouteOptions<
+	TAdditionalHandlerFields extends object = Record<never, never>,
+	TContext extends object = Record<never, never>,
+> = {
 	request: RequestSegments;
 	context: TContext;
+	handlerFields: TAdditionalHandlerFields;
 };
 
 const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
@@ -289,11 +290,12 @@ const normalizeRouteResponseError = async (
  * @see {@link https://rest-rpc.dev/docs/advanced/building-server-adapters#registering-http-routes}
  */
 export async function handleHttpRoute<
-	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
+	TAdditionalHandlerFields extends object = Record<never, never>,
+	TContext extends object = Record<never, never>,
 >(
 	route: RouteDeclaration,
 	handler: RuntimeRouteHandler,
-	options: HandleHttpRouteOptions<TContext>,
+	options: HandleHttpRouteOptions<TAdditionalHandlerFields, TContext>,
 ): Promise<HttpRouteResult> {
 	const requestValidation = await validateRequest(route, options.request);
 	if (!requestValidation.success) {
@@ -303,6 +305,7 @@ export async function handleHttpRoute<
 	let handlerResult: unknown;
 	try {
 		handlerResult = await handler({
+			...options.handlerFields,
 			...(route.kind === "procedure"
 				? route.request?.body
 					? { input: requestValidation.data.body }

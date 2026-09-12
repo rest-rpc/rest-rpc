@@ -8,7 +8,10 @@ interface AppContext {
 	requestId: string;
 }
 
-const route = serverFirstRoute as unknown as ServerRouteBuilder<AppContext>;
+const route = serverFirstRoute as unknown as ServerRouteBuilder<
+	{ signal: AbortSignal },
+	AppContext
+>;
 const input = z.object({ title: z.string() });
 const output = z.object({ id: z.string(), title: z.string() });
 
@@ -24,10 +27,11 @@ const inferred = route
 	.post("/todos/:id")
 	.params(z.object({ id: z.string() }))
 	.body(input)
-	.handler(({ params, body, context }) => {
+	.handler(({ params, body, context, signal }) => {
 		expectType<string>(params.id);
 		expectType<string>(body.title);
-		expectType<AppContext & { signal: AbortSignal }>(context);
+		expectType<AppContext>(context);
+		expectType<AbortSignal>(signal);
 		return { status: 201 as const, body: { id: params.id, title: body.title } };
 	});
 
@@ -40,10 +44,8 @@ expectType<201>(
 	inferred["~restrpc"].handler({
 		params: { id: "todo-1" },
 		body: { title: "Write tests" },
-		context: {
-			requestId: "request-1",
-			signal: new AbortController().signal,
-		},
+		context: { requestId: "request-1" },
+		signal: new AbortController().signal,
 	}).status,
 );
 
