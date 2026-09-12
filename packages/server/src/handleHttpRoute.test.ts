@@ -112,6 +112,26 @@ describe("handleHttpRoute", () => {
 		assert.equal(called, false);
 	});
 
+	it("normalizes inferred procedure results as successful JSON", async () => {
+		const route = {
+			kind: "procedure" as const,
+			method: "POST" as const,
+			path: "/todos/get",
+			responses: {},
+		};
+		const result = await handleHttpRoute(route, () => ({ id: "todo-1" }), {
+			request: {},
+			handlerFields: {},
+			context: {},
+		});
+
+		assert.deepEqual(result, {
+			kind: "json",
+			status: 200,
+			body: { id: "todo-1" },
+		});
+	});
+
 	it("rethrows user handler errors unchanged", async () => {
 		const expected = new Error("boom");
 		await assert.rejects(

@@ -78,24 +78,30 @@ const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
 	typeof value[Symbol.asyncIterator] === "function";
 
 const classifyImplicitResponse = (
-	result: ImplicitResponseEnvelope,
+	route: RouteDeclaration,
+	result: unknown,
 ): HttpRouteResult => {
-	const headers = result.responseHeaders;
-	if (!("body" in result)) {
+	if (route.kind === "procedure") {
+		return { kind: "json", status: 200, body: result };
+	}
+
+	const response = result as ImplicitResponseEnvelope;
+	const headers = response.responseHeaders;
+	if (!("body" in response)) {
 		return {
 			kind: "empty",
-			status: result.status,
+			status: response.status,
 			headers,
 		};
 	}
 
-	const body = result.body;
-	const { contentType } = result;
+	const body = response.body;
+	const { contentType } = response;
 
 	if (isAsyncIterable(body)) {
 		return {
 			kind: "stream",
-			status: result.status,
+			status: response.status,
 			headers,
 			body,
 			...(contentType !== undefined
@@ -107,14 +113,14 @@ const classifyImplicitResponse = (
 	if (contentType !== undefined) {
 		return {
 			kind: "custom",
-			status: result.status,
+			status: response.status,
 			headers,
 			body,
 			contentType,
 		};
 	}
 
-	return { kind: "json", status: result.status, headers, body };
+	return { kind: "json", status: response.status, headers, body };
 };
 
 const getResponseSchema = (
@@ -321,7 +327,7 @@ export async function handleHttpRoute<
 	}
 
 	if (Object.keys(route.responses).length === 0) {
-		return classifyImplicitResponse(handlerResult as ImplicitResponseEnvelope);
+		return classifyImplicitResponse(route, handlerResult);
 	}
 
 	return normalizeHandlerResult(route, handlerResult);

@@ -180,25 +180,3 @@ clients and servers are deployed independently.
 `route.with()` configures explicit route factories and does not change the
 fixed procedure profile. Switch that operation to an explicit route when it
 needs custom paths, shared responses, metadata, or other HTTP controls.
-
-## Adapter Support
-
-Procedure routes and server-first handlers are served by the runtime adapters:
-
-| Adapter             | Procedure routes | Server-first | Explicit contract-first routes |
-| ------------------- | ---------------- | ------------ | ------------------------------ |
-| `@rest-rpc/node`    | Yes              | Yes          | Yes                            |
-| `@rest-rpc/fetch`   | Yes              | Yes          | Yes                            |
-| `@rest-rpc/express` | No               | No           | Yes                            |
-| `@rest-rpc/fastify` | No               | No           | Yes                            |
-| `@rest-rpc/hono`    | No               | No           | Yes                            |
-| `@rest-rpc/nest`    | No               | No           | Yes                            |
-
-The Node and Fetch packages are full runtime routers. They can also be mounted
-inside compatible frameworks, as shown in [Node HTTP](./server/node) and
-[Fetch Runtime](./server/fetch). The framework-specific packages preserve
-native registration, context, middleware, and dependency-injection models for
-explicit contract-first routes.
-
-Choose the integration for the behavior you need; the packages do not all
-expose the same authoring model.
