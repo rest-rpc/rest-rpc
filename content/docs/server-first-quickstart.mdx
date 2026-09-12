@@ -123,7 +123,7 @@ export const routes = {
 			.post("/todos")
 			.body(z.object({ title: z.string().min(1) }))
 			.handler(async ({ body: { title } }) => ({
-				status: 201 as const,
+				status: 201,
 				body: { id: crypto.randomUUID(), title, completed: false },
 			})),
 	},
@@ -136,7 +136,7 @@ export default {
 		const result = await handle(request);
 		return result.matched
 			? result.response
-			: new Response("Not found", { status: 404 as const });
+			: new Response("Not found", { status: 404 });
 	},
 };
 ```

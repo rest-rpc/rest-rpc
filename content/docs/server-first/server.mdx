@@ -24,9 +24,9 @@ const getTodo = route
 		const todo = findTodo(id);
 
 		return todo
-			? { status: 200 as const, body: todo }
+			? { status: 200, body: todo }
 			: {
-					status: 404 as const,
+					status: 404,
 					body: { code: "TODO_NOT_FOUND" },
 				};
 	});
@@ -49,8 +49,10 @@ Each returned literal status becomes a member of the client-visible response
 union.
 
 :::tip
-To avoid the status being widened to `number` for inferred responses, use `as const` to preserve the literal type.
-This allows the client to narrow the response type based on the status code correctly.
+Response objects returned inline from the handler normally preserve their literal
+statuses. If a response is constructed elsewhere and its status has already been
+widened to `number`, preserve the literal with `as const` or an explicit return
+type so clients can narrow the response by status.
 :::
 
 ## Declare Responses When Needed
