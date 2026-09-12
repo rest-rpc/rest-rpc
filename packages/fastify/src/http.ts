@@ -37,7 +37,7 @@ export type ExtendedFastifyPreHandler = (
 
 export const registerFastifyHttpRoutes = (
 	app: FastifyInstance,
-	routes: RouteImplementation<RouteDeclaration>[],
+	routes: RouteImplementation[],
 	preHandler: ExtendedFastifyPreHandler[] = [],
 	requestValidationErrorHandler?: RequestValidationErrorHandler,
 	responseValidationErrorHandler?: ResponseValidationErrorHandler,

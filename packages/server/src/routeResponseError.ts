@@ -1,8 +1,10 @@
-import type { Contract, HttpRouteDeclaration } from "@rest-rpc/core/contract";
+import type { Contract, RouteDeclaration } from "@rest-rpc/core/contract";
 import type { RouteErrors } from "./router.ts";
 
-type HttpRoutes<TContract> = TContract extends HttpRouteDeclaration
-	? TContract
+type HttpRoutes<TContract> = TContract extends RouteDeclaration
+	? TContract extends { kind: "http" }
+		? TContract
+		: never
 	: TContract extends Record<string, unknown>
 		? {
 				[TKey in keyof TContract]: HttpRoutes<TContract[TKey]>;
@@ -15,7 +17,7 @@ type HttpRoutes<TContract> = TContract extends HttpRouteDeclaration
  * @see {@link https://rest-rpc.dev/docs/http-responses#response-with-multiple-status-codes}
  */
 export class RouteResponseError<
-	TContract extends Contract = HttpRouteDeclaration,
+	TContract extends Contract = Contract,
 > extends Error {
 	readonly response: RouteErrors<HttpRoutes<TContract>>;
 	readonly status: number;

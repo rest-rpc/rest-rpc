@@ -50,7 +50,7 @@ type NestRouteImplementationContext = {
 const assertRouteImplementation = (
 	value: unknown,
 	route: RouteDeclaration,
-): RouteImplementation<RouteDeclaration> => {
+): RouteImplementation => {
 	if (
 		typeof value !== "object" ||
 		value === null ||
@@ -62,7 +62,7 @@ const assertRouteImplementation = (
 		);
 	}
 
-	const implementation = value as RouteImplementation<RouteDeclaration>;
+	const implementation = value as RouteImplementation;
 	if (
 		implementation.route.method !== route.method ||
 		implementation.route.path !== route.path

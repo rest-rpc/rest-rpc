@@ -71,17 +71,17 @@ route.input(z.object({ context: z.string() })).handler(({ input, context }) => {
 	return input.context;
 });
 
-expectType<"shorthand">(shorthandGet.route.kind);
+expectType<"procedure">(shorthandGet.route.kind);
 expectType<{ readonly id: "todo-1"; readonly title: "Todo" }>(
 	null as unknown as StandardSchemaV1.InferOutput<
-		NonNullable<typeof shorthandGet.clientRoute>["output"]
+		NonNullable<typeof shorthandGet.clientRoute>["responses"][200]
 	>,
 );
-expectType<typeof todoInput>(shorthandCreate.route.input);
-expectType<typeof todo>(shorthandDeclaredGet.route.output);
-expectType<typeof todo>(shorthandDeclaredCreate.route.output);
-expectType<typeof todoInput>(shorthandOutputFirst.route.input);
-expectType<typeof todo>(shorthandOutputFirst.route.output);
+expectType<typeof todoInput>(shorthandCreate.route.request.body);
+expectType<typeof todo>(shorthandDeclaredGet.route.responses[200]);
+expectType<typeof todo>(shorthandDeclaredCreate.route.responses[200]);
+expectType<typeof todoInput>(shorthandOutputFirst.route.request.body);
+expectType<typeof todo>(shorthandOutputFirst.route.responses[200]);
 expectType<"json">(
 	null as unknown as ServerFirstRouteResponseKind<typeof shorthandGet>,
 );
@@ -169,7 +169,7 @@ const prefixed = route
 	})
 	.post("/todos")
 	.body(todoInput)
-	.withMetadata({ access: "write", feature: "todos" })
+	.metadata({ access: "write", feature: "todos" })
 	.handler(({ body }) => {
 		expectType<{ title: string }>(body);
 		return { status: 204 as const };

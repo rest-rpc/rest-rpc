@@ -15,12 +15,10 @@ export {
 } from "./client/index.ts";
 export type {
 	Contract,
-	HttpStatusCode,
 	RouteDeclaration,
-	ShorthandRouteDeclaration,
 } from "./contract/index.ts";
 export type { ClientRequest } from "./contract/request.ts";
-export { route } from "./contract/routeFactory.ts";
+export { route } from "./contract/routeBuilder.ts";
 export type {
 	CustomResponseBody,
 	CustomResponseValue,
@@ -34,3 +32,4 @@ export { type } from "./standard-schema/type.ts";
 
 export type { ApiClientRouteValue } from "./client/types.ts";
 export type { EncodedRequest } from "./client/serverFirstClient.ts";
+

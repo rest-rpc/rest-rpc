@@ -181,7 +181,7 @@ export const api = {
 	todos: {
 		list: apiRoute
 			.get("/todos")
-			.withOpenApi({ summary: "List todos" })
+			.openAPI({ summary: "List todos" })
 			.response(200, z.object({ items: z.array(todoSchema) })),
 	},
 };

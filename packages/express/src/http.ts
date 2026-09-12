@@ -44,7 +44,7 @@ export type ExtendedExpressMiddleware = (
 
 export const registerExpressHttpRoutes = (
 	app: IRouter,
-	routes: RouteImplementation<RouteDeclaration>[],
+	routes: RouteImplementation[],
 	middleware: ExtendedExpressMiddleware[] = [],
 	requestValidationErrorHandler?: RequestValidationErrorHandler,
 	responseValidationErrorHandler?: ResponseValidationErrorHandler,

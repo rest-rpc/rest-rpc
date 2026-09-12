@@ -1,15 +1,6 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { CustomBody, CustomResponseBody, NoBody, Stream } from "./body.ts";
-import type { BaseRouteDeclaration } from "./baseRouteDeclaration.ts";
-
-type StatusDigit = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-type StatusClass = 1 | 2 | 3 | 4 | 5;
-type NumericStatus<TStatus extends string> =
-	TStatus extends `${infer TNumber extends number}` ? TNumber : never;
-
-/** Any valid three-digit HTTP status code. */
-export type HttpStatusCode =
-	NumericStatus<`${StatusClass}${StatusDigit}${StatusDigit}`>;
+import type { RouteDeclaration } from "./routeDeclaration.ts";
 
 export type ResponseSchema = StandardSchemaV1;
 
@@ -49,9 +40,7 @@ export type ResponseDeclaration =
 			headers: ResponseHeaders;
 	  };
 
-export type RouteResponses = Partial<
-	Record<HttpStatusCode, ResponseDeclaration>
->;
+export type RouteResponses = Record<number, ResponseDeclaration>;
 
 export type RouteResponseInput =
 	| { responses: RouteResponses; response?: never }
@@ -75,14 +64,8 @@ export const getResponseHeaders = (
 
 export const getRouteResponses = (route: {
 	path: string;
-	responses?: RouteResponses;
+	responses: RouteResponses;
 }): RouteResponses => {
-	if (route.responses === undefined) {
-		throw new Error(
-			`Route declaration at path "${route.path}" is missing responses.`,
-		);
-	}
-
 	if (Object.keys(route.responses).length === 0) {
 		throw new Error(
 			`Route declaration at path "${route.path}" must declare at least one response schema.`,
@@ -250,7 +233,7 @@ export type HasMultipleSuccessfulResponses<TResponses> = IsUnion<
 	SuccessfulResponseKeys<TResponses>
 >;
 
-export type DeclaredClientResponse<E extends BaseRouteDeclaration> = E extends {
+export type DeclaredClientResponse<E extends RouteDeclaration> = E extends {
 	responses: infer TResponses;
 }
 	? {
@@ -260,7 +243,7 @@ export type DeclaredClientResponse<E extends BaseRouteDeclaration> = E extends {
 		}[keyof TResponses]
 	: never;
 
-export type ServerResponse<E extends BaseRouteDeclaration> = E extends {
+export type ServerResponse<E extends RouteDeclaration> = E extends {
 	responses: infer TResponses;
 }
 	? {
@@ -270,7 +253,7 @@ export type ServerResponse<E extends BaseRouteDeclaration> = E extends {
 		}[keyof TResponses]
 	: never;
 
-export type SuccessfulDeclaredClientResponse<E extends BaseRouteDeclaration> =
+export type SuccessfulDeclaredClientResponse<E extends RouteDeclaration> =
 	E extends {
 		responses: infer TResponses;
 	}
@@ -283,7 +266,7 @@ export type SuccessfulDeclaredClientResponse<E extends BaseRouteDeclaration> =
 			}[keyof TResponses]
 		: never;
 
-type ServerSuccessResponse<E extends BaseRouteDeclaration> = E extends {
+type ServerSuccessResponse<E extends RouteDeclaration> = E extends {
 	responses: infer TResponses;
 }
 	? {
@@ -305,13 +288,15 @@ type InferSingleServerResponseBody<TResponse> = [TResponse] extends [never]
 				? TBody
 				: never;
 
-export type ServerSuccessBody<E extends BaseRouteDeclaration> =
+export type ServerSuccessBody<E extends RouteDeclaration> =
 	InferSingleServerResponseBody<ServerSuccessResponse<E>>;
 
-export type ErrorDeclaredClientResponse<E extends BaseRouteDeclaration> =
-	Exclude<DeclaredClientResponse<E>, SuccessfulDeclaredClientResponse<E>>;
+export type ErrorDeclaredClientResponse<E extends RouteDeclaration> = Exclude<
+	DeclaredClientResponse<E>,
+	SuccessfulDeclaredClientResponse<E>
+>;
 
-export type ServerErrors<E extends BaseRouteDeclaration> = Exclude<
+export type ServerErrors<E extends RouteDeclaration> = Exclude<
 	ServerResponse<E>,
 	ServerSuccessResponse<E>
 >;

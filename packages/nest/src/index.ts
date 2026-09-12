@@ -112,7 +112,7 @@ export type RouteHandlers<TContract extends NestContract> =
 
 const isNestRouteImplementation = (
 	value: unknown,
-): value is RouteImplementation<RouteDeclaration> =>
+): value is RouteImplementation =>
 	typeof value === "object" &&
 	value !== null &&
 	"route" in value &&

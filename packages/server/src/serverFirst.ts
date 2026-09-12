@@ -1,5 +1,4 @@
 import type {
-	BaseRouteDeclaration,
 	BuilderExtension,
 	BuilderMetadata,
 	CustomResponseBody,
@@ -13,15 +12,9 @@ import type {
 	RouteFactoryOptions,
 	RouteMetadata,
 	ServerRequest,
-	AnyShorthandRouteDeclaration,
-	ShorthandRouteDeclaration,
 	Stream,
 } from "@rest-rpc/core/contract";
 import { route as coreRoute } from "@rest-rpc/core";
-import {
-	createShorthandRouteDeclaration,
-	isShorthandRouteDeclaration,
-} from "@rest-rpc/core/contract";
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 import type {
 	HttpRouteHandlerContext,
@@ -35,6 +28,19 @@ import { isRouteDeclaration } from "./router.ts";
 type EmptyObject = Record<never, never>;
 type AnyRouteHandler = (...args: never[]) => unknown;
 type MaybePromise<T> = T | Promise<T>;
+type RouteBuilderValue = RouteDeclaration;
+
+type ProcedureRouteFor<
+	TInput extends StandardSchemaV1 | never,
+	TOutput extends StandardSchemaV1,
+> = {
+	kind: "procedure";
+	path: string;
+	method: "POST";
+	responses: { 200: TOutput };
+} & ([TInput] extends [never]
+	? { request?: never }
+	: { request: { body: TInput } });
 
 interface ContextShape {
 	// oxlint-disable-next-line typescript/no-explicit-any -- `any` allows named interfaces without leaking an index signature.
@@ -60,10 +66,7 @@ type ShorthandRequest<
 type InferredShorthandRoute<
 	TInput extends StandardSchemaV1 | never,
 	TResult,
-> = ShorthandRouteDeclaration<
-	TInput,
-	StandardSchemaV1<unknown, Awaited<TResult>>
->;
+> = ProcedureRouteFor<TInput, StandardSchemaV1<unknown, Awaited<TResult>>>;
 
 /**
  * A server-first shorthand builder that can declare input or output before its
@@ -91,9 +94,9 @@ export type ServerShorthandImplementationBuilder<
 			>(
 				handler: (request: ShorthandRequest<TInput, TContext>) => TResult,
 			): ServerRouteImplementation<
-				ShorthandRouteDeclaration<TInput, Extract<TOutput, StandardSchemaV1>>,
+				ProcedureRouteFor<TInput, Extract<TOutput, StandardSchemaV1>>,
 				(request: ShorthandRequest<TInput, TContext>) => TResult,
-				ShorthandRouteDeclaration<TInput, Extract<TOutput, StandardSchemaV1>>
+				ProcedureRouteFor<TInput, Extract<TOutput, StandardSchemaV1>>
 			>;
 		}) &
 	([TInput] extends [never]
@@ -113,7 +116,7 @@ export type ServerShorthandImplementationBuilder<
 
 /** A server-first implementation carrying erased client route metadata. */
 export interface ServerRouteImplementation<
-	TRoute = BaseRouteDeclaration,
+	TRoute = RouteBuilderValue,
 	THandler = AnyRouteHandler,
 	TClientRoute = TRoute,
 > extends RouteImplementation<TRoute, THandler> {
@@ -173,6 +176,14 @@ type ImplementationParts<TImplementation> =
 type HandlerResult<THandler> = THandler extends AnyRouteHandler
 	? Awaited<ReturnType<THandler>>
 	: never;
+
+type HasDeclaredResponses<TRoute> = TRoute extends {
+	responses: infer TResponses;
+}
+	? keyof TResponses extends never
+		? false
+		: true
+	: false;
 
 type ClientSchema<TOutput> = StandardSchemaV1<unknown, TOutput>;
 
@@ -234,7 +245,7 @@ export type InferredRouteResponse<TImplementation> =
 		route: infer TRoute;
 		handler: infer THandler;
 	}
-		? TRoute extends { responses: Record<number, unknown> }
+		? HasDeclaredResponses<TRoute> extends true
 			? never
 			: HandlerResult<THandler>
 		: never;
@@ -245,9 +256,9 @@ export type ServerFirstRouteResponseKind<TImplementation> =
 		route: infer TRoute;
 		handler: infer THandler;
 	}
-		? TRoute extends { kind: "shorthand" }
+		? TRoute extends { kind: "procedure" }
 			? "json"
-			: TRoute extends { responses: Record<number, unknown> }
+			: HasDeclaredResponses<TRoute> extends true
 				? never
 				: ImplicitResponseKind<HandlerResult<THandler>>
 		: never;
@@ -257,7 +268,7 @@ type Merge<T> = {
 };
 
 type ServerFirstRequest<
-	TRoute extends BaseRouteDeclaration,
+	TRoute extends RouteBuilderValue,
 	TContext extends ContextShape,
 > = Merge<
 	(ServerRequest<TRoute> extends never
@@ -293,20 +304,9 @@ type HttpImplementationBuilder<
 	TMetadata extends RouteMetadata | never,
 	TContext extends ContextShape,
 > =
-	HttpBuilderDeclaration<TState> extends infer TRoute extends
-		BaseRouteDeclaration
-		? TRoute extends RouteDeclaration
+	HttpBuilderDeclaration<TState> extends infer TRoute extends RouteBuilderValue
+		? keyof TState["responses"] extends never
 			? {
-					handler<
-						const TResult extends DeclaredHandlerResult<TRoute, TContext>,
-					>(
-						handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
-					): ServerRouteImplementation<
-						HttpRouteForState<TState, TPath, TMetadata>,
-						(request: DeclaredRequest<TRoute, TContext>) => TResult
-					>;
-				}
-			: {
 					handler<const TResult extends MaybePromise<ImplicitResponseEnvelope>>(
 						handler: (request: ServerFirstRequest<TRoute, TContext>) => TResult,
 					): ServerRouteImplementation<
@@ -318,6 +318,18 @@ type HttpImplementationBuilder<
 						>
 					>;
 				}
+			: TRoute extends RouteDeclaration
+				? {
+						handler<
+							const TResult extends DeclaredHandlerResult<TRoute, TContext>,
+						>(
+							handler: (request: DeclaredRequest<TRoute, TContext>) => TResult,
+						): ServerRouteImplementation<
+							HttpRouteForState<TState, TPath, TMetadata>,
+							(request: DeclaredRequest<TRoute, TContext>) => TResult
+						>;
+					}
+				: never
 		: never;
 
 /** Core HTTP builder extension carrying server handler attachment operations. */
@@ -396,7 +408,6 @@ type ImplementationBuilder<
 /** An HTTP contract route or nested contract tree supported by `implement`. */
 export type ServerContract =
 	| RouteDeclaration
-	| AnyShorthandRouteDeclaration
 	| { readonly [key: string]: ServerContract };
 
 /** Maps a contract route or tree to handler attachment builders. */
@@ -404,20 +415,24 @@ export type ImplementationBuildersFor<
 	TNode extends ServerContract,
 	TContext extends ContextShape = EmptyObject,
 > = TNode extends RouteDeclaration
-	? ImplementationBuilder<TNode, TContext>
-	: TNode extends AnyShorthandRouteDeclaration
+	? TNode extends { kind: "procedure" }
 		? ServerShorthandImplementationBuilder<
-				TNode extends { input: infer TInput extends StandardSchemaV1 }
+				TNode extends {
+					request: { body: infer TInput extends StandardSchemaV1 };
+				}
 					? TInput
 					: never,
-				TNode["output"],
+				TNode extends { responses: { 200: infer TOutput } }
+					? Extract<TOutput, StandardSchemaV1>
+					: never,
 				TContext
 			>
-		: {
-				readonly [K in keyof TNode]: TNode[K] extends ServerContract
-					? ImplementationBuildersFor<TNode[K], TContext>
-					: never;
-			};
+		: ImplementationBuilder<TNode, TContext>
+	: {
+			readonly [K in keyof TNode]: TNode[K] extends ServerContract
+				? ImplementationBuildersFor<TNode[K], TContext>
+				: never;
+		};
 
 /** Type-level model of contract-first handler attachment. */
 export type Implement<TContext extends ContextShape = EmptyObject> = <
@@ -429,28 +444,21 @@ export type Implement<TContext extends ContextShape = EmptyObject> = <
 /** An ordinary object tree containing server-first route implementations. */
 export type ServerImplementationTree =
 	| ServerRouteImplementation<
-			BaseRouteDeclaration,
+			RouteBuilderValue,
 			AnyRouteHandler,
 			RouteDeclaration
-	  >
-	| ServerRouteImplementation<
-			AnyShorthandRouteDeclaration,
-			AnyRouteHandler,
-			AnyShorthandRouteDeclaration
 	  >
 	| { readonly [key: string]: ServerImplementationTree };
 
 const attachHandler = (
-	route: BaseRouteDeclaration | AnyShorthandRouteDeclaration,
+	route: RouteBuilderValue,
 	handler: RuntimeRouteHandler,
-): RouteImplementation<
-	BaseRouteDeclaration | AnyShorthandRouteDeclaration
-> => ({
+): RouteImplementation<RouteBuilderValue> => ({
 	route,
 	handler,
 });
 
-const extendBuilder = (builder: BaseRouteDeclaration) =>
+const extendBuilder = (builder: RouteBuilderValue) =>
 	Object.assign(builder, {
 		handler(handler: RuntimeRouteHandler) {
 			return attachHandler(builder, handler);
@@ -465,28 +473,21 @@ const inferredOutputSchema: StandardSchemaV1 = {
 	},
 };
 
-const createShorthandImplementationBuilder = (
-	input?: StandardSchemaV1,
-	output?: StandardSchemaV1,
-): object => ({
-	handler: (handler: RuntimeRouteHandler) =>
-		attachHandler(
-			createShorthandRouteDeclaration(input, output ?? inferredOutputSchema),
-			handler,
-		),
-	...(input
-		? {}
-		: {
-				input: (schema: StandardSchemaV1) =>
-					createShorthandImplementationBuilder(schema, output),
-			}),
-	...(output
-		? {}
-		: {
-				output: (schema: StandardSchemaV1) =>
-					createShorthandImplementationBuilder(input, schema),
-			}),
-});
+type RuntimeProcedureBuilder = RouteBuilderValue & {
+	kind: "procedure";
+	responses: Record<number, StandardSchemaV1>;
+	output(schema: StandardSchemaV1): RuntimeProcedureBuilder;
+};
+
+const extendProcedureBuilder = (builder: RuntimeProcedureBuilder) =>
+	Object.assign(builder, {
+		handler(handler: RuntimeRouteHandler) {
+			if (!builder.responses[200]) {
+				builder.output(inferredOutputSchema);
+			}
+			return attachHandler(builder, handler);
+		},
+	});
 
 const createServerRouteFactory = (options: RouteFactoryOptions = {}) => {
 	const resolvedOptions = { ...options };
@@ -498,7 +499,16 @@ const createServerRouteFactory = (options: RouteFactoryOptions = {}) => {
 		put: (path: string) => extendBuilder(factory.put(path)),
 		patch: (path: string) => extendBuilder(factory.patch(path)),
 		delete: (path: string) => extendBuilder(factory.delete(path)),
-		...createShorthandImplementationBuilder(),
+		handler: (handler: RuntimeRouteHandler) =>
+			attachHandler(coreRoute.output(inferredOutputSchema), handler),
+		input: (schema: StandardSchemaV1) =>
+			extendProcedureBuilder(
+				coreRoute.input(schema) as unknown as RuntimeProcedureBuilder,
+			),
+		output: (schema: StandardSchemaV1) =>
+			extendProcedureBuilder(
+				coreRoute.output(schema) as unknown as RuntimeProcedureBuilder,
+			),
 		with: (nextOptions: RouteFactoryOptions) =>
 			createServerRouteFactory(nextOptions),
 	};
@@ -510,9 +520,7 @@ const serverRouteFactory = createServerRouteFactory();
 export const serverFirstRoute =
 	serverRouteFactory as unknown as ServerRouteFactory;
 
-const createImplementationBuilder = (
-	contract: BaseRouteDeclaration | AnyShorthandRouteDeclaration,
-) => {
+const createImplementationBuilder = (contract: RouteDeclaration) => {
 	const builder = {
 		handler: (handler: RuntimeRouteHandler) => attachHandler(contract, handler),
 	};
@@ -520,7 +528,7 @@ const createImplementationBuilder = (
 };
 
 const implementationBuildersFor = (contract: ServerContract): unknown => {
-	if (isRouteDeclaration(contract) || isShorthandRouteDeclaration(contract)) {
+	if (isRouteDeclaration(contract)) {
 		return createImplementationBuilder(contract);
 	}
 

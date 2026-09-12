@@ -196,6 +196,7 @@ export type RouteHandlers<
 export const isRouteDeclaration = (value: unknown): value is RouteDeclaration =>
 	typeof value === "object" &&
 	value !== null &&
+	"kind" in value &&
 	"path" in value &&
 	"method" in value;
 
@@ -222,8 +223,8 @@ type RouterOptions = {
 };
 
 const assertMatchingRoute = (
-	expected: RouteDeclaration,
-	actual: RouteDeclaration,
+	expected: Pick<RouteDeclaration, "method" | "path">,
+	actual: Pick<RouteDeclaration, "method" | "path">,
 	routeName: string,
 ) => {
 	if (actual.method !== expected.method || actual.path !== expected.path) {
@@ -244,7 +245,11 @@ const collectImplementations = (
 
 	if (isRouteDeclaration(contract)) {
 		if (isRouteImplementation(handlers)) {
-			assertMatchingRoute(contract, handlers.route, routeName || contract.path);
+			assertMatchingRoute(
+				contract,
+				handlers.route,
+				routeName || contract.path || "/",
+			);
 			return handlers;
 		}
 
@@ -256,7 +261,7 @@ const collectImplementations = (
 			route: contract,
 			handler:
 				parent && typeof parent === "object" ? handlers.bind(parent) : handlers,
-			routeName: routeName || contract.path,
+			routeName: routeName || contract.path || "/",
 		});
 	}
 

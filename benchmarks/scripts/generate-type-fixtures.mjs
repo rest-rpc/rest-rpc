@@ -117,7 +117,7 @@ const routeSource = (index, serverFirst) => {
 		builder.push(".body(bodySchema)");
 	builder.push(
 		".headers(routeHeadersSchema)",
-		`.withMetadata({ feature: 'group-${group}' })`,
+		`.metadata({ feature: 'group-${group}' })`,
 	);
 	if (serverFirst) {
 		builder.push(`.handler(() => ({

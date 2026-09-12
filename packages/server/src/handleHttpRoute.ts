@@ -1,4 +1,3 @@
-import { isShorthandRouteDeclaration } from "@rest-rpc/core/contract";
 import type {
 	CustomBody,
 	ResponseDeclaration,
@@ -16,7 +15,6 @@ import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
 import { RequestValidationError } from "./validationErrors.ts";
 import type { HttpRouteHandlerContext, RuntimeRouteHandler } from "./router.ts";
-import type { BaseRouteDeclaration } from "@rest-rpc/core/contract";
 import type { ImplicitResponseEnvelope } from "./serverFirst.ts";
 import {
 	resolveCustomResponseBody,
@@ -290,15 +288,11 @@ const normalizeRouteResponseError = async (
 export async function handleHttpRoute<
 	TContext extends HttpRouteHandlerContext = HttpRouteHandlerContext,
 >(
-	route: BaseRouteDeclaration,
+	route: RouteDeclaration,
 	handler: RuntimeRouteHandler,
 	options: HandleHttpRouteOptions<TContext>,
 ): Promise<HttpRouteResult> {
-	const declaredRoute = route as RouteDeclaration;
-	const requestValidation = await validateRequest(
-		declaredRoute,
-		options.request,
-	);
+	const requestValidation = await validateRequest(route, options.request);
 	if (!requestValidation.success) {
 		throw new RequestValidationError(requestValidation.issues);
 	}
@@ -306,8 +300,8 @@ export async function handleHttpRoute<
 	let handlerResult: unknown;
 	try {
 		handlerResult = await handler({
-			...(isShorthandRouteDeclaration(declaredRoute)
-				? "input" in declaredRoute
+			...(route.kind === "procedure"
+				? route.request?.body
 					? { input: requestValidation.data.body }
 					: {}
 				: requestValidation.data),
@@ -315,14 +309,14 @@ export async function handleHttpRoute<
 		});
 	} catch (error) {
 		if (error instanceof RouteResponseError) {
-			return normalizeRouteResponseError(declaredRoute, error);
+			return normalizeRouteResponseError(route, error);
 		}
 		throw error;
 	}
 
-	if (!("responses" in route)) {
+	if (Object.keys(route.responses).length === 0) {
 		return classifyImplicitResponse(handlerResult as ImplicitResponseEnvelope);
 	}
 
-	return normalizeHandlerResult(declaredRoute, handlerResult);
+	return normalizeHandlerResult(route, handlerResult);
 }

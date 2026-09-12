@@ -1,17 +1,15 @@
 import {
-	type AnyShorthandRouteDeclaration,
-	type BaseRouteDeclaration,
 	getPathParamSegmentName,
 	isPathParamSegment,
-	isShorthandRouteDeclaration,
+	type RouteDeclaration,
 } from "@rest-rpc/core/contract";
 import type { ImplementationTree, RouteImplementation } from "./router.ts";
 
 const splitPath = (path: string) => path.split("/").filter(Boolean);
 
 export const compareRouteSpecificity = (
-	left: BaseRouteDeclaration,
-	right: BaseRouteDeclaration,
+	left: RouteDeclaration,
+	right: RouteDeclaration,
 ) => {
 	const leftSegments = splitPath(left.path);
 	const rightSegments = splitPath(right.path);
@@ -72,25 +70,19 @@ export const createPathMatcher = (path: string) => {
 };
 
 export type RuntimeImplementation = {
-	route: BaseRouteDeclaration;
-	handler: (...args: never[]) => unknown;
-};
-
-type ShorthandRuntimeImplementation = {
-	route: AnyShorthandRouteDeclaration;
+	route: RouteDeclaration;
 	handler: (...args: never[]) => unknown;
 };
 
 /** An implementation or nested implementation tree consumed at runtime. */
 export type RuntimeImplementationTree =
 	| RuntimeImplementation
-	| ShorthandRuntimeImplementation
 	| readonly RuntimeImplementationTree[]
 	| { readonly [key: string]: RuntimeImplementationTree };
 
 const isRuntimeImplementation = (
 	value: unknown,
-): value is RuntimeImplementation | ShorthandRuntimeImplementation =>
+): value is RuntimeImplementation =>
 	typeof value === "object" &&
 	value !== null &&
 	"route" in value &&
@@ -106,8 +98,8 @@ const flattenImplementationTree = (
 		);
 	}
 	if (isRuntimeImplementation(implementation)) {
-		if (!isShorthandRouteDeclaration(implementation.route)) {
-			return [implementation as RuntimeImplementation];
+		if (implementation.route.kind !== "procedure") {
+			return [implementation];
 		}
 		return [
 			{
@@ -132,11 +124,11 @@ export function flattenRouteImplementations(
 	implementation: RuntimeImplementationTree,
 ): RuntimeImplementation[];
 export function flattenRouteImplementations(
-	implementation: RuntimeImplementationTree,
+	implementation: ImplementationTree | RuntimeImplementationTree,
 ): RuntimeImplementation[] {
-	return flattenImplementationTree(implementation).sort((left, right) =>
-		compareRouteSpecificity(left.route, right.route),
-	);
+	return flattenImplementationTree(
+		implementation as RuntimeImplementationTree,
+	).sort((left, right) => compareRouteSpecificity(left.route, right.route));
 }
 
 /** A matched route implementation and its decoded URL parameters. */

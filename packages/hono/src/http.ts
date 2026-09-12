@@ -45,7 +45,7 @@ export type ExtendedHonoMiddleware<TEnv extends Env = Env> = (
 
 export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 	app: Hono<TEnv>,
-	routes: RouteImplementation<RouteDeclaration>[],
+	routes: RouteImplementation[],
 	bodyParser: HonoBodyParser | undefined = undefined,
 	middleware: ExtendedHonoMiddleware<TEnv>[] = [],
 	requestValidationErrorHandler?: RequestValidationErrorHandler<TEnv>,

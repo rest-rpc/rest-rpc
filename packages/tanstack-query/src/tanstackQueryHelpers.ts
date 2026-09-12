@@ -10,15 +10,12 @@ import type {
 	ServerFirstClientSelector,
 } from "@rest-rpc/core/client";
 import type {
-	AnyShorthandRouteDeclaration,
 	ClientRequest,
 	Contract,
 	ErrorDeclaredClientResponse,
-	HttpRouteDeclaration,
 	RouteDeclaration,
 	SuccessfulDeclaredClientResponse,
 } from "@rest-rpc/core/contract";
-import { isShorthandRouteDeclaration } from "@rest-rpc/core/contract";
 import type {
 	DataTag,
 	InfiniteData,
@@ -37,7 +34,7 @@ type WithHeaders<TResponse> = TResponse extends unknown
 	? Simplify<TResponse & { headers: Headers }>
 	: never;
 
-type QueryRoute = RouteDeclaration | AnyShorthandRouteDeclaration;
+type QueryRoute = RouteDeclaration;
 
 type DeclaredRouteQueryData<E extends RouteDeclaration> = WithHeaders<
 	SuccessfulDeclaredClientResponse<E>
@@ -59,24 +56,26 @@ type RouteRequestValue<E extends QueryRoute> = ClientRequest<E>;
  *
  * @see {@link https://rest-rpc.dev/docs/type-helpers#tanstack-query}
  */
-export type RouteQueryData<E extends QueryRoute> =
-	E extends AnyShorthandRouteDeclaration
-		? ClientResponse<E>
-		: E extends RouteDeclaration
-			? DeclaredRouteQueryData<E>
-			: never;
+export type RouteQueryData<E extends QueryRoute> = E extends {
+	kind: "procedure";
+}
+	? ClientResponse<E>
+	: E extends RouteDeclaration
+		? DeclaredRouteQueryData<E>
+		: never;
 
 /**
  * Infers the error value surfaced by generated TanStack Query options.
  *
  * @see {@link https://rest-rpc.dev/docs/type-helpers#tanstack-query}
  */
-export type RouteQueryError<E extends QueryRoute> =
-	E extends AnyShorthandRouteDeclaration
-		? Error
-		: E extends RouteDeclaration
-			? DeclaredRouteQueryError<E>
-			: never;
+export type RouteQueryError<E extends QueryRoute> = E extends {
+	kind: "procedure";
+}
+	? Error
+	: E extends RouteDeclaration
+		? DeclaredRouteQueryError<E>
+		: never;
 
 /**
  * Infers mutation variables for a route.
@@ -331,11 +330,9 @@ type TanstackQueryTreeFor<T extends Contract> = {
  * @see {@link https://rest-rpc.dev/docs/client/tanstack-query}
  */
 export type TanstackQueryHelpersFor<T extends Contract> =
-	T extends AnyShorthandRouteDeclaration
+	T extends RouteDeclaration
 		? TanstackQueryRouteValue<T>
-		: T extends HttpRouteDeclaration
-			? TanstackQueryRouteValue<T>
-			: TanstackQueryTreeFor<T>;
+		: TanstackQueryTreeFor<T>;
 
 type AnyHandler = (...args: never[]) => unknown;
 
@@ -356,7 +353,9 @@ type ServerFirstShorthandTanstackQueryTree<TNode> = unknown extends TNode
 				readonly handler: AnyHandler;
 		  }
 		? TNode extends {
-				clientRoute?: infer TRoute extends AnyShorthandRouteDeclaration;
+				clientRoute?: infer TRoute extends RouteDeclaration & {
+					kind: "procedure";
+				};
 			}
 			? TanstackQueryRouteValue<TRoute>
 			: never
@@ -382,7 +381,7 @@ export type ServerFirstTanstackQueryHelpersFor<TTree> = {
 	>(
 		path: TPath,
 	) => TanstackQueryRouteValue<
-		ServerFirstClientRouteFor<TTree, TSelector, TPath>
+		ServerFirstClientRouteFor<TTree, TSelector, Extract<TPath, string>>
 	>;
 } & ([ServerFirstShorthandTanstackQueryTree<TTree>] extends [never]
 	? Record<never, never>
@@ -502,14 +501,13 @@ export function createTanstackQueryHelpers(
 	const client = initClient(contract, options);
 
 	const mapHttpRoutes = (node: Contract, path: string[] = []): unknown => {
-		if (isShorthandRouteDeclaration(node)) {
-			const apiNode = getByPath(client, path) as (
-				...args: unknown[]
-			) => Promise<unknown>;
-			return createTanstackHelpersForRoute(path, apiNode);
-		}
-
 		if (isRouteDeclaration(node)) {
+			if (node.kind === "procedure") {
+				const procedureClient = getByPath(client, path) as (
+					...args: unknown[]
+				) => Promise<unknown>;
+				return createTanstackHelpersForRoute(path, procedureClient);
+			}
 			const apiNode = getByPath(client, path) as FetchResponseFn<typeof node>;
 
 			return createTanstackHelpersForRoute(

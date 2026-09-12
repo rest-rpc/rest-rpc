@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import z from "zod";
-import { route } from "../contract/routeFactory.ts";
+import { route } from "../contract/routeBuilder.ts";
 import { type } from "../standard-schema/index.ts";
 import { initClient } from "./index.ts";
 import { constructBaseRequest, createRequestSignal } from "./request.ts";
@@ -176,7 +176,7 @@ describe("ApiClient requests", () => {
 		};
 		const request = constructBaseRequest(
 			"https://api.test",
-			apiContract.todos.get,
+			apiContract.todos.get["~restrpc"],
 			{
 				params: { id: "todo 1" },
 			},
@@ -208,7 +208,7 @@ describe("ApiClient requests", () => {
 		};
 		const request = constructBaseRequest(
 			"https://api.test",
-			apiContract.items.get,
+			apiContract.items.get["~restrpc"],
 			{
 				params: { id: 12, visible: false },
 				query: { page: 2, includeArchived: true },
@@ -242,7 +242,7 @@ describe("ApiClient requests", () => {
 		};
 		const request = constructBaseRequest(
 			"https://api.test",
-			apiContract.items.get,
+			apiContract.items.get["~restrpc"],
 			{
 				params: {
 					id: "one/two",
@@ -265,7 +265,12 @@ describe("ApiClient requests", () => {
 			.response(204);
 
 		assert.throws(
-			() => constructBaseRequest("https://api.test", declaration, {}),
+			() =>
+				constructBaseRequest(
+					"https://api.test",
+					declaration["~restrpc"],
+					{},
+				),
 			/Missing path param "id" for GET \/items\/:id\./,
 		);
 	});
@@ -286,7 +291,7 @@ describe("ApiClient requests", () => {
 		};
 		const request = constructBaseRequest(
 			"https://api.test",
-			apiContract.items.list,
+			apiContract.items.list["~restrpc"],
 			{
 				search: undefined,
 				"x-request-id": undefined,
@@ -315,7 +320,7 @@ describe("ApiClient requests", () => {
 		};
 		const request = constructBaseRequest(
 			"https://api.test",
-			apiContract.items.search,
+			apiContract.items.search["~restrpc"],
 			{
 				query: {
 					page: 2,
@@ -347,7 +352,7 @@ describe("ApiClient requests", () => {
 		};
 		const request = constructBaseRequest(
 			"https://api.test",
-			apiContract.items.search,
+			apiContract.items.search["~restrpc"],
 			{},
 		);
 
@@ -798,7 +803,7 @@ describe("ApiClient requests", () => {
 			.query(z.object({ id: z.string() }))
 			.body(z.object({ id: z.string(), context: z.string() }))
 			.response(204);
-		const request = constructBaseRequest("https://api.test", declaration, {
+		const request = constructBaseRequest("https://api.test", declaration["~restrpc"], {
 			params: { id: "path-id" },
 			query: { id: "query-id" },
 			body: { id: "body-id", context: "body-context" },
@@ -816,7 +821,7 @@ describe("ApiClient requests", () => {
 			.body(type<false | 0 | "" | null>())
 			.response(204);
 		for (const body of [false, 0, "", null]) {
-			const request = constructBaseRequest("https://api.test", declaration, {
+			const request = constructBaseRequest("https://api.test", declaration["~restrpc"], {
 				body,
 			});
 			assert.equal(request.body, JSON.stringify(body));

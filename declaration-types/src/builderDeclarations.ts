@@ -54,10 +54,10 @@ export const headersRoute = route.get("/headers").headers(headers);
 export const keyedRoute = route.get("/keys").query(query);
 export const metadataRoute = route
 	.get("/metadata")
-	.withMetadata({ scope: "test" });
+	.metadata({ scope: "test" });
 export const openApiRoute = route
 	.get("/openapi")
-	.withOpenApi({ summary: "Test" });
+	.openAPI({ summary: "Test" });
 export const responseRoute = route.get("/response").response(200, scalar);
 export const noBodyResponseRoute = route.get("/no-body").response(204);
 export const responseHeadersRoute = route
