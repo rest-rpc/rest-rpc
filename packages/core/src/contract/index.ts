@@ -47,11 +47,7 @@ export type {
 	RequestQuerySchema,
 	ServerRequest,
 } from "./request.ts";
-export {
-	isJsonQuery,
-	getRequestHeaderSchemas,
-	REQUEST_CONTEXT_KEY,
-} from "./request.ts";
+export { isJsonQuery, getRequestHeaderSchemas } from "./request.ts";
 export type {
 	DeclaredClientResponse,
 	ErrorDeclaredClientResponse,

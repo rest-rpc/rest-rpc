@@ -27,11 +27,14 @@ const inferred = route
 	.post("/todos/:id")
 	.params(z.object({ id: z.string() }))
 	.body(input)
-	.handler(({ params, body, context, signal }) => {
+	.handler(({ params, body, context, signal, route }) => {
 		expectType<string>(params.id);
 		expectType<string>(body.title);
 		expectType<AppContext>(context);
 		expectType<AbortSignal>(signal);
+		expectType<"http">(route.kind);
+		expectType<"POST">(route.method);
+		expectType<"/todos/:id">(route.path);
 		return { status: 201 as const, body: { id: params.id, title: body.title } };
 	});
 
@@ -46,6 +49,7 @@ expectType<201>(
 		body: { title: "Write tests" },
 		context: { requestId: "request-1" },
 		signal: new AbortController().signal,
+		route: inferred["~restrpc"],
 	}).status,
 );
 

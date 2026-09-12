@@ -12,7 +12,6 @@ import type {
 	ServerSuccessBody,
 	Stream,
 } from "@rest-rpc/core/contract";
-import { REQUEST_CONTEXT_KEY } from "@rest-rpc/core/contract";
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 
 type EmptyObject = Record<never, never>;
@@ -71,7 +70,8 @@ export type RouteRequest<
 			: EmptyObject
 		: RequestValue<TRoute>) &
 		TAdditionalHandlerFields & {
-			[REQUEST_CONTEXT_KEY]: TContext;
+			route: TRoute;
+			context: TContext;
 		}
 >;
 

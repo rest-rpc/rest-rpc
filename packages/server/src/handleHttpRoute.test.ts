@@ -15,17 +15,19 @@ const routeWithDeclaredErrorResponse = coreRoute
 	.response(404, z.object({ code: z.literal("not_found") }))["~restrpc"];
 
 describe("handleHttpRoute", () => {
-	it("passes validated request data, handler fields, and context", async () => {
+	it("passes validated request data, handler fields, context, and route", async () => {
+		const route = coreRoute
+			.get("/todos/:id")
+			.params(z.object({ id: z.coerce.number<number>() }))
+			.response(200, z.object({ id: z.number() }))["~restrpc"];
 		const result = await handleHttpRoute(
-			coreRoute
-				.get("/todos/:id")
-				.params(z.object({ id: z.coerce.number<number>() }))
-				.response(200, z.object({ id: z.number() }))["~restrpc"],
+			route,
 			(request) => {
 				assert.deepEqual(request, {
 					params: { id: 123 },
 					frameworkValue: "framework-1",
 					context: { requestId: "request-1" },
+					route,
 				});
 
 				return { id: request.params.id };
@@ -48,15 +50,17 @@ describe("handleHttpRoute", () => {
 	});
 
 	it("passes grouped request data under explicit HTTP segments", async () => {
+		const route = coreRoute
+			.get("/todos")
+			.query(z.object({ q: z.string() }).transform(() => ["todo"]))
+			.response(204)["~restrpc"];
 		const result = await handleHttpRoute(
-			coreRoute
-				.get("/todos")
-				.query(z.object({ q: z.string() }).transform(() => ["todo"]))
-				.response(204)["~restrpc"],
+			route,
 			(request) => {
 				assert.deepEqual(request, {
 					query: ["todo"],
 					context: {},
+					route,
 				});
 			},
 			{

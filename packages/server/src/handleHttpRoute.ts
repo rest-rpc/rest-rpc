@@ -9,7 +9,6 @@ import {
 	isCustomBody,
 	isNoBody,
 	isStream,
-	REQUEST_CONTEXT_KEY,
 } from "@rest-rpc/core/contract";
 import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
@@ -311,7 +310,8 @@ export async function handleHttpRoute<
 					? { input: requestValidation.data.body }
 					: {}
 				: requestValidation.data),
-			[REQUEST_CONTEXT_KEY]: options.context,
+			context: options.context,
+			route,
 		});
 	} catch (error) {
 		if (error instanceof RouteResponseError) {

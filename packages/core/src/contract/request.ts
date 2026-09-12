@@ -7,7 +7,6 @@ import type {
 import type { InferCustomBody } from "./response.ts";
 
 export type RequestSegment = "body" | "query" | "params" | "headers";
-export const REQUEST_CONTEXT_KEY = "context";
 
 /** Scalar value accepted by ordinary HTTP request schemas. */
 export type RequestScalar = string | number | boolean;
