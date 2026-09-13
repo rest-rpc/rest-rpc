@@ -3,14 +3,13 @@ title: Server
 description: Understand the server-side differences when routes and handlers are defined together.
 ---
 
-This page only covers what changes from contract-first handlers. Request
-schemas, validation, encodings, and adapter integration otherwise work as
-described in [HTTP Requests](/docs/http-requests/),
-[Node HTTP](/docs/server/node/), and [Fetch Runtime](/docs/server/fetch/).
+This page focuses on what changes compared to contract-first handlers.
+Request schemas, validation, encodings, and adapter integration otherwise
+work as described in [HTTP Requests](/docs/http-requests/) and the page for your server adapter.
 
 ## Define The Handler On The Route
 
-Import `route` from the Node or Fetch adapter and end the route chain with
+Import `route` from your server adapter and end the route chain with
 `.handler()` instead of passing a contract route to `implement()`.
 
 ```ts

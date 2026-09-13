@@ -46,13 +46,13 @@ Server adapters validate incoming request data before calling the handler. The
 handler receives schema output.
 
 ```ts
-const routes = router(api, {
+const routes = {
 	todos: {
-		get({ params: { id } }) {
+		get: implement(api.todos.get).handler(({ params: { id } }) => {
 			return getTodo(id);
-		},
+		}),
 	},
-});
+};
 ```
 
 Server adapters validate handler output before writing the HTTP response. The

@@ -134,22 +134,11 @@ can be read.
 
 ## Framework Context
 
-Nest handlers receive `executionContext` and `signal` directly. Application
-context returned by `createContext` is available under `context`.
-
-```ts
-const get = implement(api).todos.get.handler(
-	({ context, executionContext, params: { id }, signal }) => {
-		return findTodo(id, context.userId, executionContext, signal);
-	},
-);
-```
-
-Augment `DefaultContext` to type application context across Nest handlers:
+Nest handlers can receive user-provided application context. Augment
+`DefaultContext` to type it across handlers:
 
 ```ts
 import type { Request } from "express";
-import { RestRpcModule } from "@rest-rpc/nest";
 
 declare module "@rest-rpc/nest" {
 	interface DefaultContext {
@@ -157,6 +146,22 @@ declare module "@rest-rpc/nest" {
 		userId: string;
 	}
 }
+```
+
+Handlers receive the following adapter fields and typed context:
+
+```ts
+type RouteHandlerFields = {
+	executionContext: ExecutionContext;
+	signal: AbortSignal;
+	context: DefaultContext;
+};
+```
+
+Return the context from `createContext` when configuring `RestRpcModule`:
+
+```ts
+import { RestRpcModule } from "@rest-rpc/nest";
 
 RestRpcModule.forRoot({
 	createContext: (context) => {

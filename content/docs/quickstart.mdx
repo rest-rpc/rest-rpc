@@ -222,7 +222,7 @@ export const api = {
 
 // @filename: server.ts
 // ---cut-end---
-import { registerRoutes, router } from "@rest-rpc/express";
+import { implement, registerRoutes } from "@rest-rpc/express";
 import express from "express";
 import { api } from "./contract";
 
@@ -238,9 +238,9 @@ const todos = new Map<
 	}
 >();
 
-const routes = router(api, {
+const routes = {
 	todos: {
-		create({ body: { title } }) {
+		create: implement(api.todos.create).handler(({ body: { title } }) => {
 			const todo = {
 				id: crypto.randomUUID(),
 				title,
@@ -250,9 +250,9 @@ const routes = router(api, {
 			todos.set(todo.id, todo);
 
 			return todo;
-		},
+		}),
 	},
-});
+};
 
 registerRoutes(app, routes);
 
@@ -290,7 +290,7 @@ export const api = {
 
 // @filename: server.ts
 // ---cut-end---
-import { registerRoutes, router } from "@rest-rpc/fastify";
+import { implement, registerRoutes } from "@rest-rpc/fastify";
 import Fastify from "fastify";
 import { api } from "./contract";
 
@@ -305,9 +305,9 @@ const todos = new Map<
 	}
 >();
 
-const routes = router(api, {
+const routes = {
 	todos: {
-		create({ body: { title } }) {
+		create: implement(api.todos.create).handler(({ body: { title } }) => {
 			const todo = {
 				id: crypto.randomUUID(),
 				title,
@@ -317,9 +317,9 @@ const routes = router(api, {
 			todos.set(todo.id, todo);
 
 			return todo;
-		},
+		}),
 	},
-});
+};
 
 registerRoutes(app, routes);
 
@@ -357,7 +357,7 @@ export const api = {
 
 // @filename: server.ts
 // ---cut-end---
-import { registerRoutes, router } from "@rest-rpc/hono";
+import { implement, registerRoutes } from "@rest-rpc/hono";
 import { Hono } from "hono";
 import { api } from "./contract";
 
@@ -372,9 +372,9 @@ const todos = new Map<
 	}
 >();
 
-const routes = router(api, {
+const routes = {
 	todos: {
-		create({ body: { title } }) {
+		create: implement(api.todos.create).handler(({ body: { title } }) => {
 			const todo = {
 				id: crypto.randomUUID(),
 				title,
@@ -384,9 +384,9 @@ const routes = router(api, {
 			todos.set(todo.id, todo);
 
 			return todo;
-		},
+		}),
 	},
-});
+};
 
 registerRoutes(app, routes);
 
@@ -443,7 +443,7 @@ class TodoService {
 	>();
 
 	readonly routes = {
-		create: implement(api).todos.create.handler(({ body: { title } }) => {
+		create: implement(api.todos.create).handler(({ body: { title } }) => {
 			const todo = {
 				id: crypto.randomUUID(),
 				title,
@@ -489,7 +489,7 @@ import { api } from "./contract";
 const todos = new Map();
 const routes = {
 	todos: {
-		create: implement(api).todos.create.handler(({ body: { title } }) => {
+		create: implement(api.todos.create).handler(({ body: { title } }) => {
 			const todo = {
 				id: crypto.randomUUID(),
 				title,
@@ -523,7 +523,7 @@ import { api } from "./contract";
 const todos = new Map();
 const routes = {
 	todos: {
-		create: implement(api).todos.create.handler(({ body: { title } }) => {
+		create: implement(api.todos.create).handler(({ body: { title } }) => {
 			const todo = {
 				id: crypto.randomUUID(),
 				title,

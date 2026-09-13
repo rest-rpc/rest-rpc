@@ -35,13 +35,15 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+export const routes = {
 	todos: {
-		create({ body: { title, labels } }) {
-			return createTodo({ title, labels });
-		},
+		create: implement(api.todos.create).handler(
+			({ body: { title, labels } }) => {
+				return createTodo({ title, labels });
+			},
+		),
 	},
-});
+};
 ```
 
 ```ts
@@ -78,16 +80,18 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+const implementor = implement(api);
+
+export const routes = {
 	todos: {
-		list({ query: { limit } }) {
+		list: implementor.todos.list.handler(({ query: { limit } }) => {
 			return listTodos({ limit });
-		},
-		byId({ params: { id } }) {
+		}),
+		byId: implementor.todos.byId.handler(({ params: { id } }) => {
 			return getTodoById({ id });
-		},
+		}),
 	},
-});
+};
 ```
 
 ## Request With Form Body
@@ -123,16 +127,16 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+export const routes = {
 	forms: {
-		submit({ body }) {
+		submit: implement(api.forms.submit).handler(({ body }) => {
 			return {
 				title: body.title,
 				count: body.count,
 			};
-		},
+		}),
 	},
-});
+};
 ```
 
 ```ts
@@ -182,15 +186,15 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+export const routes = {
 	uploads: {
-		create({ body }) {
+		create: implement(api.uploads.create).handler(({ body }) => {
 			return {
 				title: body.title,
 			};
-		},
+		}),
 	},
-});
+};
 ```
 
 ```ts
@@ -236,13 +240,13 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+export const routes = {
 	imports: {
-		csv({ body }) {
+		csv: implement(api.imports.csv).handler(({ body }) => {
 			return importCsv(body);
-		},
+		}),
 	},
-});
+};
 ```
 
 ```ts
@@ -281,16 +285,16 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+export const routes = {
 	images: {
-		upload({ body }) {
+		upload: implement(api.images.upload).handler(({ body }) => {
 			return saveImage({
 				contentType: body.contentType,
 				bytes: body.payload,
 			});
-		},
+		}),
 	},
-});
+};
 ```
 
 ```ts
@@ -328,15 +332,15 @@ export const api = {
 ```
 
 ```ts
-export const routes = router(api, {
+export const routes = {
 	forms: {
-		submit({ body }) {
+		submit: implement(api.forms.submit).handler(({ body }) => {
 			return {
 				title: body.get("title") ?? "",
 			};
-		},
+		}),
 	},
-});
+};
 ```
 
 ```ts

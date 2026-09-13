@@ -59,7 +59,7 @@ export const api = {
 };
 ```
 
-Implement the contract with the Node or Fetch runtime adapter.
+Implement the contract with the adapter for your server framework or runtime.
 
 ```ts
 import { createRouteHandler, implement } from "@rest-rpc/node";
@@ -96,8 +96,8 @@ export const routes = {
 		list: route.handler(() => listTodos()),
 		create: route
 			.input(z.object({ title: z.string().min(1) }))
-			.handler(({ input, context }) => {
-				return createTodo(input.title, context.signal);
+			.handler(({ input, signal }) => {
+				return createTodo(input.title, signal);
 			}),
 	},
 };

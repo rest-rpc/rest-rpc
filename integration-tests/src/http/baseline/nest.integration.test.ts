@@ -277,15 +277,11 @@ it("registers server-first routes and declared procedures", async () => {
 			.handler(() => ({ status: 204 })),
 		procedures: {
 			greet: nestRoute.handler(() => ({ greeting: "hello" })),
-			welcome: route
-				.input(z.object({ name: z.string() }))
-				.output(
-					z
-						.object({ greeting: z.string() })
-						.transform(({ greeting }) => ({
-							greeting: greeting.toUpperCase(),
-						})),
-				),
+			welcome: route.input(z.object({ name: z.string() })).output(
+				z.object({ greeting: z.string() }).transform(({ greeting }) => ({
+					greeting: greeting.toUpperCase(),
+				})),
+			),
 		},
 	};
 	const implementations = {
