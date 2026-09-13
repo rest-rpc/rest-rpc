@@ -43,10 +43,9 @@ export const multipartBody = route.post("/multipart").multipartBody(scalar);
 export const multipartBodyWithArrays = route
 	.post("/multipart-arrays")
 	.multipartBody(scalar);
-export const customBody = route.post("/custom-body").customBody(scalar);
 export const customTypedBody = route
 	.post("/custom-typed-body")
-	.customBody({ schema: scalar, contentType: "text/plain" });
+	.body(scalar, "text/plain");
 export const queryRoute = route.get("/query").query(query);
 export const jsonQueryRoute = route.get("/json-query").jsonQuery(scalar);
 export const paramsRoute = route.get("/params/:id").params(params);
@@ -62,12 +61,10 @@ export const responseHeadersRoute = route
 		body: scalar,
 		headers,
 	});
-export const customResponseRoute = route
-	.get("/custom-response")
-	.customResponse(200, {
-		schema: customResponseScalar,
-		contentType: "text/plain",
-	});
+export const customResponseRoute = route.get("/custom-response").response(200, {
+	body: customResponseScalar,
+	contentType: "text/plain",
+});
 export const streamResponseRoute = route
 	.get("/stream-response")
 	.streamResponse(200, scalar);

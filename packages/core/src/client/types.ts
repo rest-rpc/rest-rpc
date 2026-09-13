@@ -17,6 +17,11 @@ export type FetchLike = (
 	init?: RequestInit,
 ) => Promise<Response>;
 
+/** Parses a non-stream custom-content response body for an API client. */
+export type ApiClientBodyParser = (
+	response: Response,
+) => unknown | Promise<unknown>;
+
 export type HeaderRecord = Record<string, string>;
 
 export type GetHeadersFn<THeaders extends HeaderRecord = HeaderRecord> = () =>
@@ -156,6 +161,7 @@ export type ApiClientOptions<
 	TGlobalHeaders extends HeaderRecord = Record<never, string>,
 > = {
 	baseUrl: string;
+	bodyParser?: ApiClientBodyParser;
 	fetch?: FetchLike;
 	fetchOptions?: ApiClientFetchOptions;
 	getGlobalHeaders?: GetHeadersFn<TGlobalHeaders>;

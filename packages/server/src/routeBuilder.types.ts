@@ -173,19 +173,26 @@ type ImplicitResponseBodyDeclaration<TResponse> = TResponse extends {
 					CustomResponseBody<ClientSchema<CustomResponseValue>, TContentType>
 				>
 			: Stream<ClientSchema<TItem>>
-		: TResponse extends { contentType: infer TContentType extends string }
-			? CustomResponseBody<ClientSchema<CustomResponseValue>, TContentType>
-			: ClientSchema<TBody>
+		: ClientSchema<TBody>
 	: NoBody;
 
 type ImplicitResponseDeclaration<TResponse> =
 	ImplicitResponseBodyDeclaration<TResponse> extends infer TBody
-		? TResponse extends { responseHeaders: infer THeaders }
+		? TResponse extends { contentType: infer TContentType extends string }
 			? {
 					body: TBody;
-					headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
-				}
-			: TBody
+					contentType: TContentType;
+				} & (TResponse extends { responseHeaders: infer THeaders }
+					? {
+							headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+						}
+					: unknown)
+			: TResponse extends { responseHeaders: infer THeaders }
+				? {
+						body: TBody;
+						headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+					}
+				: TBody
 		: never;
 
 type ResponseStatuses<TResponse> = TResponse extends {

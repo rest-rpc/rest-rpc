@@ -1,7 +1,8 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type {
-	CustomBodyInput,
+	CustomBodyContentType,
 	CustomResponseInput,
+	CustomStreamResponseInput,
 	FormBodySchema,
 	MultipartBodySchema,
 } from "./body.ts";
@@ -12,7 +13,6 @@ import type {
 	OpenApiRouteOptions,
 	RouteDeclaration,
 	RouteMetadata,
-	RouteRequestDeclaration,
 } from "./routeDeclaration.ts";
 import { getPathParamNames } from "./path.ts";
 import type {
@@ -164,11 +164,18 @@ export class RouteBuilder {
 		return new RouteBuilder(httpState(this["~restrpc"], "DELETE", path));
 	}
 
-	body(schema: StandardSchemaV1): RouteBuilder {
+	body(
+		schema: StandardSchemaV1,
+		contentType?: CustomBodyContentType,
+	): RouteBuilder {
 		const state = this["~restrpc"];
 		return new RouteBuilder({
 			...state,
-			request: { ...state.request, body: schema },
+			request: {
+				...state.request,
+				body: schema,
+				...(contentType === undefined ? {} : { contentType }),
+			},
 		});
 	}
 
@@ -193,18 +200,6 @@ export class RouteBuilder {
 		return new RouteBuilder({
 			...state,
 			request: { ...state.request, body: { kind: "multipartBody", schema } },
-		});
-	}
-
-	customBody(input: CustomBodyInput): RouteBuilder {
-		const body: NonNullable<RouteRequestDeclaration["body"]> =
-			"~standard" in input
-				? { kind: "customBody", schema: input }
-				: { kind: "customBody", ...input };
-		const state = this["~restrpc"];
-		return new RouteBuilder({
-			...state,
-			request: { ...state.request, body },
 		});
 	}
 
@@ -259,19 +254,15 @@ export class RouteBuilder {
 		});
 	}
 
-	response(status: number, schema?: RegularResponseDeclaration): RouteBuilder {
+	response(
+		status: number,
+		schema?: RegularResponseDeclaration | CustomResponseInput,
+	): RouteBuilder {
 		return addResponse(this["~restrpc"], status, schema ?? { kind: "noBody" });
 	}
 
 	output(schema: StandardSchemaV1): RouteBuilder {
 		return addResponse(procedureState(this["~restrpc"]), 200, schema);
-	}
-
-	customResponse(status: number, input: CustomResponseInput): RouteBuilder {
-		return addResponse(this["~restrpc"], status, {
-			kind: "customBody",
-			...input,
-		});
 	}
 
 	streamResponse(status: number, schema: StandardSchemaV1): RouteBuilder {
@@ -280,7 +271,7 @@ export class RouteBuilder {
 
 	customStreamResponse(
 		status: number,
-		input: CustomResponseInput,
+		input: CustomStreamResponseInput,
 	): RouteBuilder {
 		return addResponse(this["~restrpc"], status, {
 			kind: "stream",

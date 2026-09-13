@@ -50,17 +50,11 @@ const createRequestTestContract = () => ({
 					id: z.string(),
 				}),
 			)
-			.customBody({
-				schema: z.string(),
-				contentType: "text/plain",
-			})
+			.body(z.string(), "text/plain")
 			.response(204),
 		json: route
 			.post("/uploads/json")
-			.customBody({
-				schema: z.object({ type: z.string() }),
-				contentType: "application/json",
-			})
+			.body(z.object({ type: z.string() }), "application/json")
 			.response(204),
 	},
 });
@@ -386,12 +380,15 @@ describe("ApiClient requests", () => {
 		});
 	});
 
-	it("sends custom bodies without declared content types as raw fetch bodies", async () => {
+	it("sends URLSearchParams through explicitly declared custom bodies", async () => {
 		const apiContract = {
 			forms: {
 				submit: route
 					.post("/forms")
-					.customBody(z.instanceof(URLSearchParams))
+					.body(
+						z.instanceof(URLSearchParams),
+						"application/x-www-form-urlencoded",
+					)
 					.response(204),
 			},
 		};
@@ -404,7 +401,9 @@ describe("ApiClient requests", () => {
 		await client.forms.submit({ body });
 
 		assert.equal(calls[0]?.init?.body, body);
-		assert.deepEqual(calls[0]?.init?.headers, {});
+		assert.deepEqual(calls[0]?.init?.headers, {
+			"content-type": "application/x-www-form-urlencoded",
+		});
 	});
 
 	it("sends form bodies as URLSearchParams without generated content type", async () => {
@@ -584,10 +583,7 @@ describe("ApiClient requests", () => {
 							id: z.string(),
 						}),
 					)
-					.customBody({
-						contentType: ["image/png", "image/jpeg"],
-						schema: z.string(),
-					})
+					.body(z.string(), ["image/png", "image/jpeg"])
 					.response(204),
 			},
 		};
@@ -597,10 +593,8 @@ describe("ApiClient requests", () => {
 		});
 
 		await client.uploads.image({
-			body: {
-				contentType: "image/jpeg",
-				payload: "jpeg bytes",
-			},
+			body: "jpeg bytes",
+			contentType: "image/jpeg",
 			params: { id: "file 1" },
 		});
 

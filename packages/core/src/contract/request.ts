@@ -1,10 +1,9 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type { CustomBody, FormBody, MultipartBody, NoBody } from "./body.ts";
+import type { FormBody, MultipartBody, NoBody } from "./body.ts";
 import type {
 	RouteDeclaration,
 	RouteRequestDeclaration,
 } from "./routeDeclaration.ts";
-import type { InferCustomBody } from "./response.ts";
 
 export type RequestSegment = "body" | "query" | "params" | "headers";
 
@@ -65,7 +64,6 @@ export function isJsonQuery(schema: unknown): schema is JsonQuery {
 
 export type RequestBodySchema =
 	| StandardSchemaV1
-	| CustomBody
 	| FormBody
 	| MultipartBody
 	| NoBody
@@ -76,21 +74,19 @@ type InferRequestBody<
 	TIO extends "input" | "output",
 > = TBody extends NoBody
 	? never
-	: TBody extends CustomBody
-		? InferCustomBody<TBody, TIO>
-		: TBody extends FormBody<infer TSchema>
+	: TBody extends FormBody<infer TSchema>
+		? TIO extends "input"
+			? StandardSchemaV1.InferInput<TSchema>
+			: StandardSchemaV1.InferOutput<TSchema>
+		: TBody extends MultipartBody<infer TSchema>
 			? TIO extends "input"
 				? StandardSchemaV1.InferInput<TSchema>
 				: StandardSchemaV1.InferOutput<TSchema>
-			: TBody extends MultipartBody<infer TSchema>
+			: TBody extends StandardSchemaV1
 				? TIO extends "input"
-					? StandardSchemaV1.InferInput<TSchema>
-					: StandardSchemaV1.InferOutput<TSchema>
-				: TBody extends StandardSchemaV1
-					? TIO extends "input"
-						? StandardSchemaV1.InferInput<TBody>
-						: StandardSchemaV1.InferOutput<TBody>
-					: never;
+					? StandardSchemaV1.InferInput<TBody>
+					: StandardSchemaV1.InferOutput<TBody>
+				: never;
 
 type InferJsonQuery<TQuery, TIO extends "input" | "output"> =
 	TQuery extends JsonQuery<infer TSchema>
@@ -152,6 +148,19 @@ type InferRequestSegments<R, TIO extends "input" | "output"> = {
 		: never;
 };
 
+type CustomBodyRequestMetadata<
+	TRequest,
+	TIO extends "input" | "output",
+> = TRequest extends { contentType: infer TContentType }
+	? TContentType extends readonly string[]
+		? { contentType: TContentType[number] }
+		: TContentType extends string
+			? TIO extends "output"
+				? { contentType: TContentType }
+				: { contentType?: TContentType }
+			: unknown
+	: unknown;
+
 type RouteRequest<
 	E extends { request?: RouteRequestDeclaration },
 	TIO extends "input" | "output",
@@ -190,7 +199,11 @@ type InferRequestFor<
 						([B] extends [never] ? EmptyObject : { body: B }) &
 							([Q] extends [never] ? EmptyObject : { query: Q }) &
 							([P] extends [never] ? EmptyObject : { params: P }) &
-							([H] extends [never] ? EmptyObject : { headers: H })
+							([H] extends [never] ? EmptyObject : { headers: H }) &
+							CustomBodyRequestMetadata<
+								E extends { request: infer TRequest } ? TRequest : never,
+								TIO
+							>
 					>
 				: never
 			: never

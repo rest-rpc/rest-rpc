@@ -427,12 +427,12 @@ describe("ApiClient responses", () => {
 		assert.equal(response.body, undefined);
 	});
 
-	it("returns declared custom responses as native Response objects", async () => {
+	it("parses and validates declared custom text responses", async () => {
 		const apiContract = {
 			reports: {
-				csv: route.get("/reports.csv").customResponse(200, {
+				csv: route.get("/reports.csv").response(200, {
 					contentType: "text/csv",
-					schema: z.string(),
+					body: z.string(),
 				}),
 			},
 		};
@@ -450,17 +450,40 @@ describe("ApiClient responses", () => {
 		const response = await client.reports.csv();
 
 		assert.equal(response.contentType, "text/csv");
-		assert.ok(response.body instanceof Response);
-		assert.equal(response.body.headers.get("content-type"), "text/csv");
-		assert.equal(await response.body.text(), "id,title\n1,First\n");
+		assert.equal(response.body, "id,title\n1,First\n");
+	});
+
+	it("uses a custom body parser for custom responses", async () => {
+		const apiContract = {
+			reports: {
+				binaryText: route.get("/reports/custom").response(200, {
+					contentType: "application/octet-stream",
+					body: z.string(),
+				}),
+			},
+		};
+		captureFetch(
+			new Response("custom value", {
+				headers: { "content-type": "application/octet-stream" },
+			}),
+		);
+		const client = initClient(apiContract, {
+			baseUrl: "https://api.test",
+			bodyParser: (response) => response.text(),
+			validateResponses: true,
+		});
+
+		const response = await client.reports.binaryText();
+
+		assert.equal(response.body, "custom value");
 	});
 
 	it("returns selected content type metadata for custom response bodies", async () => {
 		const apiContract = {
 			reports: {
-				image: route.get("/reports/image").customResponse(200, {
+				image: route.get("/reports/image").response(200, {
 					contentType: ["image/png", "image/jpeg"],
-					schema: z.instanceof(Uint8Array),
+					body: z.instanceof(Uint8Array),
 				}),
 			},
 		};
@@ -478,16 +501,15 @@ describe("ApiClient responses", () => {
 
 		assert.equal(response.status, 200);
 		assert.equal(response.contentType, "image/jpeg");
-		assert.ok(response.body instanceof Response);
-		assert.equal(await response.body.text(), "jpeg bytes");
+		assert.deepEqual(response.body, new TextEncoder().encode("jpeg bytes"));
 	});
 
 	it("rejects custom response bodies with mismatched content types", async () => {
 		const apiContract = {
 			reports: {
-				csv: route.get("/reports.csv").customResponse(200, {
+				csv: route.get("/reports.csv").response(200, {
 					contentType: "text/csv",
-					schema: z.string(),
+					body: z.string(),
 				}),
 			},
 		};

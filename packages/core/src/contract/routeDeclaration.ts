@@ -1,4 +1,5 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
+import type { CustomBodyContentType } from "./body.ts";
 import type {
 	JsonQuery,
 	RequestBodySchema,
@@ -47,6 +48,7 @@ export type CommonOpenApiRouteOptions = Omit<
 /** Canonical request declaration nested on a route. */
 export type RouteRequestDeclaration = {
 	body?: RequestBodySchema;
+	contentType?: CustomBodyContentType;
 	query?: RequestQuerySchema | JsonQuery;
 	params?: RequestParamsSchema;
 	headers?: RequestHeadersDeclaration;

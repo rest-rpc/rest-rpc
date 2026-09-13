@@ -1,10 +1,9 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type {
-	CustomBody,
 	CustomBodyContentType,
 	CustomResponseBody,
-	CustomResponseInput,
 	CustomResponseValue,
+	CustomStreamResponseInput,
 	FormBody,
 	FormBodySchema,
 	MultipartBody,
@@ -26,7 +25,11 @@ import type {
 	RequestParamsSchema,
 	RequestQuerySchema,
 } from "./request.ts";
-import type { RegularResponseDeclaration, RouteResponses } from "./response.ts";
+import type {
+	RegularResponseDeclaration,
+	ResponseHeaders,
+	RouteResponses,
+} from "./response.ts";
 
 type EmptyObject = Record<never, never>;
 
@@ -202,18 +205,30 @@ type ResponseMethods<
 		TMetadata
 	>;
 	/** Declares a custom-content response. @see {@link https://rest-rpc.dev/docs/http-responses#response-with-custom-content-type} */
-	customResponse<
+	response<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1<unknown, CustomResponseValue>,
 		const TContentType extends CustomBodyContentType,
+		const THeaders extends ResponseHeaders | undefined = undefined,
 		const TPath extends string = string,
 		const TMetadata extends RouteMetadata | never = never,
 	>(
 		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
-		input: CustomResponseInput<TSchema, TContentType>,
+		options: {
+			body: TSchema;
+			contentType: TContentType;
+			headers?: THeaders;
+		},
 	): RouteBuilderView<
-		WithResponse<TState, TStatus, CustomResponseBody<TSchema, TContentType>>,
+		WithResponse<
+			TState,
+			TStatus,
+			{
+				body: TSchema;
+				contentType: TContentType;
+			} & (THeaders extends ResponseHeaders ? { headers: THeaders } : unknown)
+		>,
 		TExtension,
 		TPath,
 		TMetadata
@@ -244,7 +259,7 @@ type ResponseMethods<
 	>(
 		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
-		input: CustomResponseInput<TSchema, TContentType>,
+		input: CustomStreamResponseInput<TSchema, TContentType>,
 	): RouteBuilderView<
 		WithResponse<
 			TState,
@@ -278,6 +293,27 @@ type BodyMethods<
 			TPath,
 			TMetadata
 		>;
+		/** Declares a custom-content request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-custom-content-type} */
+		body<
+			const TSchema extends StandardSchemaV1,
+			const TContentType extends CustomBodyContentType,
+			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
+		>(
+			this: BuilderReceiver<TPath, TMetadata>,
+			schema: TSchema,
+			contentType: TContentType,
+		): RouteBuilderView<
+			WithRequest<
+				WithRequest<TState, "body", TSchema, "body">,
+				"contentType",
+				TContentType,
+				"body"
+			>,
+			TExtension,
+			TPath,
+			TMetadata
+		>;
 		/** Declares a URL-encoded form body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-form-body} */
 		formBody<
 			const TSchema extends FormBodySchema,
@@ -302,37 +338,6 @@ type BodyMethods<
 			schema: TSchema,
 		): RouteBuilderView<
 			WithRequest<TState, "body", MultipartBody<TSchema>, "body">,
-			TExtension,
-			TPath,
-			TMetadata
-		>;
-		/** Declares a custom-content request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-custom-content-type} */
-		customBody<
-			const TSchema extends StandardSchemaV1,
-			const TPath extends string = string,
-			const TMetadata extends RouteMetadata | never = never,
-		>(
-			this: BuilderReceiver<TPath, TMetadata>,
-			schema: TSchema,
-		): RouteBuilderView<
-			WithRequest<TState, "body", CustomBody<TSchema, undefined>, "body">,
-			TExtension,
-			TPath,
-			TMetadata
-		>;
-		customBody<
-			const TSchema extends StandardSchemaV1,
-			const TContentType extends CustomBodyContentType,
-			const TPath extends string = string,
-			const TMetadata extends RouteMetadata | never = never,
-		>(
-			this: BuilderReceiver<TPath, TMetadata>,
-			input: {
-				schema: TSchema;
-				contentType: TContentType;
-			},
-		): RouteBuilderView<
-			WithRequest<TState, "body", CustomBody<TSchema, TContentType>, "body">,
 			TExtension,
 			TPath,
 			TMetadata

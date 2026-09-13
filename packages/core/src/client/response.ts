@@ -9,6 +9,7 @@ import type {
 } from "../contract/response.ts";
 import {
 	getResponseBody,
+	getResponseContentType,
 	getResponseHeaders,
 	getRouteResponses,
 } from "../contract/response.ts";
@@ -17,7 +18,7 @@ import {
 	validateStandardSchema,
 } from "../standard-schema/index.ts";
 import { parseNdjsonStream } from "./stream.ts";
-import type { FetchArgs } from "./types.ts";
+import type { ApiClientBodyParser, FetchArgs } from "./types.ts";
 
 type FetchedRouteResponse<E extends RouteDeclaration> =
 	DeclaredClientResponse<E> extends infer TResponse
@@ -112,7 +113,10 @@ export const getResponseSchema = (
 };
 
 /** Reads a response using server-first response-kind metadata. */
-export const readServerFirstResponse = async (rawResponse: Response) => {
+export const readServerFirstResponse = async (
+	rawResponse: Response,
+	bodyParser: ApiClientBodyParser = defaultBodyParser,
+) => {
 	const kind = getServerFirstResponseKind(rawResponse);
 	let body: unknown;
 	let contentType: string | undefined;
@@ -131,6 +135,14 @@ export const readServerFirstResponse = async (rawResponse: Response) => {
 			body = parseNdjsonStream(undefined, rawResponse.body, false);
 			break;
 		case "custom":
+			contentType = rawResponse.headers.get("content-type") ?? undefined;
+			if (!contentType) {
+				throw new Error(
+					"Server response is missing required Content-Type header for a custom response kind.",
+				);
+			}
+			body = await bodyParser(rawResponse);
+			break;
 		case "custom-stream":
 			contentType = rawResponse.headers.get("content-type") ?? undefined;
 			if (!contentType) {
@@ -155,10 +167,25 @@ export const readDeclaredBody = async (
 	schema: ResponseBodySchema,
 	rawResponse: Response,
 	validate: boolean,
+	customContentType?: string | readonly string[],
+	bodyParser: ApiClientBodyParser = defaultBodyParser,
 ) => {
 	if (isNoBody(schema)) return undefined;
 
-	if (isCustomBody(schema)) return rawResponse;
+	if (customContentType !== undefined) {
+		resolveDeclaredContentType(
+			Array.isArray(customContentType)
+				? customContentType
+				: [customContentType as string],
+			rawResponse,
+		);
+		const value = await bodyParser(rawResponse);
+		if (!validate || !isStandardSchema(schema)) return value;
+
+		const result = await validateStandardSchema(schema, value);
+		if (result.issues) throw result.issues;
+		return result.value;
+	}
 
 	if (isStream(schema)) {
 		if (isCustomBody(schema.schema)) return rawResponse;
@@ -175,6 +202,9 @@ export const readDeclaredBody = async (
 
 	const value = await rawResponse.json();
 	if (!validate) return value;
+	if (!isStandardSchema(schema)) {
+		throw new Error("Server returned an unsupported response body");
+	}
 
 	const result = await validateStandardSchema(schema, value);
 	if (result.issues) throw result.issues;
@@ -182,7 +212,22 @@ export const readDeclaredBody = async (
 };
 
 const normalizeContentType = (contentType: string) =>
-	contentType.split(";")[0]?.trim().toLowerCase();
+	contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+
+const defaultBodyParser: ApiClientBodyParser = async (rawResponse) => {
+	const normalized = normalizeContentType(
+		rawResponse.headers.get("content-type") ?? "",
+	);
+	if (normalized === "application/json" || normalized.endsWith("+json")) {
+		return rawResponse.json();
+	}
+	if (normalized === "application/x-www-form-urlencoded") {
+		return new URLSearchParams(await rawResponse.text());
+	}
+	if (normalized === "multipart/form-data") return rawResponse.formData();
+	if (normalized.startsWith("text/")) return rawResponse.text();
+	return new Uint8Array(await rawResponse.arrayBuffer());
+};
 
 const resolveDeclaredContentType = (
 	contentTypes: readonly string[],
@@ -221,6 +266,15 @@ const declaredResponseMetadata = (
 	schema: ResponseDeclaration,
 	rawResponse: Response,
 ) => {
+	const contentType = getResponseContentType(schema);
+	if (contentType !== undefined) {
+		return {
+			contentType: resolveDeclaredContentType(
+				Array.isArray(contentType) ? contentType : [contentType as string],
+				rawResponse,
+			),
+		};
+	}
 	const body = getResponseBody(schema);
 	if (isCustomBody(body)) return customResponseMetadata(body, rawResponse);
 	if (isStream(body) && isCustomBody(body.schema)) {
@@ -254,6 +308,7 @@ export type RouteRequestFn = <E extends RouteDeclaration>(
 export const fetchResponse = async <E extends RouteDeclaration>(
 	request: RouteRequestFn,
 	validateResponse: boolean,
+	bodyParser: ApiClientBodyParser | undefined,
 	route: E,
 	routePath: readonly string[],
 	...args: FetchArgs<E>
@@ -280,6 +335,8 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 			getResponseBody(schema),
 			rawResponse,
 			validateResponse,
+			getResponseContentType(schema),
+			bodyParser,
 		),
 		headers: rawResponse.headers,
 		...(await readDeclaredHeaders(schema, rawResponse, validateResponse)),

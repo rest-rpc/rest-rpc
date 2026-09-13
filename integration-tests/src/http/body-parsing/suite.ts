@@ -144,7 +144,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 			});
 		});
 
-		it("passes raw custom bodies without declared content types through fetch", async () => {
+		it("passes explicitly declared URL-encoded custom bodies through fetch", async () => {
 			const client = initClient(bodyParsingContract, {
 				baseUrl: server.origin,
 			});

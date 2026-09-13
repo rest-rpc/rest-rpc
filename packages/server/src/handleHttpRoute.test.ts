@@ -343,9 +343,9 @@ describe("handleHttpRoute", () => {
 describe("handleHttpRoute custom responses", () => {
 	it("normalizes custom single bodies after validating without serializing them", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/report.csv").customResponse(200, {
+			coreRoute.get("/report.csv").response(200, {
 				contentType: "text/csv",
-				schema: z.string(),
+				body: z.string(),
 			})["~restrpc"],
 			() => ({ status: 200, body: "id,title\n1,First\n" }),
 			{
@@ -363,16 +363,14 @@ describe("handleHttpRoute custom responses", () => {
 
 	it("normalizes custom response bodies with selected content types", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/images/:id").customResponse(200, {
+			coreRoute.get("/images/:id").response(200, {
 				contentType: ["image/png", "image/jpeg"],
-				schema: z.string(),
+				body: z.string(),
 			})["~restrpc"],
 			() => ({
 				status: 200,
-				body: {
-					contentType: "image/jpeg",
-					payload: "jpeg bytes",
-				},
+				body: "jpeg bytes",
+				contentType: "image/jpeg",
 			}),
 			{
 				request: {},

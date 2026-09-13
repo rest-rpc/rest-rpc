@@ -1,10 +1,11 @@
 import type {
-	CustomBody,
+	ResponseBodySchema,
 	ResponseDeclaration,
 	RouteDeclaration,
 } from "@rest-rpc/core/contract";
 import {
 	getResponseBody,
+	getResponseContentType,
 	getRouteResponses,
 	isCustomBody,
 	isNoBody,
@@ -130,19 +131,26 @@ const getResponseSchema = (
 type DeclaredResponseEnvelope = {
 	status: number;
 	body?: unknown;
+	contentType?: string;
 	responseHeaders?: Record<string, unknown>;
 };
 
-const normalizeCustomBodyResult = async (schema: CustomBody, body: unknown) => {
+const normalizeCustomBodyResult = async (
+	schema: ResponseBodySchema,
+	declaredContentType: string | readonly string[],
+	body: unknown,
+	contentType: unknown,
+) => {
 	const result = resolveCustomResponseBody(
-		schema,
+		declaredContentType,
 		body,
+		contentType,
 		"Unsupported custom response body contentType.",
 	);
 
 	return {
 		contentType: result.contentType,
-		body: await validateResponseBody(schema, result.payload),
+		body: await validateResponseBody(schema, result.body),
 	};
 };
 
@@ -169,8 +177,9 @@ const normalizeResponseResult = async (
 	if (bodySchema && isStream(bodySchema)) {
 		if (isCustomBody(bodySchema.schema)) {
 			const streamResult = resolveCustomResponseBody(
-				bodySchema.schema,
+				bodySchema.schema.contentType,
 				result.body,
+				result.contentType,
 				"Unsupported custom stream response contentType.",
 			);
 
@@ -180,7 +189,7 @@ const normalizeResponseResult = async (
 				headers,
 				contentType: streamResult.contentType,
 				body: validateResponseStreamChunks(
-					streamResult.payload as AsyncIterable<unknown>,
+					streamResult.body as AsyncIterable<unknown>,
 					bodySchema,
 				),
 			};
@@ -197,10 +206,13 @@ const normalizeResponseResult = async (
 		};
 	}
 
-	if (bodySchema && isCustomBody(bodySchema)) {
+	const declaredContentType = getResponseContentType(schema);
+	if (bodySchema && declaredContentType !== undefined) {
 		const customResult = await normalizeCustomBodyResult(
 			bodySchema,
+			declaredContentType,
 			result.body,
+			result.contentType,
 		);
 		return {
 			kind: "custom",
@@ -226,6 +238,7 @@ const normalizeRouteResponseError = async (
 	return normalizeResponseResult(route, {
 		status: error.status,
 		body: error.body,
+		contentType: error.contentType,
 		responseHeaders: error.responseHeaders,
 	});
 };

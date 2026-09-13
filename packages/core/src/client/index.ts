@@ -12,6 +12,7 @@ export type {
 } from "./serverFirstClient.ts";
 export type {
 	ApiClientFetchOptions,
+	ApiClientBodyParser,
 	ApiClientFor,
 	ApiClientOptions,
 	ClientResponse,

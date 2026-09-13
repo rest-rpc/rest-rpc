@@ -308,14 +308,7 @@ describe("OpenAPI operations", () => {
 			z.object({ title: z.string() }),
 			schemaConverter,
 		);
-		const custom = createRequestBody(
-			{
-				kind: "customBody",
-				schema: z.string(),
-				contentType: "text/csv",
-			},
-			schemaConverter,
-		);
+		const custom = createRequestBody(z.string(), schemaConverter, "text/csv");
 
 		assert.equal(jsonBody?.content["application/json"].schema.type, "object");
 		assert.equal(custom?.content["text/csv"].schema.type, "string");
@@ -337,27 +330,14 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("creates custom request bodies with multiple declared content types", () => {
-		const body = createRequestBody(
-			{
-				kind: "customBody",
-				schema: z.string(),
-				contentType: ["image/png", "image/jpeg"],
-			},
-			schemaConverter,
-		);
+		const body = createRequestBody(z.string(), schemaConverter, [
+			"image/png",
+			"image/jpeg",
+		]);
 
 		assert.equal(body?.content["image/png"].schema.type, "string");
 		assert.equal(body?.content["image/jpeg"].schema.type, "string");
 		assert.equal(body?.content["application/json"], undefined);
-	});
-
-	it("omits custom request bodies without declared content types", () => {
-		const body = createRequestBody(
-			{ kind: "customBody", schema: z.string() },
-			schemaConverter,
-		);
-
-		assert.equal(body, undefined);
 	});
 
 	it("creates urlencoded form request bodies", () => {
@@ -576,9 +556,8 @@ describe("OpenAPI operations", () => {
 		const response = createResponse(
 			"",
 			{
-				kind: "customBody",
 				contentType: "text/csv",
-				schema: z.string(),
+				body: z.string(),
 			},
 			schemaConverter,
 		);
@@ -591,9 +570,8 @@ describe("OpenAPI operations", () => {
 		const response = createResponse(
 			"",
 			{
-				kind: "customBody",
 				contentType: ["image/png", "image/jpeg"],
-				schema: z.string(),
+				body: z.string(),
 			},
 			schemaConverter,
 		);

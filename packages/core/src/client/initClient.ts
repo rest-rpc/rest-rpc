@@ -38,7 +38,14 @@ const createContractClient = <
 		routePath: readonly string[],
 		...args: FetchArgs
 	) =>
-		fetchRouteResponse(request, validateResponses, route, routePath, ...args);
+		fetchRouteResponse(
+			request,
+			validateResponses,
+			options.bodyParser,
+			route,
+			routePath,
+			...args,
+		);
 
 	return mapContractRoutes(contract, (node, routePath) => {
 		if (node.kind === "procedure") {

@@ -152,39 +152,24 @@ export const runClientHttpSuite = (adapter: ClientHttpSuiteAdapter) => {
 			});
 
 			assert.equal(response.status, 200);
-			assertResponseBody(response.body);
-			assert.match(
-				response.body.headers.get("content-type") ?? "",
-				/^text\/plain/,
-			);
-			assert.equal(await response.body.text(), "hello over real HTTP");
+			assert.equal(response.contentType, "text/plain");
+			assert.equal(response.body, "hello over real HTTP");
 		});
 
-		it("receives custom response bodies as native Response objects", async () => {
+		it("receives parsed custom response bodies", async () => {
 			const response = await client.responses.text();
 
 			assert.equal(response.status, 200);
-			assertResponseBody(response.body);
-			assert.match(
-				response.body.headers.get("content-type") ?? "",
-				/^text\/plain/,
-			);
-			assert.equal(await response.body.text(), "plain response");
+			assert.equal(response.contentType, "text/plain");
+			assert.equal(response.body, "plain response");
 		});
 
 		it("receives Uint8Array custom response bodies as exact bytes", async () => {
 			const response = await client.responses.binary();
 
 			assert.equal(response.status, 200);
-			assertResponseBody(response.body);
-			assert.match(
-				response.body.headers.get("content-type") ?? "",
-				/^application\/octet-stream/,
-			);
-			assert.deepEqual(
-				Array.from(new Uint8Array(await response.body.arrayBuffer())),
-				[0, 1, 127, 128, 255],
-			);
+			assert.equal(response.contentType, "application/octet-stream");
+			assert.deepEqual(Array.from(response.body), [0, 1, 127, 128, 255]);
 		});
 
 		it("receives response headers", async () => {

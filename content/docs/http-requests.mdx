@@ -216,9 +216,6 @@ Body parsers should pass a `FormData` instance to rest-rpc for multipart bodies.
 
 ## Request With Custom Content Type
 
-Custom request bodies are declared with `.customBody()`. The complete payload
-is exposed under `body` at the client call and server handler.
-
 ```ts
 import { route } from "@rest-rpc/core";
 
@@ -226,10 +223,7 @@ export const api = {
 	imports: {
 		csv: route
 			.post("/imports.csv")
-			.customBody({
-				contentType: "text/csv",
-				schema: z.string(),
-			})
+			.body(z.string(), "text/csv")
 			.response(
 				201,
 				z.object({
@@ -262,19 +256,15 @@ if (response.status === 201) {
 
 ## Request With Multiple Custom Content Types
 
-Pass an array of content types to `.customBody()` to declare multiple custom
-request content types.
-The `body` value contains both the selected `contentType` and the `payload`.
+When a request body can be one of multiple content types, declare them in an array.
+The client call must specify the `contentType` of the request.
 
 ```ts
 export const api = {
 	images: {
 		upload: route
 			.post("/images")
-			.customBody({
-				contentType: ["image/png", "image/jpeg"],
-				schema: z.instanceof(Uint8Array),
-			})
+			.body(z.instanceof(Uint8Array), ["image/png", "image/jpeg"])
 			.response(
 				201,
 				z.object({
@@ -288,12 +278,12 @@ export const api = {
 ```ts
 export const routes = {
 	images: {
-		upload: implement(api.images.upload).handler(({ body }) => {
+		upload: implement(api.images.upload).handler(({ body, contentType }) => {
 			return {
 				status: 201,
 				body: saveImage({
-					contentType: body.contentType,
-					bytes: body.payload,
+					contentType,
+					bytes: body,
 				}),
 			};
 		}),
@@ -303,59 +293,11 @@ export const routes = {
 
 ```ts
 const response = await client.images.upload({
-	body: {
-		contentType: "image/png",
-		payload: bytes,
-	},
+	body: bytes,
+	contentType: "image/png",
 });
 
 if (response.status === 201) {
 	const image = response.body;
-}
-```
-
-## Request With Fetch-Managed Content Type
-
-Omit `contentType` when the request body should be passed directly to `fetch`
-and the runtime should decide the `content-type` header.
-
-```ts
-export const api = {
-	forms: {
-		submit: route
-			.post("/forms")
-			.customBody(z.instanceof(URLSearchParams))
-			.response(
-				201,
-				z.object({
-					title: z.string(),
-				}),
-			),
-	},
-};
-```
-
-```ts
-export const routes = {
-	forms: {
-		submit: implement(api.forms.submit).handler(({ body }) => {
-			return {
-				status: 201,
-				body: { title: body.get("title") ?? "" },
-			};
-		}),
-	},
-};
-```
-
-```ts
-const response = await client.forms.submit({
-	body: new URLSearchParams({
-		title: "Write docs",
-	}),
-});
-
-if (response.status === 201) {
-	const result = response.body;
 }
 ```

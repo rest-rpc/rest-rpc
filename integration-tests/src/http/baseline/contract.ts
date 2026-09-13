@@ -28,10 +28,10 @@ export const integrationContract = {
 		text: route
 			.post("/echo/text/:id")
 			.params(z.object({ id: z.string() }))
-			.customBody({ contentType: "text/plain", schema: z.string() })
-			.customResponse(200, {
+			.body(z.string(), "text/plain")
+			.response(200, {
 				contentType: "text/plain",
-				schema: z.string(),
+				body: z.string(),
 			}),
 	},
 	items: {
@@ -68,9 +68,9 @@ export const integrationContract = {
 			.response(204),
 	},
 	responses: {
-		binary: route.get("/responses/binary").customResponse(200, {
+		binary: route.get("/responses/binary").response(200, {
 			contentType: "application/octet-stream",
-			schema: z.instanceof(Uint8Array),
+			body: z.instanceof(Uint8Array),
 		}),
 		headers: route.get("/responses/headers").response(200, {
 			body: z.object({ ok: z.literal(true) }),
@@ -79,9 +79,9 @@ export const integrationContract = {
 				"x-optional-result": z.string().optional(),
 			}),
 		}),
-		text: route.get("/responses/text").customResponse(200, {
+		text: route.get("/responses/text").response(200, {
 			contentType: "text/plain",
-			schema: z.string(),
+			body: z.string(),
 		}),
 		undeclared: route
 			.get("/responses/undeclared")

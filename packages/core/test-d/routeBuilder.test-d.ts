@@ -134,11 +134,11 @@ expectType<{
 const importRoute = route
 	.post("/imports")
 	.formBody(input)
-	.customResponse(201, { contentType: "text/csv", schema: customText });
+	.response(201, { contentType: "text/csv", body: customText });
 
 expectType<"formBody">(importRoute["~restrpc"].request.body.kind);
 expectType<typeof input>(importRoute["~restrpc"].request.body.schema);
-expectType<"customBody">(importRoute["~restrpc"].responses[201].kind);
+expectType<typeof customText>(importRoute["~restrpc"].responses[201].body);
 
 // Supports the schema overload for form bodies.
 const formSchema = route.post("/form-schema").formBody(input).response(201);
@@ -153,36 +153,30 @@ expectType<typeof input>(multipartSchema["~restrpc"].request.body.schema);
 // Preserves schema and content-type inference for custom request bodies.
 const customRequestBody = route
 	.post("/custom-body")
-	.customBody({ schema: input, contentType: "application/xml" })
+	.body(input, "application/xml")
 	.response(201);
-expectType<typeof input>(customRequestBody["~restrpc"].request.body.schema);
+expectType<typeof input>(customRequestBody["~restrpc"].request.body);
 expectType<"application/xml">(
-	customRequestBody["~restrpc"].request.body.contentType,
+	customRequestBody["~restrpc"].request.contentType,
 );
 
-const customRequestBodySchema = route
-	.post("/custom-body-schema")
-	.customBody(input)
-	.response(201);
-expectType<typeof input>(
-	customRequestBodySchema["~restrpc"].request.body.schema,
-);
+expectError(route.post("/custom-body-schema").body(input, { invalid: true }));
 
 // Custom response schemas constrain their output while preserving their input.
 const transformedCustomText = z.number().transform(String);
 const transformedCustomResponse = route
 	.get("/transformed-custom-response")
-	.customResponse(200, {
+	.response(200, {
 		contentType: "text/plain",
-		schema: transformedCustomText,
+		body: transformedCustomText,
 	});
 expectType<typeof transformedCustomText>(
-	transformedCustomResponse["~restrpc"].responses[200].schema,
+	transformedCustomResponse["~restrpc"].responses[200].body,
 );
 expectError(
-	route.get("/invalid-custom-response").customResponse(200, {
+	route.get("/invalid-custom-response").response(200, {
 		contentType: "application/json",
-		schema: z.object({ value: z.string() }),
+		body: z.object({ value: z.string() }),
 	}),
 );
 expectError(
@@ -272,7 +266,7 @@ expectAssignable<RouteDeclaration>(duplicateResponseStatus["~restrpc"]);
 const mixedResponses = route
 	.get("/responses")
 	.response(200, todo)
-	.customResponse(201, { contentType: "text/csv", schema: customText })
+	.response(201, { contentType: "text/csv", body: customText })
 	.streamResponse(202, event)
 	.customStreamResponse(203, {
 		contentType: "application/octet-stream",
@@ -280,8 +274,7 @@ const mixedResponses = route
 	});
 
 expectType<typeof todo>(mixedResponses["~restrpc"].responses[200]);
-expectType<"customBody">(mixedResponses["~restrpc"].responses[201].kind);
-expectType<typeof customText>(mixedResponses["~restrpc"].responses[201].schema);
+expectType<typeof customText>(mixedResponses["~restrpc"].responses[201].body);
 expectType<"stream">(mixedResponses["~restrpc"].responses[202].kind);
 expectType<typeof event>(mixedResponses["~restrpc"].responses[202].schema);
 expectType<"stream">(mixedResponses["~restrpc"].responses[203].kind);
@@ -294,7 +287,7 @@ expectAssignable<RouteDeclaration>(mixedResponses["~restrpc"]);
 // Keeps unused request and route configuration available after a response.
 const configuredAfterResponse = route
 	.post("/configured-after-response")
-	.customResponse(200, { contentType: "text/plain", schema: customText })
+	.response(200, { contentType: "text/plain", body: customText })
 	.body(input)
 	.jsonQuery(schemaType<{ search: string }>())
 	.params(schemaType<{ id: string }>())
@@ -305,7 +298,7 @@ const configuredAfterResponse = route
 expectType<typeof input>(configuredAfterResponse["~restrpc"].request.body);
 expectType<"jsonQuery">(configuredAfterResponse["~restrpc"].request.query.kind);
 expectType<typeof customText>(
-	configuredAfterResponse["~restrpc"].responses[200].schema,
+	configuredAfterResponse["~restrpc"].responses[200].body,
 );
 expectType<typeof event>(
 	configuredAfterResponse["~restrpc"].responses[201].schema,
@@ -320,10 +313,10 @@ expectAssignable<RouteDeclaration>(configuredAfterResponse["~restrpc"]);
 const bodyUsed = route.post("/body-used").body(input);
 expectError(bodyUsed.formBody(input));
 expectError(bodyUsed.multipartBody(input));
-expectError(bodyUsed.customBody(input));
+expectError(bodyUsed.body(input, "text/plain"));
 expectError(route.post("/body-variants").formBody(input).body(input));
 expectError(
-	route.post("/body-variants-2").multipartBody(input).customBody(input),
+	route.post("/body-variants-2").multipartBody(input).body(input, "text/plain"),
 );
 expectError(route.get("/query-used").query(input).jsonQuery(input));
 expectError(route.get("/json-query-used").jsonQuery(input).query(input));

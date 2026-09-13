@@ -35,7 +35,10 @@ const response = (kind: string, body?: BodyInit | null, status = 200) =>
 
 const createClient = (
 	responseFactory: () => Response,
-	options: { nextFetchTags?: { enabled: boolean; tagPrefix?: string } } = {},
+	options: {
+		bodyParser?: (response: Response) => unknown | Promise<unknown>;
+		nextFetchTags?: { enabled: boolean; tagPrefix?: string };
+	} = {},
 ) => {
 	const calls: FetchCall[] = [];
 	const client = initClient<never>({
@@ -135,10 +138,8 @@ describe("initClient server-first mode", () => {
 			query: request.jsonQuery({ page: 2, filters: { tag: "open" } }),
 		});
 		await client.$post("/custom", {
-			body: request.customBody("text/csv", "id,title\n1,Todo\n"),
-		});
-		await client.$post("/fetch-managed", {
-			body: request.customBody(new URLSearchParams({ title: "Todo" })),
+			body: "id,title\n1,Todo\n",
+			contentType: "text/csv",
 		});
 
 		assert.equal(
@@ -155,9 +156,9 @@ describe("initClient server-first mode", () => {
 			"https://api.test/search?query=%7B%22page%22%3A2%2C%22filters%22%3A%7B%22tag%22%3A%22open%22%7D%7D",
 		);
 		assert.equal(calls[3]?.init?.body, "id,title\n1,Todo\n");
-		assert.deepEqual(calls[3]?.init?.headers, { "content-type": "text/csv" });
-		assert.ok(calls[4]?.init?.body instanceof URLSearchParams);
-		assert.deepEqual(calls[4]?.init?.headers, {});
+		assert.deepEqual(calls[3]?.init?.headers, {
+			"content-type": "text/csv",
+		});
 	});
 
 	it("requires valid response-kind metadata", async () => {
@@ -219,8 +220,25 @@ describe("initClient server-first mode", () => {
 				}),
 		);
 		const customResponse = await custom.client.$get("/export");
-		assert.ok(customResponse.body instanceof Response);
+		assert.equal(customResponse.body, "csv");
 		assert.equal(customResponse.contentType, "text/csv");
+	});
+
+	it("uses a custom body parser for server-first custom responses", async () => {
+		const { client } = createClient(
+			() =>
+				new Response("custom", {
+					headers: {
+						"content-type": "application/octet-stream",
+						[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=custom",
+					},
+				}),
+			{ bodyParser: (response) => response.text() },
+		);
+
+		const result = await client.$get("/custom");
+
+		assert.equal(result.body, "custom");
 	});
 
 	it("uses method:path identities for automatic Next.js tags", async () => {

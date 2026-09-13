@@ -19,8 +19,8 @@ export const createBodyParsingImplementations = () => {
 		textVariant: implementor.textVariant.handler((request) => ({
 			status: 200,
 			body: {
-				contentType: request.body.contentType,
-				body: request.body.payload,
+				contentType: request.contentType,
+				body: request.body,
 			},
 		})),
 		customJson: implementor.customJson.handler((request) => ({

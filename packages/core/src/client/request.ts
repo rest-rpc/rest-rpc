@@ -1,9 +1,4 @@
-import {
-	isCustomBody,
-	isFormBody,
-	isMultipartBody,
-	isNoBody,
-} from "../contract/body.ts";
+import { isFormBody, isMultipartBody, isNoBody } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import { replacePathParams } from "../contract/path.ts";
 import { isJsonQuery } from "../contract/request.ts";
@@ -43,7 +38,7 @@ export const takesRequestInput = (route: ClientRequestRoute) => {
 	}
 	if (isFormBody(request?.body)) return true;
 	if (isMultipartBody(request?.body)) return true;
-	if (isCustomBody(request?.body)) return true;
+	if (request?.contentType !== undefined) return true;
 	return Boolean(request?.body && !isNoBody(request.body));
 };
 
@@ -64,7 +59,7 @@ const normalizeHeaders = (headers: Record<string, string> | undefined) =>
 export const assertNoContentTypeHeader = (headers: Record<string, string>) => {
 	if (hasHeader(headers, "content-type")) {
 		throw new Error(
-			'ApiClient getGlobalHeaders() must not return a "content-type" header. Use customBody({ schema, contentType }) on the route declaration instead.',
+			'ApiClient getGlobalHeaders() must not return a "content-type" header. Pass the content type to body(schema, contentType) on the route declaration instead.',
 		);
 	}
 };
@@ -195,7 +190,13 @@ export const constructBaseRequest = (
 	let urlBase = `${baseUrl}${route.path}`;
 	if (!args) return { url: urlBase };
 
-	const { body, query, params, headers } = args;
+	const {
+		body,
+		contentType: selectedContentType,
+		query,
+		params,
+		headers,
+	} = args;
 	const routeBody = route.request?.body;
 
 	urlBase = `${baseUrl}${serializeParams(route, params)}${serializeQuery(route, query)}`;
@@ -222,20 +223,18 @@ export const constructBaseRequest = (
 		};
 	}
 
-	if (isCustomBody(routeBody)) {
-		const bodyPayload = body;
-		const { contentType, payload } = Array.isArray(routeBody.contentType)
-			? (bodyPayload as { contentType: string; payload: unknown })
-			: {
-					contentType: routeBody.contentType as string | undefined,
-					payload: bodyPayload,
-				};
+	if (route.request?.contentType !== undefined) {
+		const contentType =
+			selectedContentType ??
+			(Array.isArray(route.request.contentType)
+				? undefined
+				: (route.request.contentType as string));
 
 		return {
 			url: urlBase,
 			body: contentType
-				? serializeCustomBody(payload, contentType)
-				: (payload as BodyInit | null | undefined),
+				? serializeCustomBody(body, contentType)
+				: (body as BodyInit | null | undefined),
 			contentType,
 			headers: stringifyHeaders(route, headers),
 		};

@@ -208,14 +208,14 @@ describe("validateRequest", () => {
 		}
 	});
 
-	it("wraps custom request bodies with selected content type", async () => {
+	it("returns custom request bodies and selected content type separately", async () => {
 		const result = await validateRequest(
 			route
 				.post("/images")
-				.customBody({
-					contentType: ["image/png", "image/jpeg"],
-					schema: z.string().transform((value) => value.toUpperCase()),
-				})
+				.body(
+					z.string().transform((value) => value.toUpperCase()),
+					["image/png", "image/jpeg"],
+				)
 				.response(204)["~restrpc"],
 			{
 				body: "jpeg bytes",
@@ -228,20 +228,17 @@ describe("validateRequest", () => {
 		assert.equal(result.success, true);
 		if (result.success) {
 			assert.deepEqual(result.data, {
-				body: {
-					contentType: "image/jpeg",
-					payload: "JPEG BYTES",
-				},
+				body: "JPEG BYTES",
+				contentType: "image/jpeg",
 			});
 		}
 	});
 
 	it("enforces a single explicitly declared custom body content type", async () => {
 		const result = await validateRequest(
-			route
-				.post("/text")
-				.customBody({ contentType: "text/plain", schema: z.string() })
-				.response(204)["~restrpc"],
+			route.post("/text").body(z.string(), "text/plain").response(204)[
+				"~restrpc"
+			],
 			{
 				body: "valid text",
 				headers: { "content-type": "text/markdown" },
@@ -256,11 +253,14 @@ describe("validateRequest", () => {
 		}
 	});
 
-	it("validates custom request bodies without content type as payloads", async () => {
+	it("validates URL-encoded custom request bodies as direct payloads", async () => {
 		const result = await validateRequest(
 			route
 				.post("/forms")
-				.customBody(z.instanceof(URLSearchParams))
+				.body(
+					z.instanceof(URLSearchParams),
+					"application/x-www-form-urlencoded",
+				)
 				.response(204)["~restrpc"],
 			{
 				body: new URLSearchParams([["title", "Write docs"]]),
@@ -274,6 +274,10 @@ describe("validateRequest", () => {
 		if (result.success) {
 			assert.ok(result.data.body instanceof URLSearchParams);
 			assert.equal(result.data.body.get("title"), "Write docs");
+			assert.equal(
+				result.data.contentType,
+				"application/x-www-form-urlencoded",
+			);
 		}
 	});
 
@@ -405,16 +409,9 @@ describe("validateRequest", () => {
 });
 
 describe("validateResponseBody", () => {
-	it("validates custom response bodies", async () => {
+	it("validates response bodies", async () => {
 		await assert.rejects(
-			validateResponseBody(
-				{
-					kind: "customBody",
-					contentType: "text/csv",
-					schema: z.number(),
-				},
-				"id,title\n1,First\n",
-			),
+			validateResponseBody(z.number(), "id,title\n1,First\n"),
 			(error) => {
 				assert.ok(error instanceof ResponseValidationError);
 				assert.equal(error.location, "body");
@@ -481,20 +478,14 @@ describe("resolveCustomResponseBody", () => {
 	it("resolves declared custom response content types", () => {
 		assert.deepEqual(
 			resolveCustomResponseBody(
-				{
-					kind: "customBody",
-					contentType: ["image/png", "image/jpeg"],
-					schema: z.string(),
-				},
-				{
-					contentType: "image/jpeg",
-					payload: "jpeg bytes",
-				},
+				["image/png", "image/jpeg"],
+				"jpeg bytes",
+				"image/jpeg",
 				"Unsupported custom response body contentType.",
 			),
 			{
 				contentType: "image/jpeg",
-				payload: "jpeg bytes",
+				body: "jpeg bytes",
 			},
 		);
 	});
@@ -503,15 +494,9 @@ describe("resolveCustomResponseBody", () => {
 		assert.throws(
 			() =>
 				resolveCustomResponseBody(
-					{
-						kind: "customBody",
-						contentType: ["image/png", "image/jpeg"],
-						schema: z.string(),
-					},
-					{
-						contentType: "image/webp",
-						payload: "webp bytes",
-					},
+					["image/png", "image/jpeg"],
+					"webp bytes",
+					"image/webp",
 					"Unsupported custom response body contentType.",
 				),
 			/Unsupported custom response body contentType/,

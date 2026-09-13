@@ -1,5 +1,6 @@
 import {
 	type CustomBody,
+	type CustomBodyContentType,
 	type FormBody,
 	getResponseHeaders,
 	isCustomBody,
@@ -152,8 +153,16 @@ const validateCustomBody = async (
 	body: unknown,
 	headers: unknown,
 ): Promise<SegmentValidationResult> => {
-	const declaration = route.request?.body;
-	if (!isCustomBody(declaration)) return { data: {}, errors: [] };
+	const declaration = route.request;
+	if (!declaration?.body || declaration.contentType === undefined) {
+		return { data: {}, errors: [] };
+	}
+	if (!isStandardSchema(declaration.body)) {
+		return {
+			data: {},
+			errors: [{ message: "Unsupported custom body schema." }],
+		};
+	}
 	const contentTypes =
 		declaration.contentType === undefined
 			? undefined
@@ -161,9 +170,7 @@ const validateCustomBody = async (
 				? declaration.contentType
 				: [declaration.contentType];
 	const contentType =
-		contentTypes && body !== undefined
-			? getHeaderValue(headers, "content-type")
-			: undefined;
+		body !== undefined ? getHeaderValue(headers, "content-type") : undefined;
 	const declaredContentType =
 		contentTypes && typeof contentType === "string"
 			? getDeclaredContentType(contentTypes, contentType)
@@ -176,19 +183,19 @@ const validateCustomBody = async (
 		};
 	}
 
-	const result = await validateStandardSchema(declaration.schema, body);
+	const result = await validateStandardSchema(declaration.body, body);
 	if (result.issues) {
 		return { data: {}, errors: result.issues };
 	}
 
 	return {
 		data: {
-			body: Array.isArray(declaration.contentType)
-				? {
-						contentType: declaredContentType,
-						payload: result.value,
-					}
-				: result.value,
+			body: result.value,
+			...(declaredContentType
+				? { contentType: declaredContentType }
+				: typeof contentType === "string"
+					? { contentType }
+					: {}),
 		},
 		errors: [],
 	};
@@ -272,11 +279,17 @@ const getValidatedRequestData = (
 		...(request?.body && !isNoBody(request.body)
 			? {
 					body:
-						isCustomBody(request.body) ||
+						request.contentType !== undefined ||
 						isFormBody(request.body) ||
 						isMultipartBody(request.body)
 							? (body.data as Record<string, unknown>).body
 							: body.data,
+				}
+			: {}),
+		...(request?.contentType !== undefined &&
+		(body.data as Record<string, unknown>).contentType !== undefined
+			? {
+					contentType: (body.data as Record<string, unknown>).contentType,
 				}
 			: {}),
 		...(request?.query
@@ -296,13 +309,14 @@ export async function validateRequest(
 	segments: RequestSegments,
 ): Promise<RequestValidationResponse> {
 	const request = route.request;
-	const body = isCustomBody(request?.body)
-		? await validateCustomBody(route, segments.body, segments.headers)
-		: isFormBody(request?.body)
-			? await validateFormBody(request.body, segments.body)
-			: isMultipartBody(request?.body)
-				? await validateMultipartBody(request.body, segments.body)
-				: await validateRequestObject(request?.body, segments.body);
+	const body =
+		request?.contentType !== undefined
+			? await validateCustomBody(route, segments.body, segments.headers)
+			: isFormBody(request?.body)
+				? await validateFormBody(request.body, segments.body)
+				: isMultipartBody(request?.body)
+					? await validateMultipartBody(request.body, segments.body)
+					: await validateRequestObject(request?.body, segments.body);
 	const query = isJsonQuery(request?.query)
 		? await validateJsonQuery(request.query, segments.query)
 		: await validateRequestObject(
@@ -382,26 +396,26 @@ export const validateResponseHeaders = async (
 };
 
 export const resolveCustomResponseBody = (
-	schema: CustomBody,
+	declaredContentType: CustomBodyContentType,
 	body: unknown,
+	selectedContentType: unknown,
 	errorMessage: string,
-): { contentType: string; payload: unknown } => {
-	if (!Array.isArray(schema.contentType)) {
-		if (!schema.contentType) throw new Error(errorMessage);
-		return { contentType: schema.contentType as string, payload: body };
-	}
-
-	const input = body as { contentType?: unknown; payload?: unknown };
+): { contentType: string; body: unknown } => {
+	const declaredContentTypes = Array.isArray(declaredContentType)
+		? declaredContentType
+		: [declaredContentType as string];
 	const contentType =
-		typeof input.contentType === "string"
-			? getDeclaredContentType(schema.contentType, input.contentType)
-			: undefined;
+		typeof selectedContentType === "string"
+			? getDeclaredContentType(declaredContentTypes, selectedContentType)
+			: declaredContentTypes.length === 1
+				? declaredContentTypes[0]
+				: undefined;
 
 	if (!contentType) throw new Error(errorMessage);
 
 	return {
 		contentType,
-		payload: input.payload,
+		body,
 	};
 };
 

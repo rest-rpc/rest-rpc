@@ -44,16 +44,25 @@ with only their path: `await client.$get("/health")`.
 
 ## Mark Explicit Request Encodings
 
-For form, multipart, custom bodies, and JSON query, wrap the value with the
-matching `request.formBody()`, `request.multipartBody()`,
-`request.customBody()`, or `request.jsonQuery()` helper so the client knows how
-to encode it.
+For form, multipart, and JSON query values, wrap the value with the matching
+`request.formBody()`, `request.multipartBody()`, or `request.jsonQuery()` helper
+so the client knows how to encode it.
 
 ```ts
 import { request } from "@rest-rpc/core";
 
 await client.$post("/uploads", {
 	body: request.multipartBody({ title: "Screenshot", file }),
+});
+```
+
+Requests declared with `body(schema, contentType)` must always supply a
+`contentType` option to a server-first client.
+
+```ts
+await client.$post("/imports.csv", {
+	body: "id,title\n1,Write docs\n",
+	contentType: "text/csv",
 });
 ```
 

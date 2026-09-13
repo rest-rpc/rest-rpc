@@ -1,5 +1,5 @@
 import type { HttpMethod } from "../contract/routeDeclaration.ts";
-import type { CustomBody, FormBody, MultipartBody } from "../contract/body.ts";
+import type { FormBody, MultipartBody } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import type { JsonQuery } from "../contract/request.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
@@ -44,42 +44,7 @@ export interface EncodedRequest<TKind extends string, TValue> {
 	readonly value: TValue;
 }
 
-type ExplicitCustomBodyRequest<
-	TValue,
-	TContentType extends string,
-> = EncodedRequest<"customBody", TValue> & {
-	readonly contentType: TContentType;
-};
-
-type FetchManagedCustomBodyRequest<TValue> = EncodedRequest<
-	"customBody",
-	TValue
-> & {
-	readonly contentType?: never;
-};
-
 type ClientSchema<TInput> = StandardSchemaV1<TInput, unknown>;
-
-type ClientCustomBody<TBody extends CustomBody> =
-	TBody extends CustomBody<infer TSchema, infer TContentType>
-		? TContentType extends readonly string[]
-			? ClientSchema<
-					ExplicitCustomBodyRequest<
-						StandardSchemaV1.InferInput<TSchema>,
-						TContentType[number]
-					>
-				>
-			: TContentType extends string
-				? ClientSchema<
-						ExplicitCustomBodyRequest<
-							StandardSchemaV1.InferInput<TSchema>,
-							TContentType
-						>
-					>
-				: ClientSchema<
-						FetchManagedCustomBodyRequest<StandardSchemaV1.InferInput<TSchema>>
-					>
-		: never;
 
 type ClientRequestBody<TBody> =
 	TBody extends FormBody<infer TSchema>
@@ -90,9 +55,7 @@ type ClientRequestBody<TBody> =
 			? ClientSchema<
 					EncodedRequest<"multipartBody", StandardSchemaV1.InferInput<TSchema>>
 				>
-			: TBody extends CustomBody
-				? ClientCustomBody<TBody>
-				: TBody;
+			: TBody;
 
 type ClientRequestQuery<TQuery> =
 	TQuery extends JsonQuery<infer TSchema>
@@ -104,9 +67,16 @@ type ClientRequestQuery<TQuery> =
 		: TQuery;
 
 type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
-	? Omit<TRequest, "body" | "query"> &
+	? Omit<TRequest, "body" | "query" | "contentType"> &
 			(TRequest extends { body: infer TBody }
 				? { body: ClientRequestBody<TBody> }
+				: unknown) &
+			(TRequest extends { contentType: infer TContentType }
+				? {
+						contentType: TContentType extends string
+							? readonly [TContentType]
+							: TContentType;
+					}
 				: unknown) &
 			(TRequest extends { query: infer TQuery }
 				? { query: ClientRequestQuery<TQuery> }
@@ -286,14 +256,13 @@ export type ServerFirstClientOptions<
 
 type ServerFirstRequestInput = {
 	body?: unknown;
+	contentType?: string;
 	query?: unknown;
 	params?: Record<string, unknown>;
 	headers?: Record<string, unknown>;
 };
 
-type RuntimeEncodedRequest = EncodedRequest<string, unknown> & {
-	readonly contentType?: string;
-};
+type RuntimeEncodedRequest = EncodedRequest<string, unknown>;
 
 const encodedRequest = <TKind extends string, TValue>(
 	kind: TKind,
@@ -303,16 +272,8 @@ const encodedRequest = <TKind extends string, TValue>(
 	value,
 });
 
-const customBodyRequest = <TValue>(...args: [TValue] | [string, TValue]) =>
-	args.length === 1
-		? encodedRequest("customBody", args[0])
-		: {
-				...encodedRequest("customBody", args[1]),
-				contentType: args[0],
-			};
-
 /**
- * Marks form bodies, multipart bodies, custom bodies, and JSON query values for
+ * Marks form bodies, multipart bodies, and JSON query values for
  * server-first client calls.
  *
  * @remarks Ordinary JSON bodies and flat query objects do not need a wrapper.
@@ -324,13 +285,6 @@ export const request = {
 	multipartBody: <TValue>(value: TValue) =>
 		encodedRequest("multipartBody", value),
 	jsonQuery: <TValue>(value: TValue) => encodedRequest("jsonQuery", value),
-	customBody: customBodyRequest as {
-		<TValue>(value: TValue): FetchManagedCustomBodyRequest<TValue>;
-		<const TContentType extends string, TValue>(
-			contentType: TContentType,
-			value: TValue,
-		): ExplicitCustomBodyRequest<TValue, TContentType>;
-	},
 } as const;
 
 const isEncodedRequest = (value: unknown): value is RuntimeEncodedRequest =>
@@ -354,7 +308,10 @@ const createRuntimeRoute = (
 
 	if (input && "body" in input) {
 		const body = input.body;
-		if (isEncodedRequest(body)) {
+		if (input.contentType !== undefined) {
+			requestDeclaration.body = {};
+			requestDeclaration.contentType = input.contentType;
+		} else if (isEncodedRequest(body)) {
 			switch (body[requestEncoding]) {
 				case "formBody":
 					requestDeclaration.body = {
@@ -365,13 +322,6 @@ const createRuntimeRoute = (
 				case "multipartBody":
 					requestDeclaration.body = {
 						kind: "multipartBody",
-					};
-					normalizedInput.body = body.value;
-					break;
-				case "customBody":
-					requestDeclaration.body = {
-						kind: "customBody",
-						...(body.contentType ? { contentType: body.contentType } : {}),
 					};
 					normalizedInput.body = body.value;
 					break;
@@ -429,6 +379,7 @@ const executeShorthandRequest = async (
 	path: string[],
 	args: unknown[],
 	requestOptions: ExecuteRequestOptions,
+	bodyParser: ApiClientOptions["bodyParser"],
 ) => {
 	const input = args[0];
 	const fetchOptions = args[1] as FetchOptions | undefined;
@@ -444,7 +395,7 @@ const executeShorthandRequest = async (
 		[hasInput ? { body: input } : undefined, fetchOptions],
 		requestOptions,
 	);
-	const response = await readServerFirstResponse(rawResponse);
+	const response = await readServerFirstResponse(rawResponse, bodyParser);
 	if (response.status < 200 || response.status >= 300) {
 		throw new Error("Request did not return a declared success response");
 	}
@@ -463,7 +414,7 @@ export const createServerFirstClient = <
 	const createShorthandNamespace = (path: string[]): unknown =>
 		new Proxy(
 			(...args: unknown[]) =>
-				executeShorthandRequest(path, args, requestOptions),
+				executeShorthandRequest(path, args, requestOptions, options.bodyParser),
 			{
 				get: (_target, key) =>
 					typeof key === "string" && key !== "then"
@@ -492,7 +443,9 @@ export const createServerFirstClient = <
 						[runtime.requestInput, fetchOptions],
 						requestOptions,
 						runtime.tagInput,
-					).then(readServerFirstResponse);
+					).then((response) =>
+						readServerFirstResponse(response, options.bodyParser),
+					);
 				};
 			},
 		},

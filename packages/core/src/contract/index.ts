@@ -3,6 +3,7 @@ export type {
 	CustomBodyContentType,
 	CustomResponseBody,
 	CustomResponseInput,
+	CustomStreamResponseInput,
 	CustomResponseValue,
 	FormBody,
 	FormBodySchema,
@@ -52,6 +53,7 @@ export type {
 	DeclaredClientResponse,
 	ErrorDeclaredClientResponse,
 	ResponseBodySchema,
+	CustomResponseDeclaration,
 	ResponseDeclaration,
 	ResponseHeaders,
 	RegularResponseDeclaration,
@@ -63,6 +65,7 @@ export type {
 } from "./response.ts";
 export {
 	getResponseBody,
+	getResponseContentType,
 	getResponseHeaders,
 	getRouteResponses,
 	hasResponseParts,

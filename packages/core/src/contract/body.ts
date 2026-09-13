@@ -96,19 +96,18 @@ export type CustomResponseInput<
 	TSchema extends CustomResponseSchema = CustomResponseSchema,
 	TContentType extends CustomBodyContentType = CustomBodyContentType,
 > = {
-	schema: TSchema;
+	body: TSchema;
 	contentType: TContentType;
 };
 
-export type CustomBodyInput<
-	TSchema extends StandardSchemaV1 = StandardSchemaV1,
+/** Input accepted when declaring a custom-content response stream. */
+export type CustomStreamResponseInput<
+	TSchema extends CustomResponseSchema = CustomResponseSchema,
 	TContentType extends CustomBodyContentType = CustomBodyContentType,
-> =
-	| TSchema
-	| {
-			schema: TSchema;
-			contentType: TContentType;
-	  };
+> = {
+	schema: TSchema;
+	contentType: TContentType;
+};
 
 /**
  * Declares a streaming response body.

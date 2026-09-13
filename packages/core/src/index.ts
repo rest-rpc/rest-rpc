@@ -1,5 +1,6 @@
 export type {
 	ApiClientFor,
+	ApiClientBodyParser,
 	ApiClientOptions,
 	ClientResponse,
 	FetchLike,

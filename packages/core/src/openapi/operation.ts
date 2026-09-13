@@ -19,6 +19,7 @@ import type {
 } from "../contract/response.ts";
 import {
 	getResponseBody,
+	getResponseContentType,
 	getResponseHeaders,
 	getRouteResponses,
 } from "../contract/response.ts";
@@ -191,6 +192,7 @@ export const createHeaderParameters = (
 export const createRequestBody = (
 	schema: RequestBodySchema,
 	converter: SchemaConverter | undefined,
+	customContentType?: string | readonly string[],
 ): OpenApiRequestBody | undefined => {
 	if (!schema) return undefined;
 	if (isNoBody(schema)) return undefined;
@@ -198,14 +200,14 @@ export const createRequestBody = (
 		? [FORM_URLENCODED_CONTENT_TYPE]
 		: isMultipartBody(schema)
 			? [MULTIPART_FORM_DATA_CONTENT_TYPE]
-			: isCustomBody(schema)
-				? contentTypesForCustomBody(schema)
+			: customContentType !== undefined
+				? Array.isArray(customContentType)
+					? customContentType
+					: [customContentType as string]
 				: [JSON_CONTENT_TYPE];
 	if (contentTypes.length === 0) return undefined;
 	const bodySchema =
-		isCustomBody(schema) || isFormBody(schema) || isMultipartBody(schema)
-			? schema.schema
-			: schema;
+		isFormBody(schema) || isMultipartBody(schema) ? schema.schema : schema;
 	const openApiSchema = isStandardSchema(bodySchema)
 		? (converter?.(bodySchema, "input") ?? {})
 		: undefined;
@@ -256,11 +258,16 @@ export const createResponse = (
 		};
 	}
 
-	const contentTypes = isCustomBody(schema)
-		? contentTypesForCustomBody(schema)
-		: [JSON_CONTENT_TYPE];
-	const bodySchema = isCustomBody(schema) ? schema.schema : schema;
-	const openApiSchema = converter?.(bodySchema, "output") ?? {};
+	const customContentType = getResponseContentType(responseDeclaration);
+	const contentTypes =
+		customContentType !== undefined
+			? Array.isArray(customContentType)
+				? customContentType
+				: [customContentType as string]
+			: [JSON_CONTENT_TYPE];
+	const openApiSchema = isStandardSchema(schema)
+		? (converter?.(schema, "output") ?? {})
+		: {};
 
 	return {
 		description: openApiResponse?.description ?? description,
@@ -361,7 +368,11 @@ export const createOperation = (
 			options.transformParameter?.({ route, routePath, parameter }) ??
 			parameter,
 	);
-	const requestBody = createRequestBody(request?.body, options.schemaConverter);
+	const requestBody = createRequestBody(
+		request?.body,
+		options.schemaConverter,
+		request?.contentType,
+	);
 	const { extensions, ...openApi } = route.openApi ?? {};
 	const operation: OpenApiOperation = {
 		...openApi,

@@ -8,28 +8,25 @@ export const bodyParsingContract = {
 		.response(200, z.object({ count: z.number(), title: z.string() })),
 	text: route
 		.post("/body-parsing/text")
-		.customBody({ contentType: "text/plain", schema: z.string() })
+		.body(z.string(), "text/plain")
 		.response(200, z.object({ body: z.string() })),
 	textVariant: route
 		.post("/body-parsing/text-variant")
-		.customBody({
-			contentType: ["text/plain", "text/markdown"],
-			schema: z.string(),
-		})
+		.body(z.string(), ["text/plain", "text/markdown"])
 		.response(200, z.object({ contentType: z.string(), body: z.string() })),
 	customJson: route
 		.post("/body-parsing/custom-json")
-		.customBody({
-			contentType: "application/json; charset=utf-8",
-			schema: z.object({
+		.body(
+			z.object({
 				count: z.number(),
 				nested: z.object({ ok: z.boolean() }),
 			}),
-		})
+			"application/json; charset=utf-8",
+		)
 		.response(200, z.object({ count: z.number(), ok: z.boolean() })),
 	rawUrlEncoded: route
 		.post("/body-parsing/raw-url-encoded")
-		.customBody(z.instanceof(URLSearchParams))
+		.body(z.instanceof(URLSearchParams), "application/x-www-form-urlencoded")
 		.response(
 			200,
 			z.object({ title: z.string(), remember: z.string().optional() }),
@@ -55,10 +52,7 @@ export const bodyParsingContract = {
 		),
 	binary: route
 		.post("/body-parsing/binary")
-		.customBody({
-			contentType: "application/octet-stream",
-			schema: z.instanceof(Uint8Array),
-		})
+		.body(z.instanceof(Uint8Array), "application/octet-stream")
 		.response(
 			200,
 			z.object({ byteLength: z.number(), bytes: z.array(z.number()) }),

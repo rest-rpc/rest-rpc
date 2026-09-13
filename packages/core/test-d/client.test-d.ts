@@ -464,9 +464,9 @@ expectError(streamResponseClient.todos.events.fetch);
 
 const csvResponseApi = {
 	todos: {
-		exportCsv: route.get("/todos.csv").customResponse(200, {
+		exportCsv: route.get("/todos.csv").response(200, {
 			contentType: "text/csv",
-			schema: z.string(),
+			body: z.string(),
 		}),
 		exportCsvStream: route.get("/todos-stream.csv").customStreamResponse(200, {
 			contentType: "text/csv",
@@ -481,13 +481,13 @@ const csvResponseClient = initClient(csvResponseApi, {
 
 csvResponseClient.todos.exportCsv().then((response) => {
 	if (response.status !== 200) throw new Error("Unexpected status");
-	expectType<Response>(response.body);
+	expectType<string>(response.body);
 });
 
 csvResponseClient.todos.exportCsv().then((response) => {
 	if (response.status === 200) {
 		expectType<"text/csv">(response.contentType);
-		expectType<Response>(response.body);
+		expectType<string>(response.body);
 	}
 });
 
@@ -498,9 +498,9 @@ csvResponseClient.todos.exportCsvStream().then((response) => {
 
 const imageResponseApi = {
 	todos: {
-		exportImage: route.get("/todos/image").customResponse(200, {
+		exportImage: route.get("/todos/image").response(200, {
 			contentType: ["image/png", "image/jpeg"],
-			schema: z.instanceof(Uint8Array),
+			body: z.instanceof(Uint8Array),
 		}),
 	},
 };
@@ -511,13 +511,13 @@ const imageResponseClient = initClient(imageResponseApi, {
 
 imageResponseClient.todos.exportImage().then((response) => {
 	if (response.status !== 200) throw new Error("Unexpected status");
-	expectType<Response>(response.body);
+	expectType<Uint8Array<ArrayBuffer>>(response.body);
 });
 
 imageResponseClient.todos.exportImage().then((response) => {
 	if (response.status === 200) {
 		expectType<"image/png" | "image/jpeg">(response.contentType);
-		expectType<Response>(response.body);
+		expectType<Uint8Array<ArrayBuffer>>(response.body);
 	}
 });
 
@@ -526,10 +526,7 @@ const customRequestApi = {
 		uploadImage: route
 			.post("/todos/:id/image")
 			.params(z.object({ id: z.string() }))
-			.customBody({
-				contentType: ["image/png", "image/jpeg"],
-				schema: z.instanceof(Uint8Array),
-			})
+			.body(z.instanceof(Uint8Array), ["image/png", "image/jpeg"])
 			.response(204),
 	},
 };
@@ -540,10 +537,8 @@ const customRequestClient = initClient(customRequestApi, {
 
 customRequestClient.todos
 	.uploadImage({
-		body: {
-			contentType: "image/png",
-			payload: new Uint8Array(),
-		},
+		body: new Uint8Array(),
+		contentType: "image/png",
 		params: { id: "todo-1" },
 	})
 	.then((response) => {
@@ -552,10 +547,8 @@ customRequestClient.todos
 	});
 expectError(
 	customRequestClient.todos.uploadImage({
-		body: {
-			contentType: "image/webp",
-			payload: new Uint8Array(),
-		},
+		body: new Uint8Array(),
+		contentType: "image/webp",
 		params: { id: "todo-1" },
 	}),
 );
@@ -564,7 +557,7 @@ const rawCustomRequestApi = {
 	todos: {
 		submitForm: route
 			.post("/todos/form")
-			.customBody(z.instanceof(URLSearchParams))
+			.body(z.instanceof(URLSearchParams), "application/x-www-form-urlencoded")
 			.response(204),
 	},
 };
