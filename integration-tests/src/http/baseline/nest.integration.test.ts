@@ -46,12 +46,15 @@ it("waits for Nest Express drain before writing the next stream chunk", async ()
 			...handlers,
 			streams: {
 				...handlers.streams,
-				text: nestImplementor.streams.text.handler(async function* () {
-					pulledChunks = 1;
-					yield "alpha\n";
-					pulledChunks = 2;
-					yield "beta\n";
-				}),
+				text: nestImplementor.streams.text.handler(() => ({
+					status: 200,
+					body: (async function* () {
+						pulledChunks = 1;
+						yield "alpha\n";
+						pulledChunks = 2;
+						yield "beta\n";
+					})(),
+				})),
 			},
 		},
 		{
@@ -106,14 +109,17 @@ it("releases a Nest Express backpressure wait when the response closes before dr
 			...handlers,
 			streams: {
 				...handlers.streams,
-				text: nestImplementor.streams.text.handler(async function* () {
-					try {
-						yield "alpha\n";
-						yield "beta\n";
-					} finally {
-						returned = true;
-					}
-				}),
+				text: nestImplementor.streams.text.handler(() => ({
+					status: 200,
+					body: (async function* () {
+						try {
+							yield "alpha\n";
+							yield "beta\n";
+						} finally {
+							returned = true;
+						}
+					})(),
+				})),
 			},
 		},
 		{
@@ -191,9 +197,15 @@ it("registers router routes whose contract key paths would produce the same flat
 	} as const;
 	const collisionImplementor = implement(collisionContract);
 	const server = await createNestAdapter(collisionContract, {
-		a_b: collisionImplementor.a_b.handler(() => ({ source: "flat" })),
+		a_b: collisionImplementor.a_b.handler(() => ({
+			status: 200,
+			body: { source: "flat" },
+		})),
 		a: {
-			b: collisionImplementor.a.b.handler(() => ({ source: "nested" })),
+			b: collisionImplementor.a.b.handler(() => ({
+				status: 200,
+				body: { source: "nested" },
+			})),
 		},
 	}).start();
 
@@ -236,9 +248,10 @@ it("supports async routers that close over values from Nest parameter decorators
 		async api(@Headers("x-test-source") source: string) {
 			await Promise.resolve();
 			return {
-				get: implement(asyncContract).get.handler(({ params: { id } }) =>
-					this.items.get(source, id),
-				),
+				get: implement(asyncContract).get.handler(({ params: { id } }) => ({
+					status: 200,
+					body: this.items.get(source, id),
+				})),
 			};
 		}
 	}
@@ -378,8 +391,11 @@ it("serves a contract route implemented by a Nest provider class", async () => {
 		readonly routes = {
 			get: implement(classContract.items).get.handler(
 				({ context, params: { id } }) => ({
-					id,
-					title: this.items.formatTitle(context.source, id),
+					status: 200,
+					body: {
+						id,
+						title: this.items.formatTitle(context.source, id),
+					},
 				}),
 			),
 		};

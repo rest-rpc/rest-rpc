@@ -17,7 +17,6 @@ export type {
 	RouteRequest,
 	RouteRequestData,
 	RouteResponse,
-	RouteResponseShorthand,
 } from "./routeBuilder.types.ts";
 export type { RequestSegments, ValidationIssue } from "./validation.ts";
 export type {

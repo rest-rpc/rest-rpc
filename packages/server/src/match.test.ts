@@ -6,7 +6,7 @@ import { serverFirstRoute } from "./routeBuilder.ts";
 const implementation = (method: "GET" | "POST", path: string) =>
 	(method === "GET" ? serverFirstRoute.get(path) : serverFirstRoute.post(path))
 		.response(204)
-		.handler(() => undefined);
+		.handler(() => ({ status: 204 }));
 
 describe("createRouteMatcher", () => {
 	it("returns the most specific implementation and decoded path params", () => {

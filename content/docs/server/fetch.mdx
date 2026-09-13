@@ -20,7 +20,10 @@ import { api } from "./contract";
 
 const routes = {
 	todos: {
-		get: implement(api.todos.get).handler(({ params: { id } }) => getTodo(id)),
+		get: implement(api.todos.get).handler(({ params: { id } }) => ({
+			status: 200,
+			body: getTodo(id),
+		})),
 	},
 };
 

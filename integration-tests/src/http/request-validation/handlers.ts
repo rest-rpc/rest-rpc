@@ -6,21 +6,40 @@ export const createRequestValidationImplementations = () => {
 
 	return {
 		coerce: implementor.coerce.handler((request) => ({
-			id: request.params.id,
-			published: request.query.published,
-			page: request.headers["x-page"],
+			status: 200,
+			body: {
+				id: request.params.id,
+				published: request.query.published,
+				page: request.headers["x-page"],
+			},
 		})),
-		params: implementor.params.handler(() => ({ reached: true as const })),
-		query: implementor.query.handler(() => ({ reached: true as const })),
-		headers: implementor.headers.handler(() => ({ reached: true as const })),
-		body: implementor.body.handler(() => ({ reached: true as const })),
+		params: implementor.params.handler(() => ({
+			status: 200,
+			body: { reached: true as const },
+		})),
+		query: implementor.query.handler(() => ({
+			status: 200,
+			body: { reached: true as const },
+		})),
+		headers: implementor.headers.handler(() => ({
+			status: 200,
+			body: { reached: true as const },
+		})),
+		body: implementor.body.handler(() => ({
+			status: 200,
+			body: { reached: true as const },
+		})),
 		emptyQuery: implementor.emptyQuery.handler((request) => ({
-			value: request.query.value,
+			status: 200,
+			body: { value: request.query.value },
 		})),
 		jsonQuery: implementor.jsonQuery.handler((request) => ({
-			page: request.query.page,
-			includeArchived: request.query.includeArchived,
-			tags: request.query.filters.tags,
+			status: 200,
+			body: {
+				page: request.query.page,
+				includeArchived: request.query.includeArchived,
+				tags: request.query.filters.tags,
+			},
 		})),
 	};
 };

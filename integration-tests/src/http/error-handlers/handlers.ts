@@ -9,7 +9,8 @@ export const createErrorHandlersImplementations = (
 
 	return {
 		validation: implementor.validation.handler(() => ({
-			reached: true as const,
+			status: 200,
+			body: { reached: true as const },
 		})),
 		unhandled: implementor.unhandled.handler(() => {
 			throw new Error("boom from integration handler");
@@ -24,8 +25,11 @@ export const createErrorHandlersImplementations = (
 			});
 		}),
 		hookState: implementor.hookState.handler(() => ({
-			validationErrors: state.validationErrors,
-			unhandledErrors: state.unhandledErrors,
+			status: 200,
+			body: {
+				validationErrors: state.validationErrors,
+				unhandledErrors: state.unhandledErrors,
+			},
 		})),
 	};
 };

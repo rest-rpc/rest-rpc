@@ -1,6 +1,10 @@
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 import { initClient, route as coreRoute } from "@rest-rpc/core";
-import { serverFirstRoute, type ServerRouteBuilder } from "@rest-rpc/server";
+import {
+	serverFirstRoute,
+	type RouteResponse,
+	type ServerRouteBuilder,
+} from "@rest-rpc/server";
 import { expectError, expectType } from "tsd";
 import { z } from "zod";
 
@@ -62,6 +66,11 @@ const declared = route
 		body: { id: "todo-1", title: body.title },
 	}));
 expectType<typeof output>(declared["~restrpc"].responses[201]);
+const declaredNoBody = route.get("/declared-no-body").response(204);
+expectType<{ status: 204 }>(
+	null as unknown as RouteResponse<(typeof declaredNoBody)["~restrpc"]>,
+);
+declaredNoBody.handler(() => ({ status: 204 }));
 expectError(
 	route
 		.get("/invalid")

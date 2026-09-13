@@ -22,13 +22,16 @@ const implementor = implement(api);
 
 const routes = {
 	todos: {
-		list: implementor.todos.list.handler(() => listTodos()),
+		list: implementor.todos.list.handler(() => ({
+			status: 200,
+			body: listTodos(),
+		})),
 		get: implementor.todos.get.handler(({ params: { id }, c }) => {
 			const authorization = c.req.header("authorization");
-			return getTodo(id, { authorization });
+			return { status: 200, body: getTodo(id, { authorization }) };
 		}),
 		create: implementor.todos.create.handler(({ body: { title } }) => {
-			return createTodo({ title });
+			return { status: 201, body: createTodo({ title }) };
 		}),
 	},
 };

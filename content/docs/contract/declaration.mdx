@@ -62,12 +62,15 @@ const routes = {
 	todos: {
 		update: implement(api.todos.update).handler(
 			({ params, query, headers, body }) => {
-				return updateTodo({
-					id: params.id,
-					includeCompleted: query.includeCompleted,
-					requestId: headers["x-request-id"],
-					title: body.title,
-				});
+				return {
+					status: 200,
+					body: updateTodo({
+						id: params.id,
+						includeCompleted: query.includeCompleted,
+						requestId: headers["x-request-id"],
+						title: body.title,
+					}),
+				};
 			},
 		),
 	},

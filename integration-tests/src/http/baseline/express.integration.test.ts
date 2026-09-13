@@ -103,12 +103,15 @@ it("waits for Express drain before writing the next stream chunk", async () => {
 			...implementations,
 			streams: {
 				...implementations.streams,
-				text: implementor.streams.text.handler(async function* () {
-					pulledChunks = 1;
-					yield "alpha\n";
-					pulledChunks = 2;
-					yield "beta\n";
-				}),
+				text: implementor.streams.text.handler(() => ({
+					status: 200,
+					body: (async function* () {
+						pulledChunks = 1;
+						yield "alpha\n";
+						pulledChunks = 2;
+						yield "beta\n";
+					})(),
+				})),
 			},
 		},
 		{
@@ -170,15 +173,18 @@ it("releases an Express backpressure wait when the response closes before drain"
 			...implementations,
 			streams: {
 				...implementations.streams,
-				text: implementor.streams.text.handler(async function* () {
-					try {
-						yield "alpha\n";
-						yield "beta\n";
-					} finally {
-						returned = true;
-						finalized();
-					}
-				}),
+				text: implementor.streams.text.handler(() => ({
+					status: 200,
+					body: (async function* () {
+						try {
+							yield "alpha\n";
+							yield "beta\n";
+						} finally {
+							returned = true;
+							finalized();
+						}
+					})(),
+				})),
 			},
 		},
 		{

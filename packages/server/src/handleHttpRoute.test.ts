@@ -30,7 +30,7 @@ describe("handleHttpRoute", () => {
 					route,
 				});
 
-				return { id: request.params.id };
+				return { status: 200, body: { id: request.params.id } };
 			},
 			{
 				request: {
@@ -62,6 +62,7 @@ describe("handleHttpRoute", () => {
 					context: {},
 					route,
 				});
+				return { status: 204 };
 			},
 			{
 				request: {
@@ -132,6 +133,24 @@ describe("handleHttpRoute", () => {
 		});
 	});
 
+	it("normalizes declared procedure outputs directly", async () => {
+		const route = coreRoute.output(z.object({ status: z.literal("ready") }))[
+			"~restrpc"
+		];
+		const result = await handleHttpRoute(route, () => ({ status: "ready" }), {
+			request: {},
+			handlerFields: {},
+			context: {},
+		});
+
+		assert.deepEqual(result, {
+			kind: "json",
+			status: 200,
+			headers: undefined,
+			body: { status: "ready" },
+		});
+	});
+
 	it("rethrows user handler errors unchanged", async () => {
 		const expected = new Error("boom");
 		await assert.rejects(
@@ -160,7 +179,7 @@ describe("handleHttpRoute", () => {
 					coreRoute.get("/todos").response(200, z.object({ id: z.string() }))[
 						"~restrpc"
 					],
-					() => ({ id: 123 }),
+					() => ({ status: 200, body: { id: 123 } }),
 					{
 						request: {},
 						handlerFields: {},
@@ -173,28 +192,6 @@ describe("handleHttpRoute", () => {
 				assert.equal(error.issues.length, 1);
 				return true;
 			},
-		);
-	});
-
-	it("requires explicit response objects when a route has multiple success statuses", async () => {
-		await assert.rejects(
-			() =>
-				handleHttpRoute(
-					coreRoute
-						.post("/todos")
-						.response(200, z.object({ id: z.string() }))
-						.response(202, z.object({ id: z.string() }))["~restrpc"],
-					() => ({ id: "todo-1" }),
-					{
-						request: {},
-						handlerFields: {},
-						context: {},
-					},
-				),
-			(error) =>
-				error instanceof Error &&
-				!(error instanceof ResponseValidationError) &&
-				/declared response object/.test(error.message),
 		);
 	});
 

@@ -26,8 +26,8 @@ export const createTanstackQueryImplementations = () => {
 	return {
 		projects: {
 			list: implementor.projects.list.handler(() => ({
-				projects: listProjects(),
-				version,
+				status: 200,
+				body: { projects: listProjects(), version },
 			})),
 			get: implementor.projects.get.handler((request) => {
 				const project = projects.get(request.params.id);
@@ -45,16 +45,21 @@ export const createTanstackQueryImplementations = () => {
 				};
 			}),
 			search: implementor.projects.search.handler((request) => ({
-				projects: listProjects().filter((project) => {
-					const matchesStatus =
-						request.query.status === undefined ||
-						project.status === request.query.status;
-					const matchesQuery =
-						request.query.q === undefined ||
-						project.name.toLowerCase().includes(request.query.q.toLowerCase());
+				status: 200,
+				body: {
+					projects: listProjects().filter((project) => {
+						const matchesStatus =
+							request.query.status === undefined ||
+							project.status === request.query.status;
+						const matchesQuery =
+							request.query.q === undefined ||
+							project.name
+								.toLowerCase()
+								.includes(request.query.q.toLowerCase());
 
-					return matchesStatus && matchesQuery;
-				}),
+						return matchesStatus && matchesQuery;
+					}),
+				},
 			})),
 			create: implementor.projects.create.handler((request) => {
 				version += 1;
@@ -113,8 +118,8 @@ export const createTanstackQueryImplementations = () => {
 				const nextCursor = end < projects.size ? String(end) : undefined;
 
 				return {
-					projects: pageProjects,
-					nextCursor,
+					status: 200,
+					body: { projects: pageProjects, nextCursor },
 				};
 			}),
 			slow: implementor.projects.slow.handler(async (request) => {
@@ -128,10 +133,13 @@ export const createTanstackQueryImplementations = () => {
 					},
 				};
 			}),
-			events: implementor.projects.events.handler(async function* () {
-				yield { id: "project-1", event: "created" as const };
-				yield { id: "project-1", event: "renamed" as const };
-			}),
+			events: implementor.projects.events.handler(() => ({
+				status: 200,
+				body: (async function* () {
+					yield { id: "project-1", event: "created" as const };
+					yield { id: "project-1", event: "renamed" as const };
+				})(),
+			})),
 		},
 	};
 };

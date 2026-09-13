@@ -21,7 +21,6 @@ export type {
 	RouteErrors,
 	RouteRequestData,
 	RouteResponse,
-	RouteResponseShorthand,
 } from "@rest-rpc/server";
 export {
 	RequestValidationError,

@@ -15,7 +15,8 @@ export const createResponsesImplementations = () => {
 		invalidDeclared: implementor.invalidDeclared.handler(
 			() =>
 				({
-					ok: "not-a-boolean",
+					status: 200,
+					body: { ok: "not-a-boolean" },
 				}) as never,
 		),
 	};

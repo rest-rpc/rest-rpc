@@ -11,7 +11,6 @@ import type {
 	RouteRequest,
 	RouteRequestData,
 	RouteResponse,
-	RouteResponseShorthand,
 } from "@rest-rpc/express";
 import {
 	createRouteHandler as createNodeRouteHandler,
@@ -249,8 +248,6 @@ export type CreateExpressRouteHandlerReturn = ReturnType<
 	RouteHandler<CreateTodoRoute>
 >;
 export type CreateExpressRouteResponse = RouteResponse<CreateTodoDeclaration>;
-export type CreateExpressRouteResponseShorthand =
-	RouteResponseShorthand<CreateTodoDeclaration>;
 export type CreateExpressRouteErrors = RouteErrors<CreateTodoDeclaration>;
 export type CreateExpressRouteImplementation = typeof createTodoServerRoute;
 

@@ -39,7 +39,7 @@ export const routes = {
 	todos: {
 		create: implement(api.todos.create).handler(
 			({ body: { title, labels } }) => {
-				return createTodo({ title, labels });
+				return { status: 201, body: createTodo({ title, labels }) };
 			},
 		),
 	},
@@ -85,10 +85,10 @@ const implementor = implement(api);
 export const routes = {
 	todos: {
 		list: implementor.todos.list.handler(({ query: { limit } }) => {
-			return listTodos({ limit });
+			return { status: 200, body: listTodos({ limit }) };
 		}),
 		byId: implementor.todos.byId.handler(({ params: { id } }) => {
-			return getTodoById({ id });
+			return { status: 200, body: getTodoById({ id }) };
 		}),
 	},
 };
@@ -131,8 +131,8 @@ export const routes = {
 	forms: {
 		submit: implement(api.forms.submit).handler(({ body }) => {
 			return {
-				title: body.title,
-				count: body.count,
+				status: 201,
+				body: { title: body.title, count: body.count },
 			};
 		}),
 	},
@@ -190,7 +190,8 @@ export const routes = {
 	uploads: {
 		create: implement(api.uploads.create).handler(({ body }) => {
 			return {
-				title: body.title,
+				status: 201,
+				body: { title: body.title },
 			};
 		}),
 	},
@@ -243,7 +244,7 @@ export const api = {
 export const routes = {
 	imports: {
 		csv: implement(api.imports.csv).handler(({ body }) => {
-			return importCsv(body);
+			return { status: 201, body: importCsv(body) };
 		}),
 	},
 };
@@ -288,10 +289,13 @@ export const api = {
 export const routes = {
 	images: {
 		upload: implement(api.images.upload).handler(({ body }) => {
-			return saveImage({
-				contentType: body.contentType,
-				bytes: body.payload,
-			});
+			return {
+				status: 201,
+				body: saveImage({
+					contentType: body.contentType,
+					bytes: body.payload,
+				}),
+			};
 		}),
 	},
 };
@@ -336,7 +340,8 @@ export const routes = {
 	forms: {
 		submit: implement(api.forms.submit).handler(({ body }) => {
 			return {
-				title: body.get("title") ?? "",
+				status: 201,
+				body: { title: body.get("title") ?? "" },
 			};
 		}),
 	},

@@ -59,7 +59,6 @@ export type {
 	ServerErrors,
 	ServerResponse,
 	ServerResponseBody,
-	ServerSuccessBody,
 	SuccessfulDeclaredClientResponse,
 } from "./response.ts";
 export {

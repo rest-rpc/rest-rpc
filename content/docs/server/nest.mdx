@@ -38,9 +38,10 @@ class TodoRoutes {
 	constructor(private readonly todos: TodoRepository) {}
 
 	readonly routes = {
-		get: builders.todos.get.handler(({ params: { id } }) =>
-			this.todos.find(id),
-		),
+		get: builders.todos.get.handler(({ params: { id } }) => ({
+			status: 200,
+			body: this.todos.find(id),
+		})),
 		create: builders.todos.create.handler(({ body: { title } }) => ({
 			status: 201,
 			body: this.todos.create(title),
@@ -88,9 +89,10 @@ class TodoController {
 
 	@Implement(api.todos.get)
 	getTodo() {
-		return implement(api.todos.get).handler(({ params: { id } }) =>
-			this.todos.find(id),
-		);
+		return implement(api.todos.get).handler(({ params: { id } }) => ({
+			status: 200,
+			body: this.todos.find(id),
+		}));
 	}
 }
 ```
@@ -122,7 +124,10 @@ class TodoController {
 	@Implement(todoRoutes)
 	routes() {
 		return {
-			get: todoRoutes.get.handler(({ params: { id } }) => this.todos.find(id)),
+			get: todoRoutes.get.handler(({ params: { id } }) => ({
+				status: 200,
+				body: this.todos.find(id),
+			})),
 		};
 	}
 }

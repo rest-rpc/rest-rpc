@@ -191,10 +191,16 @@ type ClientResponseEntry<TStatus extends number, TResponse> = ResponseEntry<
 	? Simplify<TEntry>
 	: never;
 
-type ServerResponseEntry<TStatus extends number, TResponse> = ResponseEntry<
-	TStatus,
-	ServerResponseBody<ResponseBody<TResponse>>
-> &
+type ServerResponseBase<TStatus extends number, TBody> = [TBody] extends [
+	undefined,
+]
+	? { status: TStatus }
+	: ResponseEntry<TStatus, TBody>;
+
+type ServerResponseEntry<
+	TStatus extends number,
+	TResponse,
+> = ServerResponseBase<TStatus, ServerResponseBody<ResponseBody<TResponse>>> &
 	ResponseHeadersMetadata<TResponse, "input"> extends infer TEntry
 	? Simplify<TEntry>
 	: never;
@@ -277,19 +283,6 @@ type ServerSuccessResponse<E extends RouteDeclaration> = E extends {
 				: never;
 		}[keyof TResponses]
 	: never;
-
-type InferSingleServerResponseBody<TResponse> = [TResponse] extends [never]
-	? never
-	: IsUnion<TResponse> extends true
-		? never
-		: TResponse extends { responseHeaders: unknown }
-			? never
-			: TResponse extends { body: infer TBody }
-				? TBody
-				: never;
-
-export type ServerSuccessBody<E extends RouteDeclaration> =
-	InferSingleServerResponseBody<ServerSuccessResponse<E>>;
 
 export type ErrorDeclaredClientResponse<E extends RouteDeclaration> = Exclude<
 	DeclaredClientResponse<E>,

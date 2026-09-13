@@ -77,15 +77,9 @@ const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
 	Symbol.asyncIterator in value &&
 	typeof value[Symbol.asyncIterator] === "function";
 
-const classifyImplicitResponse = (
-	route: RouteDeclaration,
-	result: unknown,
+const classifyImplicitHttpResponse = (
+	response: ImplicitResponseEnvelope,
 ): HttpRouteResult => {
-	if (route.kind === "procedure") {
-		return { kind: "json", status: 200, body: result };
-	}
-
-	const response = result as ImplicitResponseEnvelope;
 	const headers = response.responseHeaders;
 	if (!("body" in response)) {
 		return {
@@ -139,43 +133,10 @@ const getResponseSchema = (
 	return entry[1];
 };
 
-const getSingleSuccessfulStatus = (
-	route: RouteDeclaration,
-): number | undefined => {
-	const statuses = Object.keys(getRouteResponses(route))
-		.map(Number)
-		.filter((status) => status >= 200 && status < 300);
-
-	return statuses.length === 1 ? statuses[0] : undefined;
-};
-
-const normalizeHandlerResultEnvelopeOrShorthand = (
-	route: RouteDeclaration,
-	result: unknown,
-): {
+type DeclaredResponseEnvelope = {
 	status: number;
-	body: unknown;
+	body?: unknown;
 	responseHeaders?: Record<string, unknown>;
-} => {
-	if (result && typeof result === "object" && "status" in result) {
-		return result as {
-			status: number;
-			body: unknown;
-			responseHeaders?: Record<string, unknown>;
-		};
-	}
-
-	const status = getSingleSuccessfulStatus(route);
-	if (status === undefined) {
-		throw new Error(
-			`Handler for "${route.method} ${route.path}" must return a declared response object.`,
-		);
-	}
-
-	return {
-		status,
-		body: result,
-	};
 };
 
 const normalizeCustomBodyResult = async (schema: CustomBody, body: unknown) => {
@@ -193,11 +154,7 @@ const normalizeCustomBodyResult = async (schema: CustomBody, body: unknown) => {
 
 const normalizeResponseResult = async (
 	route: RouteDeclaration,
-	result: {
-		status: number;
-		body: unknown;
-		responseHeaders?: Record<string, unknown>;
-	},
+	result: DeclaredResponseEnvelope,
 ): Promise<HttpRouteResult> => {
 	const schema = getResponseSchema(route, result.status);
 	const bodySchema = getResponseBody(schema);
@@ -268,16 +225,6 @@ const normalizeResponseResult = async (
 	};
 };
 
-const normalizeHandlerResult = async (
-	route: RouteDeclaration,
-	result: unknown,
-): Promise<HttpRouteResult> => {
-	return normalizeResponseResult(
-		route,
-		normalizeHandlerResultEnvelopeOrShorthand(route, result),
-	);
-};
-
 const normalizeRouteResponseError = async (
 	route: RouteDeclaration,
 	error: RouteResponseError,
@@ -326,9 +273,14 @@ export async function handleHttpRoute<
 		throw error;
 	}
 
-	if (Object.keys(route.responses).length === 0) {
-		return classifyImplicitResponse(route, handlerResult);
+	const hasDeclaredResponses = Object.keys(route.responses).length > 0;
+	if (route.kind === "procedure") {
+		return hasDeclaredResponses
+			? normalizeResponseResult(route, { status: 200, body: handlerResult })
+			: { kind: "json", status: 200, body: handlerResult };
 	}
 
-	return normalizeHandlerResult(route, handlerResult);
+	return hasDeclaredResponses
+		? normalizeResponseResult(route, handlerResult as DeclaredResponseEnvelope)
+		: classifyImplicitHttpResponse(handlerResult as ImplicitResponseEnvelope);
 }

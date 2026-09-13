@@ -40,9 +40,10 @@ const implementor = implement(api);
 
 const routes = {
 	todos: {
-		getById: implementor.todos.getById.handler(({ params: { id } }) =>
-			getTodo(id),
-		),
+		getById: implementor.todos.getById.handler(({ params: { id } }) => ({
+			status: 200,
+			body: getTodo(id),
+		})),
 	},
 };
 

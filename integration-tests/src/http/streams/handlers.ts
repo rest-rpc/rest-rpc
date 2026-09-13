@@ -91,56 +91,76 @@ export const createStreamsImplementations = (
 	const implementor = implement(streamsContract);
 
 	return {
-		empty: implementor.empty.handler(async function* () {}),
-		ndjson: implementor.ndjson.handler(async function* () {
-			yield { id: "event-1", index: 1 };
-			yield { id: "event-2", index: 2 };
-		}),
-		cancellable: implementor.cancellable.handler(async function* ({ signal }) {
-			options.cancellationProbe?.markStarted();
-			signal.addEventListener(
-				"abort",
-				() => options.cancellationProbe?.markSignalAborted(),
-				{ once: true },
-			);
+		empty: implementor.empty.handler(() => ({
+			status: 200,
+			body: (async function* () {})(),
+		})),
+		ndjson: implementor.ndjson.handler(() => ({
+			status: 200,
+			body: (async function* () {
+				yield { id: "event-1", index: 1 };
+				yield { id: "event-2", index: 2 };
+			})(),
+		})),
+		cancellable: implementor.cancellable.handler(({ signal }) => ({
+			status: 200,
+			body: (async function* () {
+				options.cancellationProbe?.markStarted();
+				signal.addEventListener(
+					"abort",
+					() => options.cancellationProbe?.markSignalAborted(),
+					{ once: true },
+				);
 
-			try {
-				let index = 1;
-				while (true) {
-					yield { id: `event-${index}`, index };
-					index += 1;
-					await delay(25);
+				try {
+					let index = 1;
+					while (true) {
+						yield { id: `event-${index}`, index };
+						index += 1;
+						await delay(25);
+					}
+				} finally {
+					options.cancellationProbe?.markFinalized();
 				}
-			} finally {
-				options.cancellationProbe?.markFinalized();
-			}
-		}),
-		rawText: implementor.rawText.handler(async function* () {
-			yield '{"not":"ndjson"}\n';
-			yield "plain tail";
-		}),
-		rawBytes: implementor.rawBytes.handler(async function* () {
-			yield new Uint8Array([0, 1, 127]);
-			yield new Uint8Array([128, 255]);
-		}),
-		invalid: implementor.invalid.handler(async function* () {
-			yield { id: "event-1", index: 1 };
-			await delay(10);
-			yield { id: "event-2", index: "bad" } as never;
-		}),
-		throwsBeforeFirstChunk: implementor.throwsBeforeFirstChunk.handler(
-			async function* () {
+			})(),
+		})),
+		rawText: implementor.rawText.handler(() => ({
+			status: 200,
+			body: (async function* () {
+				yield '{"not":"ndjson"}\n';
+				yield "plain tail";
+			})(),
+		})),
+		rawBytes: implementor.rawBytes.handler(() => ({
+			status: 200,
+			body: (async function* () {
+				yield new Uint8Array([0, 1, 127]);
+				yield new Uint8Array([128, 255]);
+			})(),
+		})),
+		invalid: implementor.invalid.handler(() => ({
+			status: 200,
+			body: (async function* () {
+				yield { id: "event-1", index: 1 };
+				await delay(10);
+				yield { id: "event-2", index: "bad" } as never;
+			})(),
+		})),
+		throwsBeforeFirstChunk: implementor.throwsBeforeFirstChunk.handler(() => ({
+			status: 200,
+			body: (async function* () {
 				await delay(10);
 				yield throwBeforeYield();
-			},
-		),
-		throwsAfterChunks: implementor.throwsAfterChunks.handler(
-			async function* () {
+			})(),
+		})),
+		throwsAfterChunks: implementor.throwsAfterChunks.handler(() => ({
+			status: 200,
+			body: (async function* () {
 				yield { id: "event-1", index: 1 };
 				yield { id: "event-2", index: 2 };
 				await delay(10);
 				throw new Error("boom after stream chunks");
-			},
-		),
+			})(),
+		})),
 	};
 };

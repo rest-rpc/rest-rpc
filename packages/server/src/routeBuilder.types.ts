@@ -10,7 +10,6 @@ import type {
 	ServerErrors,
 	ServerRequest,
 	ServerResponse,
-	ServerSuccessBody,
 	Stream,
 } from "@rest-rpc/core/contract";
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
@@ -28,10 +27,6 @@ export type RuntimeRouteHandler = (
 export type RouteRequestData<TRoute extends RouteDeclaration> =
 	ServerRequest<TRoute>;
 
-/** Infers the shorthand successful response body for a route. */
-export type RouteResponseShorthand<TRoute extends RouteDeclaration> =
-	ServerSuccessBody<TRoute>;
-
 /** Infers the declared non-success responses for a route. */
 export type RouteErrors<TRoute extends RouteDeclaration> = ServerErrors<TRoute>;
 
@@ -44,17 +39,8 @@ type RequestValue<TRoute extends RouteDeclaration> =
 		? EmptyObject
 		: RouteRequestData<TRoute>;
 
-type ExcludeResponseEnvelopeLike<TValue> = TValue extends unknown
-	? TValue extends Record<string, unknown>
-		? "status" extends keyof TValue
-			? never
-			: TValue
-		: TValue
-	: never;
-
 type HandlerResult<TRoute extends RouteDeclaration> = MaybePromise<
-	| RouteResponse<TRoute>
-	| ExcludeResponseEnvelopeLike<RouteResponseShorthand<TRoute>>
+	RouteResponse<TRoute>
 >;
 
 /** Infers the route handler request type for a route declaration. */

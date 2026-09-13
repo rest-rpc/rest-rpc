@@ -249,7 +249,7 @@ const routes = {
 
 			todos.set(todo.id, todo);
 
-			return todo;
+			return { status: 201, body: todo };
 		}),
 	},
 };
@@ -316,7 +316,7 @@ const routes = {
 
 			todos.set(todo.id, todo);
 
-			return todo;
+			return { status: 201, body: todo };
 		}),
 	},
 };
@@ -383,7 +383,7 @@ const routes = {
 
 			todos.set(todo.id, todo);
 
-			return todo;
+			return { status: 201, body: todo };
 		}),
 	},
 };
@@ -451,7 +451,7 @@ class TodoService {
 			};
 
 			this.todos.set(todo.id, todo);
-			return todo;
+			return { status: 201, body: todo };
 		}),
 	};
 }
@@ -496,7 +496,7 @@ const routes = {
 				completed: false,
 			};
 			todos.set(todo.id, todo);
-			return todo;
+			return { status: 201, body: todo };
 		}),
 	},
 };
@@ -530,7 +530,7 @@ const routes = {
 				completed: false,
 			};
 			todos.set(todo.id, todo);
-			return todo;
+			return { status: 201, body: todo };
 		}),
 	},
 };
