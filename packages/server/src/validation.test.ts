@@ -253,44 +253,17 @@ describe("validateRequest", () => {
 		}
 	});
 
-	it("validates URL-encoded custom request bodies as direct payloads", async () => {
-		const result = await validateRequest(
-			route
-				.post("/forms")
-				.body(
-					z.instanceof(URLSearchParams),
-					"application/x-www-form-urlencoded",
-				)
-				.response(204)["~restrpc"],
-			{
-				body: new URLSearchParams([["title", "Write docs"]]),
-				headers: {
-					"content-type": "application/x-www-form-urlencoded",
-				},
-			},
-		);
-
-		assert.equal(result.success, true);
-		if (result.success) {
-			assert.ok(result.data.body instanceof URLSearchParams);
-			assert.equal(result.data.body.get("title"), "Write docs");
-			assert.equal(
-				result.data.contentType,
-				"application/x-www-form-urlencoded",
-			);
-		}
-	});
-
 	it("validates urlencoded form bodies from URLSearchParams", async () => {
 		const result = await validateRequest(
 			route
 				.post("/forms")
-				.formBody(
+				.body(
 					z.object({
 						title: z.string(),
 						count: z.coerce.number<number>(),
 						remember: z.string().optional(),
 					}),
+					"application/x-www-form-urlencoded",
 				)
 				.response(204)["~restrpc"],
 			{
@@ -311,6 +284,7 @@ describe("validateRequest", () => {
 					title: "Write docs",
 					count: 3,
 				},
+				contentType: "application/x-www-form-urlencoded",
 			});
 		}
 	});
@@ -319,11 +293,12 @@ describe("validateRequest", () => {
 		const result = await validateRequest(
 			route
 				.post("/forms")
-				.formBody(
+				.body(
 					z.object({
 						title: z.string(),
 						tags: z.array(z.string()),
 					}),
+					"application/x-www-form-urlencoded",
 				)
 				.response(204)["~restrpc"],
 			{
@@ -346,6 +321,7 @@ describe("validateRequest", () => {
 					title: "Second",
 					tags: ["ts", "rpc"],
 				},
+				contentType: "application/x-www-form-urlencoded",
 			});
 		}
 	});
@@ -362,13 +338,14 @@ describe("validateRequest", () => {
 		const result = await validateRequest(
 			route
 				.post("/uploads")
-				.multipartBody(
+				.body(
 					z.object({
 						title: z.string(),
 						count: z.coerce.number<number>(),
 						file: z.instanceof(Blob),
 						tags: z.array(z.string()),
 					}),
+					"multipart/form-data",
 				)
 				.response(204)["~restrpc"],
 			{
@@ -512,11 +489,7 @@ describe("validateResponseStreamChunks", () => {
 
 		const chunks = validateResponseStreamChunks(rows(), {
 			kind: "stream",
-			schema: {
-				kind: "customBody",
-				contentType: "text/csv",
-				schema: z.number(),
-			},
+			schema: z.number(),
 		});
 
 		await assert.rejects(

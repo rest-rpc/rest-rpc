@@ -1,17 +1,10 @@
-import {
-	isStandardSchema,
-	type StandardSchemaV1,
-} from "../standard-schema/index.ts";
-import type { CustomBody, CustomResponseBody, NoBody, Stream } from "./body.ts";
+import type { StandardSchemaV1 } from "../standard-schema/index.ts";
+import type { BodyContentType, Stream } from "./body.ts";
 import type { RouteDeclaration } from "./routeDeclaration.ts";
 
 export type ResponseSchema = StandardSchemaV1;
 
-export type ResponseBodySchema =
-	| ResponseSchema
-	| NoBody
-	| CustomResponseBody
-	| Stream;
+export type ResponseBodySchema = ResponseSchema | Stream;
 
 /**
  * Declares a whole-object schema for typed response headers.
@@ -23,36 +16,23 @@ export type ResponseHeaders = StandardSchemaV1<
 	Record<string, string | number | undefined>
 >;
 
-/** Declares a standard-schema response body with optional typed headers. */
-export type RegularResponseDeclaration =
-	| ResponseSchema
-	| {
-			body: ResponseSchema;
-			headers: ResponseHeaders;
-	  };
-
-/** Declares a parsed response body with one or more custom content types. */
-export type CustomResponseDeclaration<
-	TSchema extends ResponseSchema = ResponseSchema,
-	TContentType extends string | readonly string[] = string | readonly string[],
-> = {
-	body: TSchema;
-	contentType: TContentType;
-	headers?: ResponseHeaders;
-};
-
 /**
- * Declares a route response body, or a body plus typed response headers.
+ * Canonical declaration for one route response.
  *
  * @see {@link https://rest-rpc.dev/docs/http-responses}
  */
-export type ResponseDeclaration =
-	| ResponseBodySchema
-	| CustomResponseDeclaration
-	| {
-			body: ResponseBodySchema;
-			headers: ResponseHeaders;
-	  };
+export type ResponseDeclaration = {
+	body: ResponseBodySchema | undefined;
+	contentType?: BodyContentType;
+	headers?: ResponseHeaders;
+};
+
+/** Options accepted when declaring a response body and its HTTP metadata. */
+export type ResponseOptions = {
+	body: ResponseSchema | undefined;
+	contentType?: BodyContentType;
+	headers?: ResponseHeaders;
+};
 
 export type RouteResponses = Record<number, ResponseDeclaration>;
 
@@ -60,31 +40,6 @@ export type RouteResponseInput =
 	| { responses: RouteResponses; response?: never }
 	| { response: ResponseDeclaration; responses?: never }
 	| { response?: never; responses?: never };
-
-export const hasResponseParts = (
-	response: ResponseDeclaration,
-): response is Extract<ResponseDeclaration, { body: ResponseBodySchema }> =>
-	typeof response === "object" &&
-	response !== null &&
-	!isStandardSchema(response) &&
-	"body" in response;
-
-export const getResponseBody = (
-	response: ResponseDeclaration,
-): ResponseBodySchema =>
-	hasResponseParts(response) ? response.body : response;
-
-export const getResponseHeaders = (
-	response: ResponseDeclaration,
-): ResponseHeaders | undefined =>
-	hasResponseParts(response) ? response.headers : undefined;
-
-export const getResponseContentType = (
-	response: ResponseDeclaration,
-): string | readonly string[] | undefined =>
-	hasResponseParts(response) && "contentType" in response
-		? response.contentType
-		: undefined;
 
 export const getRouteResponses = (route: {
 	path: string;
@@ -99,63 +54,23 @@ export const getRouteResponses = (route: {
 	return route.responses;
 };
 
-type InferCustomBodyPayload<
-	TSchema,
-	TIO extends "input" | "output",
-> = TSchema extends StandardSchemaV1
-	? TIO extends "input"
-		? StandardSchemaV1.InferInput<TSchema>
-		: StandardSchemaV1.InferOutput<TSchema>
-	: never;
-
-export type InferCustomBody<TResponse, TIO extends "input" | "output"> =
-	TResponse extends CustomBody<infer TSchema>
-		? InferCustomBodyPayload<TSchema, TIO>
-		: never;
-
-type InferCustomStreamBody<TBody, TIO extends "input" | "output"> =
-	TBody extends CustomBody<infer TSchema>
-		? AsyncIterable<InferCustomBodyPayload<TSchema, TIO>>
-		: never;
-
 type Simplify<T> = T extends unknown ? { [TKey in keyof T]: T[TKey] } : never;
 
 type InferClientResponseBody<TResponse> = TResponse extends StandardSchemaV1
 	? StandardSchemaV1.InferOutput<TResponse>
-	: TResponse extends NoBody
+	: TResponse extends undefined
 		? undefined
-		: TResponse extends CustomBody
-			? Response
-			: TResponse extends Stream<infer TBody>
-				? TBody extends CustomBody
-					? Response
-					: TBody extends StandardSchemaV1
-						? AsyncIterable<StandardSchemaV1.InferOutput<TBody>>
-						: never
-				: never;
+		: TResponse extends Stream<infer TBody>
+			? AsyncIterable<StandardSchemaV1.InferOutput<TBody>>
+			: never;
 
 export type ServerResponseBody<TResponse> = TResponse extends StandardSchemaV1
 	? StandardSchemaV1.InferInput<TResponse>
-	: TResponse extends NoBody
+	: TResponse extends undefined
 		? undefined
-		: TResponse extends CustomBody
-			? InferCustomBody<TResponse, "input">
-			: TResponse extends Stream<infer TBody>
-				? TBody extends CustomBody
-					? InferCustomStreamBody<TBody, "input">
-					: TBody extends StandardSchemaV1
-						? AsyncIterable<StandardSchemaV1.InferInput<TBody>>
-						: never
-				: never;
-
-type CustomBodyClientResponseMetadata<TBody> =
-	TBody extends CustomBody<StandardSchemaV1, infer TContentType>
-		? TContentType extends readonly string[]
-			? { contentType: TContentType[number] }
-			: TContentType extends string
-				? { contentType: TContentType }
-				: unknown
-		: unknown;
+		: TResponse extends Stream<infer TBody>
+			? AsyncIterable<StandardSchemaV1.InferInput<TBody>>
+			: never;
 
 type ClientResponseMetadata<TResponse> = TResponse extends {
 	contentType: infer TContentType;
@@ -165,9 +80,7 @@ type ClientResponseMetadata<TResponse> = TResponse extends {
 		: TContentType extends string
 			? { contentType: TContentType }
 			: unknown
-	: TResponse extends Stream<infer TBody>
-		? CustomBodyClientResponseMetadata<TBody>
-		: CustomBodyClientResponseMetadata<TResponse>;
+	: unknown;
 
 type ServerResponseMetadata<TResponse> = TResponse extends {
 	contentType: infer TContentType;
@@ -177,22 +90,11 @@ type ServerResponseMetadata<TResponse> = TResponse extends {
 		: TContentType extends string
 			? { contentType?: TContentType }
 			: unknown
-	: TResponse extends Stream<infer TBody>
-		? CustomBodyServerResponseMetadata<TBody>
-		: CustomBodyServerResponseMetadata<TResponse>;
-
-type CustomBodyServerResponseMetadata<TBody> =
-	TBody extends CustomBody<StandardSchemaV1, infer TContentType>
-		? TContentType extends readonly string[]
-			? { contentType: TContentType[number] }
-			: TContentType extends string
-				? { contentType?: TContentType }
-				: unknown
-		: unknown;
+	: unknown;
 
 type ResponseBody<TResponse> = TResponse extends { body: infer TBody }
 	? TBody
-	: TResponse;
+	: never;
 
 type ResponseHeadersFor<TResponse> = TResponse extends {
 	headers: infer THeaders extends ResponseHeaders;

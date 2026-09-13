@@ -91,10 +91,7 @@ export const integrationContract = {
 		ndjson: route
 			.get("/streams/ndjson")
 			.streamResponse(200, z.object({ id: z.string(), index: z.number() })),
-		text: route.get("/streams/text").customStreamResponse(200, {
-			contentType: "text/plain",
-			schema: z.string(),
-		}),
+		text: route.get("/streams/text").streamResponse(200, z.string()),
 	},
 } as const;
 

@@ -1,5 +1,4 @@
-import type { CustomBody } from "../contract/body.ts";
-import { isCustomBody, isNoBody, isStream } from "../contract/body.ts";
+import { isStream } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import type {
 	DeclaredClientResponse,
@@ -7,12 +6,7 @@ import type {
 	ResponseDeclaration,
 	SuccessfulDeclaredClientResponse,
 } from "../contract/response.ts";
-import {
-	getResponseBody,
-	getResponseContentType,
-	getResponseHeaders,
-	getRouteResponses,
-} from "../contract/response.ts";
+import { getRouteResponses } from "../contract/response.ts";
 import {
 	isStandardSchema,
 	validateStandardSchema,
@@ -39,19 +33,13 @@ const isSuccessStatus = (status: number) => status >= 200 && status < 300;
  */
 export const SERVER_FIRST_RESPONSE_KIND_HEADER = "X-Rest-Rpc-Response-Kind";
 
-type ServerFirstResponseKind =
-	| "empty"
-	| "json"
-	| "ndjson"
-	| "custom"
-	| "custom-stream";
+type ServerFirstResponseKind = "empty" | "json" | "ndjson" | "custom";
 
 const serverFirstResponseKinds: readonly ServerFirstResponseKind[] = [
 	"empty",
 	"json",
 	"ndjson",
 	"custom",
-	"custom-stream",
 ];
 
 const isServerFirstResponseKind = (
@@ -143,15 +131,6 @@ export const readServerFirstResponse = async (
 			}
 			body = await bodyParser(rawResponse);
 			break;
-		case "custom-stream":
-			contentType = rawResponse.headers.get("content-type") ?? undefined;
-			if (!contentType) {
-				throw new Error(
-					"Server response is missing required Content-Type header for a custom response kind.",
-				);
-			}
-			body = rawResponse;
-			break;
 	}
 
 	return {
@@ -164,13 +143,13 @@ export const readServerFirstResponse = async (
 };
 
 export const readDeclaredBody = async (
-	schema: ResponseBodySchema,
+	schema: ResponseBodySchema | undefined,
 	rawResponse: Response,
 	validate: boolean,
 	customContentType?: string | readonly string[],
 	bodyParser: ApiClientBodyParser = defaultBodyParser,
 ) => {
-	if (isNoBody(schema)) return undefined;
+	if (schema === undefined) return undefined;
 
 	if (customContentType !== undefined) {
 		resolveDeclaredContentType(
@@ -188,11 +167,6 @@ export const readDeclaredBody = async (
 	}
 
 	if (isStream(schema)) {
-		if (isCustomBody(schema.schema)) return rawResponse;
-		if (!isStandardSchema(schema.schema)) {
-			throw new Error("Server returned an unsupported stream response");
-		}
-
 		if (!rawResponse.body) {
 			throw new Error("Server returned an empty stream response");
 		}
@@ -251,22 +225,11 @@ const resolveDeclaredContentType = (
 	return contentType;
 };
 
-const customResponseMetadata = (schema: CustomBody, rawResponse: Response) => ({
-	contentType: resolveDeclaredContentType(
-		Array.isArray(schema.contentType)
-			? schema.contentType
-			: schema.contentType
-				? [schema.contentType]
-				: [],
-		rawResponse,
-	),
-});
-
 const declaredResponseMetadata = (
 	schema: ResponseDeclaration,
 	rawResponse: Response,
 ) => {
-	const contentType = getResponseContentType(schema);
+	const { contentType } = schema;
 	if (contentType !== undefined) {
 		return {
 			contentType: resolveDeclaredContentType(
@@ -274,11 +237,6 @@ const declaredResponseMetadata = (
 				rawResponse,
 			),
 		};
-	}
-	const body = getResponseBody(schema);
-	if (isCustomBody(body)) return customResponseMetadata(body, rawResponse);
-	if (isStream(body) && isCustomBody(body.schema)) {
-		return customResponseMetadata(body.schema, rawResponse);
 	}
 	return {};
 };
@@ -288,7 +246,7 @@ const readDeclaredHeaders = async (
 	rawResponse: Response,
 	validate: boolean,
 ) => {
-	const headers = getResponseHeaders(schema);
+	const { headers } = schema;
 	if (!headers) return {};
 
 	const rawHeaders = Object.fromEntries(rawResponse.headers.entries());
@@ -332,10 +290,10 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 	return {
 		status: rawResponse.status,
 		body: await readDeclaredBody(
-			getResponseBody(schema),
+			schema.body,
 			rawResponse,
 			validateResponse,
-			getResponseContentType(schema),
+			schema.contentType,
 			bodyParser,
 		),
 		headers: rawResponse.headers,

@@ -223,7 +223,7 @@ const apiRoute = route.with({
 		serverFirst
 			? ""
 			: `responses: {
-		500: errorSchema,
+		500: { body: errorSchema },
 	},`
 	}
 });

@@ -1,10 +1,4 @@
-import {
-	isCustomBody,
-	isFormBody,
-	isMultipartBody,
-	isNoBody,
-	isStream,
-} from "../contract/body.ts";
+import { isStream } from "../contract/body.ts";
 import type { OpenApiResponseOptions } from "../contract/routeDeclaration.ts";
 import type { RouteDeclaration } from "../contract/routeDeclaration.ts";
 import type {
@@ -17,12 +11,7 @@ import type {
 	ResponseDeclaration,
 	ResponseHeaders,
 } from "../contract/response.ts";
-import {
-	getResponseBody,
-	getResponseContentType,
-	getResponseHeaders,
-	getRouteResponses,
-} from "../contract/response.ts";
+import { getRouteResponses } from "../contract/response.ts";
 import {
 	isStandardSchema,
 	type StandardSchemaV1,
@@ -123,15 +112,6 @@ const createContent = (
 ) =>
 	Object.fromEntries(contentTypes.map((contentType) => [contentType, value]));
 
-const contentTypesForCustomBody = (schema: {
-	contentType?: string | readonly string[];
-}) =>
-	schema.contentType === undefined
-		? []
-		: Array.isArray(schema.contentType)
-			? schema.contentType
-			: [schema.contentType];
-
 export const createParameters = (
 	schema: StandardSchemaV1 | JsonQuery | undefined,
 	location: "path" | "query" | "header",
@@ -195,21 +175,15 @@ export const createRequestBody = (
 	customContentType?: string | readonly string[],
 ): OpenApiRequestBody | undefined => {
 	if (!schema) return undefined;
-	if (isNoBody(schema)) return undefined;
-	const contentTypes = isFormBody(schema)
-		? [FORM_URLENCODED_CONTENT_TYPE]
-		: isMultipartBody(schema)
-			? [MULTIPART_FORM_DATA_CONTENT_TYPE]
-			: customContentType !== undefined
-				? Array.isArray(customContentType)
-					? customContentType
-					: [customContentType as string]
-				: [JSON_CONTENT_TYPE];
+	const contentTypes =
+		customContentType !== undefined
+			? Array.isArray(customContentType)
+				? customContentType
+				: [customContentType as string]
+			: [JSON_CONTENT_TYPE];
 	if (contentTypes.length === 0) return undefined;
-	const bodySchema =
-		isFormBody(schema) || isMultipartBody(schema) ? schema.schema : schema;
-	const openApiSchema = isStandardSchema(bodySchema)
-		? (converter?.(bodySchema, "input") ?? {})
+	const openApiSchema = isStandardSchema(schema)
+		? (converter?.(schema, "input") ?? {})
 		: undefined;
 
 	return {
@@ -226,13 +200,17 @@ export const createResponse = (
 	converter: SchemaConverter | undefined,
 	openApiResponse?: OpenApiResponseOptions,
 ): OpenApiResponse => {
-	const schema = getResponseBody(responseDeclaration);
+	const {
+		body: schema,
+		contentType,
+		headers: declaredHeaders,
+	} = responseDeclaration;
 	const headers = mergeResponseHeaders(
 		createOpenApiResponseHeaders(openApiResponse?.headers, converter),
-		createResponseHeaders(getResponseHeaders(responseDeclaration), converter),
+		createResponseHeaders(declaredHeaders, converter),
 	);
 
-	if (isNoBody(schema)) {
+	if (schema === undefined) {
 		return {
 			description: openApiResponse?.description ?? description,
 			...(headers ? { headers } : {}),
@@ -240,30 +218,22 @@ export const createResponse = (
 	}
 
 	if (isStream(schema)) {
-		const contentTypes = isCustomBody(schema.schema)
-			? contentTypesForCustomBody(schema.schema)
-			: [NDJSON_CONTENT_TYPE];
-
 		return {
 			description: openApiResponse?.description ?? description,
 			...(headers ? { headers } : {}),
-			content: Object.fromEntries(
-				contentTypes.map((contentType) => [
-					contentType,
-					{
-						schema: createStreamWireSchema(contentType),
-					},
-				]),
-			),
+			content: {
+				[NDJSON_CONTENT_TYPE]: {
+					schema: createStreamWireSchema(NDJSON_CONTENT_TYPE),
+				},
+			},
 		};
 	}
 
-	const customContentType = getResponseContentType(responseDeclaration);
 	const contentTypes =
-		customContentType !== undefined
-			? Array.isArray(customContentType)
-				? customContentType
-				: [customContentType as string]
+		contentType !== undefined
+			? Array.isArray(contentType)
+				? contentType
+				: [contentType as string]
 			: [JSON_CONTENT_TYPE];
 	const openApiSchema = isStandardSchema(schema)
 		? (converter?.(schema, "output") ?? {})

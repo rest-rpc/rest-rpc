@@ -380,42 +380,17 @@ describe("ApiClient requests", () => {
 		});
 	});
 
-	it("sends URLSearchParams through explicitly declared custom bodies", async () => {
+	it("sends form bodies as URLSearchParams with their declared content type", async () => {
 		const apiContract = {
 			forms: {
 				submit: route
 					.post("/forms")
 					.body(
-						z.instanceof(URLSearchParams),
-						"application/x-www-form-urlencoded",
-					)
-					.response(204),
-			},
-		};
-		const calls = captureFetch();
-		const client = initClient(apiContract, {
-			baseUrl: "https://api.test",
-		});
-		const body = new URLSearchParams([["title", "Write docs"]]);
-
-		await client.forms.submit({ body });
-
-		assert.equal(calls[0]?.init?.body, body);
-		assert.deepEqual(calls[0]?.init?.headers, {
-			"content-type": "application/x-www-form-urlencoded",
-		});
-	});
-
-	it("sends form bodies as URLSearchParams without generated content type", async () => {
-		const apiContract = {
-			forms: {
-				submit: route
-					.post("/forms")
-					.formBody(
 						z.object({
 							title: z.string(),
 							remember: z.boolean().optional(),
 						}),
+						"application/x-www-form-urlencoded",
 					)
 					.response(204),
 			},
@@ -437,7 +412,9 @@ describe("ApiClient requests", () => {
 			calls[0].init.body.toString(),
 			"title=Write+docs&remember=true",
 		);
-		assert.deepEqual(calls[0]?.init?.headers, {});
+		assert.deepEqual(calls[0]?.init?.headers, {
+			"content-type": "application/x-www-form-urlencoded",
+		});
 	});
 
 	it("preserves body fields in grouped form payloads", async () => {
@@ -445,11 +422,12 @@ describe("ApiClient requests", () => {
 			forms: {
 				submit: route
 					.post("/forms")
-					.formBody(
+					.body(
 						z.object({
 							body: z.string(),
 							title: z.string(),
 						}),
+						"application/x-www-form-urlencoded",
 					)
 					.response(204),
 			},
@@ -478,11 +456,12 @@ describe("ApiClient requests", () => {
 			forms: {
 				submit: route
 					.post("/forms")
-					.formBody(
+					.body(
 						z.object({
 							title: z.string(),
 							tags: z.array(z.string()),
 						}),
+						"application/x-www-form-urlencoded",
 					)
 					.response(204),
 			},
@@ -511,12 +490,13 @@ describe("ApiClient requests", () => {
 			uploads: {
 				create: route
 					.post("/uploads")
-					.multipartBody(
+					.body(
 						z.object({
 							title: z.string(),
 							file: z.instanceof(Blob),
 							tags: z.array(z.string()).optional(),
 						}),
+						"multipart/form-data",
 					)
 					.response(204),
 			},
@@ -547,11 +527,12 @@ describe("ApiClient requests", () => {
 			uploads: {
 				create: route
 					.post("/uploads")
-					.multipartBody(
+					.body(
 						z.object({
 							body: z.string(),
 							title: z.string(),
 						}),
+						"multipart/form-data",
 					)
 					.response(204),
 			},
@@ -592,11 +573,10 @@ describe("ApiClient requests", () => {
 			baseUrl: "https://api.test",
 		});
 
-		await client.uploads.image({
-			body: "jpeg bytes",
-			contentType: "image/jpeg",
-			params: { id: "file 1" },
-		});
+		await client.uploads.image(
+			{ body: "jpeg bytes", params: { id: "file 1" } },
+			{ contentType: "image/jpeg" },
+		);
 
 		assert.equal(calls[0]?.url, "https://api.test/uploads/file%201/image");
 		assert.equal(calls[0]?.init?.body, "jpeg bytes");

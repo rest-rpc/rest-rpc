@@ -1,11 +1,8 @@
-import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type {
-	CustomBodyContentType,
-	CustomResponseInput,
-	CustomStreamResponseInput,
-	FormBodySchema,
-	MultipartBodySchema,
-} from "./body.ts";
+import {
+	isStandardSchema,
+	type StandardSchemaV1,
+} from "../standard-schema/index.ts";
+import type { BodyContentType } from "./body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	HttpMethod,
@@ -20,10 +17,7 @@ import type {
 	RequestParamsSchema,
 	RequestQuerySchema,
 } from "./request.ts";
-import type {
-	RegularResponseDeclaration,
-	ResponseDeclaration,
-} from "./response.ts";
+import type { ResponseDeclaration, ResponseOptions } from "./response.ts";
 import type {
 	RootRouteBuilder,
 	RouteBuilderOptions,
@@ -164,10 +158,7 @@ export class RouteBuilder {
 		return new RouteBuilder(httpState(this["~restrpc"], "DELETE", path));
 	}
 
-	body(
-		schema: StandardSchemaV1,
-		contentType?: CustomBodyContentType,
-	): RouteBuilder {
+	body(schema: StandardSchemaV1, contentType?: BodyContentType): RouteBuilder {
 		const state = this["~restrpc"];
 		return new RouteBuilder({
 			...state,
@@ -179,27 +170,15 @@ export class RouteBuilder {
 		});
 	}
 
-	input(schema: StandardSchemaV1): RouteBuilder {
+	input(schema: StandardSchemaV1, contentType?: BodyContentType): RouteBuilder {
 		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
-			request: { ...state.request, body: schema },
-		});
-	}
-
-	formBody(schema: FormBodySchema): RouteBuilder {
-		const state = this["~restrpc"];
-		return new RouteBuilder({
-			...state,
-			request: { ...state.request, body: { kind: "formBody", schema } },
-		});
-	}
-
-	multipartBody(schema: MultipartBodySchema): RouteBuilder {
-		const state = this["~restrpc"];
-		return new RouteBuilder({
-			...state,
-			request: { ...state.request, body: { kind: "multipartBody", schema } },
+			request: {
+				...state.request,
+				body: schema,
+				...(contentType === undefined ? {} : { contentType }),
+			},
 		});
 	}
 
@@ -256,26 +235,24 @@ export class RouteBuilder {
 
 	response(
 		status: number,
-		schema?: RegularResponseDeclaration | CustomResponseInput,
+		input?: StandardSchemaV1 | ResponseOptions,
 	): RouteBuilder {
-		return addResponse(this["~restrpc"], status, schema ?? { kind: "noBody" });
+		const response =
+			input === undefined
+				? { body: undefined }
+				: isStandardSchema(input)
+					? { body: input }
+					: input;
+		return addResponse(this["~restrpc"], status, response);
 	}
 
 	output(schema: StandardSchemaV1): RouteBuilder {
-		return addResponse(procedureState(this["~restrpc"]), 200, schema);
+		return addResponse(procedureState(this["~restrpc"]), 200, { body: schema });
 	}
 
 	streamResponse(status: number, schema: StandardSchemaV1): RouteBuilder {
-		return addResponse(this["~restrpc"], status, { kind: "stream", schema });
-	}
-
-	customStreamResponse(
-		status: number,
-		input: CustomStreamResponseInput,
-	): RouteBuilder {
 		return addResponse(this["~restrpc"], status, {
-			kind: "stream",
-			schema: { kind: "customBody", ...input },
+			body: { kind: "stream", schema },
 		});
 	}
 }

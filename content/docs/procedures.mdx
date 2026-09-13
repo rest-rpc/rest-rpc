@@ -37,8 +37,11 @@ procedure does not commit the whole API to that style.
 
 ## Contract-First Procedures
 
-In a shared contract, `.input()` declares the JSON input and `.output()`
-declares the successful JSON result. An output is required; input is optional.
+In a shared contract, `.input()` declares the input and `.output()` declares
+the successful JSON result. Input uses JSON by default and accepts the same
+optional content-type argument as `.body()`. An output is required; input is
+optional. Form, multipart, and custom input values follow the transport-shape
+rules in [HTTP Requests](/docs/http-requests).
 
 ```ts
 import { route } from "@rest-rpc/core";

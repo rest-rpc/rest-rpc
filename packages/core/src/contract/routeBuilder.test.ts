@@ -56,7 +56,7 @@ describe("route builder runtime", () => {
 			.metadata({ scope: "write" })
 			.openAPI({ tags: ["Items"] });
 		assert.equal(declaration["~restrpc"].request?.body, schema);
-		assert.equal(declaration["~restrpc"].responses[201], schema);
+		assert.equal(declaration["~restrpc"].responses[201].body, schema);
 	});
 
 	it("returns a new declaration from every builder method", () => {
@@ -80,6 +80,6 @@ describe("route builder runtime", () => {
 		const procedureOutput = procedureInput.output(schema);
 		assert.notEqual(procedureOutput, procedureInput);
 		assert.deepEqual(procedureInput["~restrpc"].responses, {});
-		assert.equal(procedureOutput["~restrpc"].responses[200], schema);
+		assert.equal(procedureOutput["~restrpc"].responses[200].body, schema);
 	});
 });

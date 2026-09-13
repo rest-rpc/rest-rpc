@@ -1,4 +1,3 @@
-import { isFormBody, isMultipartBody, isNoBody } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import { replacePathParams } from "../contract/path.ts";
 import { isJsonQuery } from "../contract/request.ts";
@@ -36,10 +35,8 @@ export const takesRequestInput = (route: ClientRequestRoute) => {
 	if (request?.query || request?.params || request?.headers) {
 		return true;
 	}
-	if (isFormBody(request?.body)) return true;
-	if (isMultipartBody(request?.body)) return true;
 	if (request?.contentType !== undefined) return true;
-	return Boolean(request?.body && !isNoBody(request.body));
+	return Boolean(request?.body);
 };
 
 const findHeader = (headers: Record<string, string>, name: string) =>
@@ -64,8 +61,11 @@ export const assertNoContentTypeHeader = (headers: Record<string, string>) => {
 	}
 };
 
+const normalizeContentType = (contentType: string) =>
+	contentType.split(";")[0]?.trim().toLowerCase();
+
 export const isJsonContentType = (contentType: string) =>
-	contentType.split(";")[0]?.trim().toLowerCase() === "application/json";
+	normalizeContentType(contentType) === "application/json";
 
 export const serializeCustomBody = (body: unknown, contentType: string) =>
 	isJsonContentType(contentType)
@@ -181,6 +181,7 @@ export const constructBaseRequest = (
 	baseUrl: string,
 	route: ClientRequestRoute,
 	args: GroupedRequestInput | undefined,
+	selectedContentType?: string,
 ): {
 	url: string;
 	body?: BodyInit | null;
@@ -190,52 +191,48 @@ export const constructBaseRequest = (
 	let urlBase = `${baseUrl}${route.path}`;
 	if (!args) return { url: urlBase };
 
-	const {
-		body,
-		contentType: selectedContentType,
-		query,
-		params,
-		headers,
-	} = args;
-	const routeBody = route.request?.body;
+	const { body, query, params, headers } = args;
 
 	urlBase = `${baseUrl}${serializeParams(route, params)}${serializeQuery(route, query)}`;
 
-	if (isFormBody(routeBody)) {
-		return {
-			url: urlBase,
-			body: serializeFormBody(
-				route,
-				body as Record<string, unknown> | undefined,
-			),
-			headers: stringifyHeaders(route, headers),
-		};
-	}
-
-	if (isMultipartBody(routeBody)) {
-		return {
-			url: urlBase,
-			body: serializeMultipartBody(
-				route,
-				body as Record<string, unknown> | undefined,
-			),
-			headers: stringifyHeaders(route, headers),
-		};
-	}
-
 	if (route.request?.contentType !== undefined) {
+		if (
+			Array.isArray(route.request.contentType) &&
+			selectedContentType === undefined
+		) {
+			throw new Error(
+				`A contentType option is required for ${route.method} ${route.path}.`,
+			);
+		}
 		const contentType =
 			selectedContentType ??
 			(Array.isArray(route.request.contentType)
 				? undefined
 				: (route.request.contentType as string));
 
+		const normalizedContentType = contentType
+			? normalizeContentType(contentType)
+			: undefined;
 		return {
 			url: urlBase,
-			body: contentType
-				? serializeCustomBody(body, contentType)
-				: (body as BodyInit | null | undefined),
-			contentType,
+			body:
+				normalizedContentType === "application/x-www-form-urlencoded"
+					? serializeFormBody(
+							route,
+							body as Record<string, unknown> | undefined,
+						)
+					: normalizedContentType === "multipart/form-data"
+						? serializeMultipartBody(
+								route,
+								body as Record<string, unknown> | undefined,
+							)
+						: contentType
+							? serializeCustomBody(body, contentType)
+							: (body as BodyInit | null | undefined),
+			contentType:
+				normalizedContentType === "multipart/form-data"
+					? undefined
+					: contentType,
 			headers: stringifyHeaders(route, headers),
 		};
 	}
@@ -306,7 +303,12 @@ export const executeRequest = async <E extends RouteDeclaration>(
 		body,
 		contentType,
 		headers: requestHeaders,
-	} = constructBaseRequest(options.baseUrl, route, requestArgs);
+	} = constructBaseRequest(
+		options.baseUrl,
+		route,
+		requestArgs,
+		fetchOptions?.contentType,
+	);
 
 	const headers = (await options.getGlobalHeaders?.()) ?? {};
 	assertNoContentTypeHeader(headers);
@@ -316,10 +318,12 @@ export const executeRequest = async <E extends RouteDeclaration>(
 	);
 
 	try {
+		const { contentType: _contentType, ...requestFetchOptions } =
+			fetchOptions ?? {};
 		const init = addNextFetchTags(
 			{
 				...options.fetchOptions,
-				...fetchOptions,
+				...requestFetchOptions,
 				method: route.method,
 				body,
 				headers: {

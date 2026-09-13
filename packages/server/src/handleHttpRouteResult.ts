@@ -1,18 +1,11 @@
-import type {
-	HttpRouteResult,
-	HttpRouteResultStreamMode,
-} from "./handleHttpRoute.ts";
+import type { HttpRouteResult } from "./handleHttpRoute.ts";
 import { SERVER_FIRST_RESPONSE_KIND_HEADER } from "@rest-rpc/core/client";
 import type { HttpHeaderValue } from "./headers.ts";
 
 type MaybePromise<T> = T | Promise<T>;
 
-export type { HttpRouteResultStreamMode } from "./handleHttpRoute.ts";
-
 const responseKindFor = (result: HttpRouteResult) => {
-	if (result.kind === "stream") {
-		return result.contentType !== undefined ? "custom-stream" : "ndjson";
-	}
+	if (result.kind === "stream") return "ndjson";
 	return result.kind;
 };
 
@@ -28,7 +21,6 @@ export type HttpRouteResultWriter<TResponse> = {
 		status: number;
 		body: AsyncIterable<unknown>;
 		contentType: string;
-		mode: HttpRouteResultStreamMode;
 	}): MaybePromise<TResponse>;
 };
 
@@ -56,8 +48,7 @@ export async function handleHttpRouteResult<TResponse>(
 		return writer.sendStream({
 			status: result.status,
 			body: result.body,
-			contentType: result.contentType ?? "application/x-ndjson",
-			mode: result.mode ?? (result.contentType ? "raw" : "ndjson"),
+			contentType: "application/x-ndjson",
 		});
 	}
 

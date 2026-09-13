@@ -1,5 +1,4 @@
 import type { HttpMethod } from "../contract/routeDeclaration.ts";
-import type { FormBody, MultipartBody } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import type { JsonQuery } from "../contract/request.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
@@ -46,17 +45,6 @@ export interface EncodedRequest<TKind extends string, TValue> {
 
 type ClientSchema<TInput> = StandardSchemaV1<TInput, unknown>;
 
-type ClientRequestBody<TBody> =
-	TBody extends FormBody<infer TSchema>
-		? ClientSchema<
-				EncodedRequest<"formBody", StandardSchemaV1.InferInput<TSchema>>
-			>
-		: TBody extends MultipartBody<infer TSchema>
-			? ClientSchema<
-					EncodedRequest<"multipartBody", StandardSchemaV1.InferInput<TSchema>>
-				>
-			: TBody;
-
 type ClientRequestQuery<TQuery> =
 	TQuery extends JsonQuery<infer TSchema>
 		? JsonQuery<
@@ -68,9 +56,7 @@ type ClientRequestQuery<TQuery> =
 
 type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
 	? Omit<TRequest, "body" | "query" | "contentType"> &
-			(TRequest extends { body: infer TBody }
-				? { body: ClientRequestBody<TBody> }
-				: unknown) &
+			(TRequest extends { body: infer TBody } ? { body: TBody } : unknown) &
 			(TRequest extends { contentType: infer TContentType }
 				? {
 						contentType: TContentType extends string
@@ -225,10 +211,8 @@ type ServerFirstShorthandClientTree<TNode> = unknown extends TNode
 				readonly "~restrpc": { readonly handler: AnyHandler };
 		  }
 		? TNode extends ServerFirstProcedureImplementation
-			? TNode extends {
-					readonly "~restrpc": infer TRoute extends RouteDeclaration & {
-						kind: "procedure";
-					};
+			? ClientRoute<TNode> extends infer TRoute extends RouteDeclaration & {
+					kind: "procedure";
 				}
 				? ApiClientRouteValue<TRoute>
 				: never
@@ -256,7 +240,6 @@ export type ServerFirstClientOptions<
 
 type ServerFirstRequestInput = {
 	body?: unknown;
-	contentType?: string;
 	query?: unknown;
 	params?: Record<string, unknown>;
 	headers?: Record<string, unknown>;
@@ -273,17 +256,14 @@ const encodedRequest = <TKind extends string, TValue>(
 });
 
 /**
- * Marks form bodies, multipart bodies, and JSON query values for
- * server-first client calls.
+ * Marks JSON query values for server-first client calls.
  *
- * @remarks Ordinary JSON bodies and flat query objects do not need a wrapper.
+ * @remarks Request bodies use the `contentType` call option and flat query
+ * objects do not need a wrapper.
  *
  * @see {@link https://rest-rpc.dev/docs/server-first/client#mark-explicit-request-encodings}
  */
 export const request = {
-	formBody: <TValue>(value: TValue) => encodedRequest("formBody", value),
-	multipartBody: <TValue>(value: TValue) =>
-		encodedRequest("multipartBody", value),
 	jsonQuery: <TValue>(value: TValue) => encodedRequest("jsonQuery", value),
 } as const;
 
@@ -301,33 +281,16 @@ const createRuntimeRoute = (
 	method: HttpMethod,
 	path: string,
 	input: ServerFirstRequestInput | undefined,
+	contentType: string | undefined,
 ) => {
 	const requestDeclaration: ClientRequestDeclaration = {};
 	const normalizedInput: ServerFirstRequestInput = { ...input };
 	const tagInput: ServerFirstRequestInput = { ...input };
 
 	if (input && "body" in input) {
-		const body = input.body;
-		if (input.contentType !== undefined) {
+		if (contentType !== undefined) {
 			requestDeclaration.body = {};
-			requestDeclaration.contentType = input.contentType;
-		} else if (isEncodedRequest(body)) {
-			switch (body[requestEncoding]) {
-				case "formBody":
-					requestDeclaration.body = {
-						kind: "formBody",
-					};
-					normalizedInput.body = body.value;
-					break;
-				case "multipartBody":
-					requestDeclaration.body = {
-						kind: "multipartBody",
-					};
-					normalizedInput.body = body.value;
-					break;
-				default:
-					throw new Error("Unsupported server-first request encoding.");
-			}
+			requestDeclaration.contentType = contentType;
 		} else {
 			requestDeclaration.body = {};
 		}
@@ -387,7 +350,16 @@ const executeShorthandRequest = async (
 	const route: ClientRequestRoute = {
 		method: "POST",
 		path: `/${path.join("/")}`,
-		...(hasInput ? { request: { body: {} } } : {}),
+		...(hasInput
+			? {
+					request: {
+						body: {},
+						...(fetchOptions?.contentType === undefined
+							? {}
+							: { contentType: fetchOptions.contentType }),
+					},
+				}
+			: {}),
 	};
 	const rawResponse = await executeRequest(
 		route,
@@ -436,7 +408,12 @@ export const createServerFirstClient = <
 				return (path: string, ...args: unknown[]) => {
 					const method = selectorMethod(selector);
 					const { requestInput, fetchOptions } = getServerFirstArgs(args);
-					const runtime = createRuntimeRoute(method, path, requestInput);
+					const runtime = createRuntimeRoute(
+						method,
+						path,
+						requestInput,
+						fetchOptions?.contentType,
+					);
 					return executeRequest(
 						runtime.route,
 						runtime.route,

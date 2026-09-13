@@ -65,12 +65,10 @@ describe("handleHttpRouteResult", () => {
 			{
 				status: (streamInput as { status: number }).status,
 				contentType: (streamInput as { contentType: string }).contentType,
-				mode: (streamInput as { mode: string }).mode,
 			},
 			{
 				status: 200,
 				contentType: "application/x-ndjson",
-				mode: "ndjson",
 			},
 		);
 	});

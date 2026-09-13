@@ -1,9 +1,6 @@
 import type {
 	BuilderExtension,
 	BuilderState,
-	CustomResponseBody,
-	CustomResponseValue,
-	NoBody,
 	PublicDeclarationFor,
 	RouteDeclaration,
 	RouteMetadata,
@@ -70,7 +67,10 @@ export type RouteRequest<
 		? TRoute extends {
 				request: { body: infer TInput extends StandardSchemaV1 };
 			}
-			? { input: StandardSchemaV1.InferOutput<TInput> }
+			? { input: StandardSchemaV1.InferOutput<TInput> } & Omit<
+					RequestValue<TRoute>,
+					"body"
+				>
 			: EmptyObject
 		: RequestValue<TRoute>) &
 		TAdditionalHandlerFields & {
@@ -97,8 +97,9 @@ type Merge<T> = { [TKey in keyof T]: T[TKey] };
 /**
  * HTTP response shape from which a server-first route infers its contract.
  *
- * @remarks An `AsyncIterable` body denotes a stream. Providing `contentType`
- * selects a custom-content response; otherwise bodies use JSON or NDJSON.
+ * @remarks An `AsyncIterable` body always denotes an NDJSON stream. Providing
+ * `contentType` selects a custom-content response for non-stream bodies;
+ * otherwise bodies use JSON.
  *
  * @see {@link https://rest-rpc.dev/docs/server-first/server#infer-responses-from-the-handler}
  */
@@ -121,18 +122,11 @@ export type ImplicitResponseEnvelope =
  *
  * @see {@link https://rest-rpc.dev/docs/server-first/client#expose-response-metadata-through-cors}
  */
-export type ServerFirstResponseKind =
-	| "empty"
-	| "json"
-	| "ndjson"
-	| "custom"
-	| "custom-stream";
+export type ServerFirstResponseKind = "empty" | "json" | "ndjson" | "custom";
 
 type BodyResponseKind<TResponse, TBody> =
 	TBody extends AsyncIterable<unknown>
-		? TResponse extends { contentType: string }
-			? "custom-stream"
-			: "ndjson"
+		? "ndjson"
 		: TResponse extends { contentType: string }
 			? "custom"
 			: "json";
@@ -168,31 +162,34 @@ type ImplicitResponseBodyDeclaration<TResponse> = TResponse extends {
 	body: infer TBody;
 }
 	? TBody extends AsyncIterable<infer TItem>
-		? TResponse extends { contentType: infer TContentType extends string }
-			? Stream<
-					CustomResponseBody<ClientSchema<CustomResponseValue>, TContentType>
-				>
-			: Stream<ClientSchema<TItem>>
+		? Stream<ClientSchema<TItem>>
 		: ClientSchema<TBody>
-	: NoBody;
+	: undefined;
 
 type ImplicitResponseDeclaration<TResponse> =
 	ImplicitResponseBodyDeclaration<TResponse> extends infer TBody
-		? TResponse extends { contentType: infer TContentType extends string }
-			? {
-					body: TBody;
-					contentType: TContentType;
-				} & (TResponse extends { responseHeaders: infer THeaders }
-					? {
-							headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
-						}
-					: unknown)
-			: TResponse extends { responseHeaders: infer THeaders }
+		? TBody extends Stream
+			? TResponse extends { responseHeaders: infer THeaders }
 				? {
 						body: TBody;
 						headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
 					}
-				: TBody
+				: { body: TBody }
+			: TResponse extends { contentType: infer TContentType extends string }
+				? {
+						body: TBody;
+						contentType: TContentType;
+					} & (TResponse extends { responseHeaders: infer THeaders }
+						? {
+								headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+							}
+						: unknown)
+				: TResponse extends { responseHeaders: infer THeaders }
+					? {
+							body: TBody;
+							headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+						}
+					: { body: TBody }
 		: never;
 
 type ResponseStatuses<TResponse> = TResponse extends {
@@ -212,7 +209,7 @@ type InferredHttpRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
 };
 
 type InferredProcedureRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
-	responses: { 200: ClientSchema<Awaited<TResult>> };
+	responses: { 200: { body: ClientSchema<Awaited<TResult>> } };
 };
 
 /** Terminal builder shape containing a route declaration and its handler. */
@@ -255,7 +252,7 @@ type ProcedureHandlerMethod<
 > =
 	HasDeclaredResponses<TRoute> extends true
 		? TRoute extends {
-				responses: { 200: infer TOutput extends StandardSchemaV1 };
+				responses: { 200: { body: infer TOutput extends StandardSchemaV1 } };
 			}
 			? {
 					handler<

@@ -528,30 +528,4 @@ describe("ApiClient responses", () => {
 			/unsupported custom response content-type/,
 		);
 	});
-
-	it("returns declared custom stream responses as native Response objects", async () => {
-		const apiContract = {
-			reports: {
-				csv: route.get("/reports.csv").customStreamResponse(200, {
-					contentType: "text/csv",
-					schema: z.string(),
-				}),
-			},
-		};
-		captureFetch(
-			new Response("id,title\n1,First\n", {
-				status: 200,
-				headers: { "content-type": "text/csv" },
-			}),
-		);
-		const client = initClient(apiContract, {
-			baseUrl: "https://api.test",
-		});
-
-		const response = await client.reports.csv();
-		assert.equal(response.status, 200);
-
-		assert.ok(response.body instanceof Response);
-		assert.equal(await response.body.text(), "id,title\n1,First\n");
-	});
 });

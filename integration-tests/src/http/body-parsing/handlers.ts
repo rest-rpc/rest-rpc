@@ -30,13 +30,6 @@ export const createBodyParsingImplementations = () => {
 				ok: request.body.nested.ok,
 			},
 		})),
-		rawUrlEncoded: implementor.rawUrlEncoded.handler((request) => ({
-			status: 200,
-			body: {
-				title: request.body.get("title") ?? "",
-				remember: request.body.get("remember") ?? undefined,
-			},
-		})),
 		formUrlEncoded: implementor.formUrlEncoded.handler((request) => ({
 			status: 200,
 			body: {

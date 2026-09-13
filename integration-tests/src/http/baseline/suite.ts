@@ -11,25 +11,11 @@ type ClientHttpSuiteAdapter = {
 	start(): Promise<StartedServer>;
 };
 
-type ResponseBody = Response & {
-	headers: {
-		get(name: string): string | null;
-	};
-	text(): Promise<string>;
-};
-
 const collectAsyncIterable = async <T>(iterable: AsyncIterable<T>) => {
 	const items: T[] = [];
 	for await (const item of iterable) items.push(item);
 	return items;
 };
-
-function assertResponseBody(body: unknown): asserts body is ResponseBody {
-	assert.equal(typeof body, "object");
-	assert.notEqual(body, null);
-	assert.equal(typeof (body as ResponseBody).text, "function");
-	assert.equal(typeof (body as ResponseBody).headers?.get, "function");
-}
 
 export const runClientHttpSuite = (adapter: ClientHttpSuiteAdapter) => {
 	describe(`${adapter.name} generated fetch client`, () => {
@@ -196,16 +182,14 @@ export const runClientHttpSuite = (adapter: ClientHttpSuiteAdapter) => {
 			]);
 		});
 
-		it("receives raw text streams as native Response objects", async () => {
+		it("receives streamed strings as async iterables", async () => {
 			const response = await client.streams.text();
 
 			assert.equal(response.status, 200);
-			assertResponseBody(response.body);
-			assert.match(
-				response.body.headers.get("content-type") ?? "",
-				/^text\/plain/,
-			);
-			assert.equal(await response.body.text(), "alpha\nbeta\n");
+			assert.deepEqual(await collectAsyncIterable(response.body), [
+				"alpha\n",
+				"beta\n",
+			]);
 		});
 	});
 };

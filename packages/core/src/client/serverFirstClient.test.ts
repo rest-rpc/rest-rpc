@@ -128,19 +128,24 @@ describe("initClient server-first mode", () => {
 	it("serializes explicit server-first request encodings", async () => {
 		const { calls, client } = createClient(() => response("empty", null, 204));
 
-		await client.$post("/form", {
-			body: request.formBody({ title: "Todo", tags: ["docs", "api"] }),
-		});
-		await client.$post("/multipart", {
-			body: request.multipartBody({ title: "Todo", tags: ["docs", "api"] }),
-		});
+		await client.$post(
+			"/form",
+			{ body: { title: "Todo", tags: ["docs", "api"] } },
+			{ contentType: "application/x-www-form-urlencoded" },
+		);
+		await client.$post(
+			"/multipart",
+			{ body: { title: "Todo", tags: ["docs", "api"] } },
+			{ contentType: "multipart/form-data" },
+		);
 		await client.$get("/search", {
 			query: request.jsonQuery({ page: 2, filters: { tag: "open" } }),
 		});
-		await client.$post("/custom", {
-			body: "id,title\n1,Todo\n",
-			contentType: "text/csv",
-		});
+		await client.$post(
+			"/custom",
+			{ body: "id,title\n1,Todo\n" },
+			{ contentType: "text/csv" },
+		);
 
 		assert.equal(
 			String(calls[0]?.init?.body),

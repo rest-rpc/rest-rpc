@@ -27,6 +27,9 @@ const shorthandApi = {
 	todos: {
 		get: route.output(shorthandOutputSchema),
 		add: route.input(shorthandInputSchema).output(shorthandOutputSchema),
+		import: route
+			.input(shorthandInputSchema, ["text/plain", "text/markdown"])
+			.output(shorthandOutputSchema),
 	},
 };
 
@@ -52,6 +55,17 @@ expectError(
 	shorthandClient.todos.add({ title: "Write type tests", extra: true }),
 );
 expectError(shorthandClient.todos.get.fetch);
+shorthandClient.todos.import(
+	{ title: "Write type tests" },
+	{ contentType: "text/markdown" },
+);
+expectError(shorthandClient.todos.import({ title: "Write type tests" }));
+expectError(
+	shorthandClient.todos.import(
+		{ title: "Write type tests" },
+		{ contentType: "application/json" },
+	),
+);
 
 expectType<{ title: string }>(
 	null as unknown as ClientRequest<(typeof shorthandApi.todos.add)["~restrpc"]>,
@@ -174,28 +188,19 @@ expectError(
 expectError(
 	route.get("/items").headers(z.object({ "x-page": z.coerce.number() })),
 );
-expectError(
-	route.post("/forms").formBody(z.object({ count: z.coerce.number() })),
-);
-expectError(
-	route.post("/uploads").multipartBody(z.object({ count: z.coerce.number() })),
-);
-expectError(
-	route.post("/forms").formBody(schemaType<{ nested: { value: string } }>()),
-);
-expectError(
-	route
-		.post("/uploads")
-		.multipartBody(schemaType<{ metadata: { title: string } }>()),
-);
-
-route.post("/forms").formBody(z.object({ count: z.coerce.number<number>() }));
-route.post("/uploads").multipartBody(
+route
+	.post("/forms")
+	.body(
+		z.object({ count: z.coerce.number<number>() }),
+		"application/x-www-form-urlencoded",
+	);
+route.post("/uploads").body(
 	schemaType<{
 		file: Blob;
 		parts?: Array<Blob | string>;
 		title: string;
 	}>(),
+	"multipart/form-data",
 );
 
 const groupedRequestApi = {
@@ -468,10 +473,6 @@ const csvResponseApi = {
 			contentType: "text/csv",
 			body: z.string(),
 		}),
-		exportCsvStream: route.get("/todos-stream.csv").customStreamResponse(200, {
-			contentType: "text/csv",
-			schema: z.string(),
-		}),
 	},
 };
 
@@ -489,11 +490,6 @@ csvResponseClient.todos.exportCsv().then((response) => {
 		expectType<"text/csv">(response.contentType);
 		expectType<string>(response.body);
 	}
-});
-
-csvResponseClient.todos.exportCsvStream().then((response) => {
-	if (response.status !== 200) throw new Error("Unexpected status");
-	expectType<Response>(response.body);
 });
 
 const imageResponseApi = {
@@ -536,21 +532,22 @@ const customRequestClient = initClient(customRequestApi, {
 });
 
 customRequestClient.todos
-	.uploadImage({
-		body: new Uint8Array(),
-		contentType: "image/png",
-		params: { id: "todo-1" },
-	})
+	.uploadImage(
+		{
+			body: new Uint8Array(),
+			params: { id: "todo-1" },
+		},
+		{ contentType: "image/png" },
+	)
 	.then((response) => {
 		if (response.status !== 204) throw new Error("Unexpected status");
 		expectType<undefined>(response.body);
 	});
 expectError(
-	customRequestClient.todos.uploadImage({
-		body: new Uint8Array(),
-		contentType: "image/webp",
-		params: { id: "todo-1" },
-	}),
+	customRequestClient.todos.uploadImage(
+		{ body: new Uint8Array(), params: { id: "todo-1" } },
+		{ contentType: "image/webp" },
+	),
 );
 
 const rawCustomRequestApi = {

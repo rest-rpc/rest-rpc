@@ -342,13 +342,9 @@ describe("OpenAPI operations", () => {
 
 	it("creates urlencoded form request bodies", () => {
 		const body = createRequestBody(
-			{
-				kind: "formBody",
-				schema: z.object({
-					title: z.string(),
-				}),
-			},
+			z.object({ title: z.string() }),
 			schemaConverter,
+			"application/x-www-form-urlencoded",
 		);
 
 		assert.equal(
@@ -360,14 +356,9 @@ describe("OpenAPI operations", () => {
 
 	it("creates multipart request bodies", () => {
 		const body = createRequestBody(
-			{
-				kind: "multipartBody",
-				schema: z.object({
-					title: z.string(),
-					file: z.string(),
-				}),
-			},
+			z.object({ title: z.string(), file: z.string() }),
 			schemaConverter,
+			"multipart/form-data",
 		);
 
 		assert.equal(body?.content["multipart/form-data"].schema.type, "object");
@@ -399,18 +390,15 @@ describe("OpenAPI operations", () => {
 		});
 	});
 
-	it("omits explicit no-body request bodies", () => {
-		assert.equal(
-			createRequestBody({ kind: "noBody" }, schemaConverter),
-			undefined,
-		);
+	it("omits absent request bodies", () => {
+		assert.equal(createRequestBody(undefined, schemaConverter), undefined);
 	});
 
 	it("creates no-body and JSON responses", () => {
-		const empty = createResponse("", { kind: "noBody" }, schemaConverter);
+		const empty = createResponse("", { body: undefined }, schemaConverter);
 		const json = createResponse(
 			"",
-			z.object({ code: z.string() }),
+			{ body: z.object({ code: z.string() }) },
 			schemaConverter,
 		);
 
@@ -451,7 +439,7 @@ describe("OpenAPI operations", () => {
 		const response = createResponse(
 			"",
 			{
-				body: { kind: "noBody" },
+				body: undefined,
 				headers: z.object({ location: z.string() }),
 			},
 			schemaConverter,
@@ -472,7 +460,7 @@ describe("OpenAPI operations", () => {
 	it("creates OpenAPI-only response headers", () => {
 		const response = createResponse(
 			"",
-			z.object({ id: z.string() }),
+			{ body: z.object({ id: z.string() }) },
 			schemaConverter,
 			{
 				description: "Todo returned.",
@@ -583,45 +571,12 @@ describe("OpenAPI operations", () => {
 	it("creates NDJSON stream responses as text wire bodies", () => {
 		const response = createResponse(
 			"",
-			{ kind: "stream", schema: z.object({ id: z.string() }) },
+			{ body: { kind: "stream", schema: z.object({ id: z.string() }) } },
 			schemaConverter,
 		);
 
 		assert.deepEqual(response.content?.["application/x-ndjson"].schema, {
 			type: "string",
-		});
-	});
-
-	it("creates custom stream responses with wire-level schemas", () => {
-		const csv = createResponse(
-			"",
-			{
-				kind: "stream",
-				schema: {
-					kind: "customBody",
-					contentType: "text/csv",
-					schema: z.number(),
-				},
-			},
-			schemaConverter,
-		);
-		const binary = createResponse(
-			"",
-			{
-				kind: "stream",
-				schema: {
-					kind: "customBody",
-					contentType: "application/octet-stream",
-					schema: z.number(),
-				},
-			},
-			schemaConverter,
-		);
-
-		assert.deepEqual(csv.content?.["text/csv"].schema, { type: "string" });
-		assert.deepEqual(binary.content?.["application/octet-stream"].schema, {
-			type: "string",
-			format: "binary",
 		});
 	});
 
@@ -708,7 +663,7 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("omits explicit no-body responses after receiving the required converter", () => {
-		assert.deepEqual(createResponse("", { kind: "noBody" }, schemaConverter), {
+		assert.deepEqual(createResponse("", { body: undefined }, schemaConverter), {
 			description: "",
 		});
 	});

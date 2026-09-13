@@ -151,6 +151,39 @@ describe("handleHttpRoute", () => {
 		});
 	});
 
+	it("passes decoded custom procedure input and its content type", async () => {
+		const declaration = coreRoute
+			.input(
+				z.object({ title: z.string() }),
+				"application/x-www-form-urlencoded",
+			)
+			.output(z.object({ title: z.string() }))["~restrpc"];
+		const result = await handleHttpRoute(
+			declaration,
+			(request) => {
+				assert.deepEqual(request, {
+					input: { title: "Write docs" },
+					contentType: "application/x-www-form-urlencoded",
+					context: {},
+					route: declaration,
+				});
+				return { title: "Write docs" };
+			},
+			{
+				request: {
+					body: new URLSearchParams([["title", "Write docs"]]),
+					headers: {
+						"content-type": "application/x-www-form-urlencoded",
+					},
+				},
+				handlerFields: {},
+				context: {},
+			},
+		);
+
+		assert.equal(result.status, 200);
+	});
+
 	it("rethrows user handler errors unchanged", async () => {
 		const expected = new Error("boom");
 		await assert.rejects(
@@ -383,34 +416,5 @@ describe("handleHttpRoute custom responses", () => {
 		assert.equal(result.status, 200);
 		assert.equal(result.contentType, "image/jpeg");
 		assert.equal(result.body, "jpeg bytes");
-	});
-
-	it("normalizes custom streamed bodies after validating without framing chunks", async () => {
-		async function* rows() {
-			yield "id,title\n";
-			yield "1,First\n";
-		}
-
-		const result = await handleHttpRoute(
-			coreRoute.get("/report.csv").customStreamResponse(200, {
-				contentType: "text/csv",
-				schema: z.string(),
-			})["~restrpc"],
-			() => ({ status: 200, body: rows() }),
-			{
-				request: {},
-				handlerFields: {},
-				context: {},
-			},
-		);
-
-		assert.equal(result.kind, "stream");
-		assert.equal(result.status, 200);
-		assert.equal(result.contentType, "text/csv");
-
-		const chunks = [];
-		for await (const chunk of result.body) chunks.push(chunk);
-
-		assert.deepEqual(chunks, ["id,title\n", "1,First\n"]);
 	});
 });

@@ -1,24 +1,5 @@
-export type {
-	CustomBody,
-	CustomBodyContentType,
-	CustomResponseBody,
-	CustomResponseInput,
-	CustomStreamResponseInput,
-	CustomResponseValue,
-	FormBody,
-	FormBodySchema,
-	MultipartBody,
-	MultipartBodySchema,
-	NoBody,
-	Stream,
-} from "./body.ts";
-export {
-	isCustomBody,
-	isFormBody,
-	isMultipartBody,
-	isNoBody,
-	isStream,
-} from "./body.ts";
+export type { BodyContentType, KnownBodyContentType, Stream } from "./body.ts";
+export { isStream } from "./body.ts";
 export type {
 	HttpMethod,
 	OpenApiRouteOptions,
@@ -53,22 +34,15 @@ export type {
 	DeclaredClientResponse,
 	ErrorDeclaredClientResponse,
 	ResponseBodySchema,
-	CustomResponseDeclaration,
 	ResponseDeclaration,
 	ResponseHeaders,
-	RegularResponseDeclaration,
+	ResponseOptions,
 	RouteResponses,
 	ServerErrors,
 	ServerResponse,
 	ServerResponseBody,
 	SuccessfulDeclaredClientResponse,
 } from "./response.ts";
-export {
-	getResponseBody,
-	getResponseContentType,
-	getResponseHeaders,
-	getRouteResponses,
-	hasResponseParts,
-} from "./response.ts";
+export { getRouteResponses } from "./response.ts";
 export type { ContractRouteEntry } from "./traversal.ts";
 export { contractRouteEntries, flattenContractRoutes } from "./traversal.ts";

@@ -44,26 +44,29 @@ with only their path: `await client.$get("/health")`.
 
 ## Mark Explicit Request Encodings
 
-For form, multipart, and JSON query values, wrap the value with the matching
-`request.formBody()`, `request.multipartBody()`, or `request.jsonQuery()` helper
-so the client knows how to encode it.
+Specify a body `contentType` in the call options so the client knows how to
+encode form, multipart, and custom request bodies. JSON query values still use
+the `request.jsonQuery()` helper.
 
 ```ts
 import { request } from "@rest-rpc/core";
 
-await client.$post("/uploads", {
-	body: request.multipartBody({ title: "Screenshot", file }),
-});
+await client.$post(
+	"/uploads",
+	{ body: { title: "Screenshot", file } },
+	{ contentType: "multipart/form-data" },
+);
 ```
 
 Requests declared with `body(schema, contentType)` must always supply a
 `contentType` option to a server-first client.
 
 ```ts
-await client.$post("/imports.csv", {
-	body: "id,title\n1,Write docs\n",
-	contentType: "text/csv",
-});
+await client.$post(
+	"/imports.csv",
+	{ body: "id,title\n1,Write docs\n" },
+	{ contentType: "text/csv" },
+);
 ```
 
 The payload types and encoding behavior are documented in
@@ -81,8 +84,8 @@ Access-Control-Expose-Headers: X-Rest-Rpc-Response-Kind
 ## TanStack Query
 
 Pass the implementation tree as a type parameter, then select helpers by method
-and path. Their request values use the same grouped shape and encoding wrappers
-as the Fetch client.
+and path. Their request values use the same grouped shape and content-type
+options as the Fetch client.
 
 ```ts
 import { createTanstackQueryHelpers } from "@rest-rpc/tanstack-query";

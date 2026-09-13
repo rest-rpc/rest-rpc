@@ -24,22 +24,16 @@ export const bodyParsingContract = {
 			"application/json; charset=utf-8",
 		)
 		.response(200, z.object({ count: z.number(), ok: z.boolean() })),
-	rawUrlEncoded: route
-		.post("/body-parsing/raw-url-encoded")
-		.body(z.instanceof(URLSearchParams), "application/x-www-form-urlencoded")
-		.response(
-			200,
-			z.object({ title: z.string(), remember: z.string().optional() }),
-		),
 	formUrlEncoded: route
 		.post("/body-parsing/form-url-encoded")
 		.query(z.object({ filters: z.array(z.string()).optional() }))
-		.formBody(
+		.body(
 			z.object({
 				count: z.coerce.number<number>(),
 				title: z.string(),
 				tags: z.array(z.string()).optional(),
 			}),
+			"application/x-www-form-urlencoded",
 		)
 		.response(
 			200,

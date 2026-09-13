@@ -3,9 +3,14 @@ import type { ClientRequest } from "../contract/request.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { DeclaredClientResponse } from "../contract/response.ts";
 
-export type FetchOptions = Omit<RequestInit, "method" | "body" | "headers">;
+export type FetchOptions = Omit<RequestInit, "method" | "body" | "headers"> & {
+	contentType?: string;
+};
 
-export type ApiClientFetchOptions = Omit<FetchOptions, "signal">;
+export type ApiClientFetchOptions = Omit<
+	FetchOptions,
+	"signal" | "contentType"
+>;
 
 /**
  * The fetch-compatible function shape used by the core client.
@@ -42,16 +47,39 @@ type GlobalHeaderKeys<TGlobalHeaders extends HeaderRecord> = LiteralKeys<
 	Awaited<TGlobalHeaders>
 >;
 
+type DeclaredContentType<E> = E extends {
+	request: { contentType: infer TContentType };
+}
+	? TContentType
+	: never;
+
+type FetchOptionsFor<E> = Omit<FetchOptions, "contentType"> &
+	([DeclaredContentType<E>] extends [never]
+		? { contentType?: never }
+		: DeclaredContentType<E> extends readonly string[]
+			? { contentType: DeclaredContentType<E>[number] }
+			: { contentType?: never });
+
 export type FetchArgs<
 	E extends RouteDeclaration = RouteDeclaration,
 	TGlobalHeaders extends HeaderRecord = Record<never, string>,
 > =
 	ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>> extends never
 		? [request?: undefined, options?: FetchOptions]
-		: [
-				request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
-				options?: FetchOptions,
-			];
+		: [DeclaredContentType<E>] extends [never]
+			? [
+					request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
+					options?: FetchOptionsFor<E>,
+				]
+			: DeclaredContentType<E> extends readonly string[]
+				? [
+						request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
+						options: FetchOptionsFor<E>,
+					]
+				: [
+						request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
+						options?: FetchOptionsFor<E>,
+					];
 
 type Simplify<T> = T extends unknown ? { [TKey in keyof T]: T[TKey] } : never;
 
@@ -99,22 +127,14 @@ export type ApiClientRouteValue<
 	TGlobalHeaders extends HeaderRecord = Record<never, string>,
 > = E extends RouteDeclaration
 	? E extends { kind: "procedure" }
-		? [ClientRequest<E>] extends [never]
-			? (
-					request?: undefined,
-					options?: FetchOptions,
-				) => Promise<ClientResponse<E>>
-			: (
-					input: ClientRequest<E>,
-					options?: FetchOptions,
-				) => Promise<ClientResponse<E>>
+		? (...args: FetchArgs<E, TGlobalHeaders>) => Promise<ClientResponse<E>>
 		: E extends RouteDeclaration
 			? FetchResponseFn<E, TGlobalHeaders>
 			: never
 	: never;
 
 type ProcedureRouteOutput<TRoute extends RouteDeclaration> = TRoute extends {
-	responses: { 200: infer TOutput extends StandardSchemaV1 };
+	responses: { 200: { body: infer TOutput extends StandardSchemaV1 } };
 }
 	? StandardSchemaV1.InferOutput<TOutput>
 	: never;

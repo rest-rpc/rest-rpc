@@ -14,7 +14,7 @@ test("Node decodes chunked large JSON, multipart and repeated headers", async (t
 			.handler(({ body: { text } }) => ({ status: 200, body: text.length })),
 		multipart: route
 			.post("/multipart")
-			.multipartBody(type<{ file: Blob; tags: string[] }>())
+			.body(type<{ file: Blob; tags: string[] }>(), "multipart/form-data")
 			.handler(async ({ body }) => ({
 				status: 200,
 				body: { bytes: body.file.size, tags: body.tags },

@@ -29,7 +29,7 @@ export const shorthandClient = initClient(shorthandContract, {
 export const configuredRoute = route.with({
 	pathPrefix: "/api",
 	metadata: { scope: "test" },
-	responses: { 401: scalar },
+	responses: { 401: { body: scalar } },
 	headers,
 	openApi: { tags: ["test"] },
 });
@@ -37,12 +37,18 @@ export const configuredHttp = configuredRoute.get("/configured");
 
 export const initialHttp = route.get("/initial");
 export const jsonBody = route.post("/body").body(scalar);
-export const formBody = route.post("/form").formBody(scalar);
-export const formBodyWithArrays = route.post("/form-arrays").formBody(scalar);
-export const multipartBody = route.post("/multipart").multipartBody(scalar);
+export const formBody = route
+	.post("/form")
+	.body(scalar, "application/x-www-form-urlencoded");
+export const formBodyWithArrays = route
+	.post("/form-arrays")
+	.body(scalar, "application/x-www-form-urlencoded");
+export const multipartBody = route
+	.post("/multipart")
+	.body(scalar, "multipart/form-data");
 export const multipartBodyWithArrays = route
 	.post("/multipart-arrays")
-	.multipartBody(scalar);
+	.body(scalar, "multipart/form-data");
 export const customTypedBody = route
 	.post("/custom-typed-body")
 	.body(scalar, "text/plain");
@@ -68,9 +74,3 @@ export const customResponseRoute = route.get("/custom-response").response(200, {
 export const streamResponseRoute = route
 	.get("/stream-response")
 	.streamResponse(200, scalar);
-export const customStreamResponseRoute = route
-	.get("/custom-stream-response")
-	.customStreamResponse(200, {
-		schema: customResponseScalar,
-		contentType: "application/octet-stream",
-	});

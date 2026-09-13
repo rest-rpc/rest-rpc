@@ -96,9 +96,15 @@ export const routes = {
 
 ## Request With Form Body
 
-Use `.formBody()` for `application/x-www-form-urlencoded` request bodies.
+Pass `"application/x-www-form-urlencoded"` to `.body()` for URL-encoded form
+bodies.
 The body is sent as `URLSearchParams` and then passed to the handler as a
 validated object under `body`.
+
+Use a flat object schema whose input fields are strings, numbers, booleans,
+arrays of those scalar values, or `undefined`. Array fields use empty-bracket
+names such as `tags[]` on the wire. These transport restrictions are not
+enforced by the `.body()` schema type.
 
 ```ts
 import { route } from "@rest-rpc/core";
@@ -107,13 +113,14 @@ export const api = {
 	forms: {
 		submit: route
 			.post("/forms")
-			.formBody(
+			.body(
 				z.object({
 					title: z.string(),
 					count: z.coerce.number<number>(),
 					remember: z.string().optional(),
 					tags: z.array(z.string()).optional(),
 				}),
+				"application/x-www-form-urlencoded",
 			)
 			.response(
 				201,
@@ -157,9 +164,13 @@ Body parsers should pass a `URLSearchParams` instance to rest-rpc for form bodie
 
 ## Request With Multipart Body
 
-Use `.multipartBody()` for `multipart/form-data` request bodies.
+Pass `"multipart/form-data"` to `.body()` for multipart request bodies.
 The body is sent as `FormData` and then passed to the handler as a validated
 object under `body`.
+
+Use a flat object schema whose input fields are strings, numbers, booleans,
+`Blob` values, arrays of those values, or `undefined`. These transport
+restrictions are not enforced by the `.body()` schema type.
 
 ```ts
 import { route } from "@rest-rpc/core";
@@ -168,12 +179,13 @@ export const api = {
 	uploads: {
 		create: route
 			.post("/uploads")
-			.multipartBody(
+			.body(
 				z.object({
 					title: z.string(),
 					file: z.instanceof(File),
 					tags: z.array(z.string()).optional(),
 				}),
+				"multipart/form-data",
 			)
 			.response(
 				201,
@@ -215,6 +227,9 @@ if (response.status === 201) {
 Body parsers should pass a `FormData` instance to rest-rpc for multipart bodies.
 
 ## Request With Custom Content Type
+
+For other content types, the schema input must be usable as a Fetch `BodyInit`
+value. `application/json` is the exception: rest-rpc JSON-stringifies it.
 
 ```ts
 import { route } from "@rest-rpc/core";
@@ -292,10 +307,10 @@ export const routes = {
 ```
 
 ```ts
-const response = await client.images.upload({
-	body: bytes,
-	contentType: "image/png",
-});
+const response = await client.images.upload(
+	{ body: bytes },
+	{ contentType: "image/png" },
+);
 
 if (response.status === 201) {
 	const image = response.body;

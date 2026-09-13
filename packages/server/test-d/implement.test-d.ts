@@ -10,7 +10,7 @@ const contract = {
 			.params(z.object({ id: z.string() }))
 			.response(200, z.object({ id: z.string() })),
 		create: route
-			.input(z.object({ title: z.string() }))
+			.input(z.object({ title: z.string() }), "text/plain")
 			.output(z.object({ id: z.string(), title: z.string() })),
 		upload: route
 			.post("/images")
@@ -60,23 +60,19 @@ const serverFirstClient = initClient<{
 	upload: typeof upload;
 	importCsv: typeof importCsv;
 }>({ baseUrl: "https://example.test" });
-serverFirstClient.$post("/images", {
-	body: new Uint8Array(),
-	contentType: "image/png",
-});
-expectError(
-	serverFirstClient.$post("/images", {
-		body: new Uint8Array(),
-	}),
+serverFirstClient.$post(
+	"/images",
+	{ body: new Uint8Array() },
+	{ contentType: "image/png" },
 );
-serverFirstClient.$post("/imports.csv", {
-	body: "id,title\n1,Todo\n",
-	contentType: "text/csv",
-});
+expectError(serverFirstClient.$post("/images", { body: new Uint8Array() }));
+serverFirstClient.$post(
+	"/imports.csv",
+	{ body: "id,title\n1,Todo\n" },
+	{ contentType: "text/csv" },
+);
 expectError(
-	serverFirstClient.$post("/imports.csv", {
-		body: "id,title\n1,Todo\n",
-	}),
+	serverFirstClient.$post("/imports.csv", { body: "id,title\n1,Todo\n" }),
 );
 
 implementor.todos.download.handler(() => ({
@@ -92,8 +88,16 @@ expectError(
 	})),
 );
 
-const create = implementor.todos.create.handler(({ input }) => ({
-	id: "todo-1",
-	title: input.title,
-}));
+const create = implementor.todos.create.handler(({ input, contentType }) => {
+	expectType<"text/plain">(contentType);
+	return {
+		id: "todo-1",
+		title: input.title,
+	};
+});
 expectType<"procedure">(create["~restrpc"].kind);
+const procedureClient = initClient<{ create: typeof create }>({
+	baseUrl: "https://example.test",
+});
+procedureClient.create({ title: "Todo" }, { contentType: "text/plain" });
+expectError(procedureClient.create({ title: "Todo" }));

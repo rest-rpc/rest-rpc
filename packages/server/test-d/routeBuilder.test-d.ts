@@ -46,7 +46,7 @@ expectType<"POST">(inferred["~restrpc"].method);
 expectType<"/todos/:id">(inferred["~restrpc"].path);
 expectType<
 	StandardSchemaV1<unknown, { readonly id: string; readonly title: string }>
->(inferred["~restrpc"].responses[201]);
+>(inferred["~restrpc"].responses[201].body);
 expectType<201>(
 	inferred["~restrpc"].handler({
 		params: { id: "todo-1" },
@@ -65,7 +65,7 @@ const declared = route
 		status: 201 as const,
 		body: { id: "todo-1", title: body.title },
 	}));
-expectType<typeof output>(declared["~restrpc"].responses[201]);
+expectType<typeof output>(declared["~restrpc"].responses[201].body);
 const declaredNoBody = route.get("/declared-no-body").response(204);
 expectType<{ status: 204 }>(
 	null as unknown as RouteResponse<(typeof declaredNoBody)["~restrpc"]>,
@@ -88,7 +88,7 @@ const procedure = route
 expectType<"procedure">(procedure["~restrpc"].kind);
 expectType<
 	StandardSchemaV1<unknown, { readonly id: "todo-1"; readonly title: string }>
->(procedure["~restrpc"].responses[200]);
+>(procedure["~restrpc"].responses[200].body);
 
 route.output(output).handler(() => ({ id: "todo-1", title: "Todo" }));
 expectError(route.output(output).handler(() => ({ id: 1, title: "Todo" })));
