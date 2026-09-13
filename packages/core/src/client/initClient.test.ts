@@ -84,10 +84,9 @@ describe("initClient", () => {
 					.input(z.object({ title: z.string() }))
 					.output(z.string().transform(Number)),
 				form: route
-					.input(
-						z.object({ title: z.string(), tags: z.array(z.string()) }),
-						"application/x-www-form-urlencoded",
-					)
+					.input(z.object({ title: z.string(), tags: z.array(z.string()) }), {
+						contentType: "application/x-www-form-urlencoded",
+					})
 					.output(z.string().transform(Number)),
 				list: route.get("/todos").response(200, z.array(z.string())),
 			},

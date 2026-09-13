@@ -1,4 +1,9 @@
-export type { BodyContentType, KnownBodyContentType, Stream } from "./body.ts";
+export type {
+	BodyContentType,
+	BodyOptions,
+	KnownBodyContentType,
+	Stream,
+} from "./body.ts";
 export { isStream } from "./body.ts";
 export type {
 	HttpMethod,

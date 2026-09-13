@@ -14,6 +14,11 @@ export type BodyContentType =
 	| (string & Record<never, never>)
 	| readonly (KnownBodyContentType | (string & Record<never, never>))[];
 
+/** Options for declaring a request or procedure input body. */
+export type BodyOptions = {
+	contentType: BodyContentType;
+};
+
 /**
  * Declares a streaming response body.
  *

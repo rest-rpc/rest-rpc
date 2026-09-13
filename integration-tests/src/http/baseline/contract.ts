@@ -28,11 +28,8 @@ export const integrationContract = {
 		text: route
 			.post("/echo/text/:id")
 			.params(z.object({ id: z.string() }))
-			.body(z.string(), "text/plain")
-			.response(200, {
-				contentType: "text/plain",
-				body: z.string(),
-			}),
+			.body(z.string(), { contentType: "text/plain" })
+			.response(200, z.string(), { contentType: "text/plain" }),
 	},
 	items: {
 		list: route
@@ -68,21 +65,22 @@ export const integrationContract = {
 			.response(204),
 	},
 	responses: {
-		binary: route.get("/responses/binary").response(200, {
-			contentType: "application/octet-stream",
-			body: z.instanceof(Uint8Array),
-		}),
-		headers: route.get("/responses/headers").response(200, {
-			body: z.object({ ok: z.literal(true) }),
-			headers: z.object({
-				"x-declared-result": z.string(),
-				"x-optional-result": z.string().optional(),
+		binary: route
+			.get("/responses/binary")
+			.response(200, z.instanceof(Uint8Array), {
+				contentType: "application/octet-stream",
 			}),
-		}),
-		text: route.get("/responses/text").response(200, {
-			contentType: "text/plain",
-			body: z.string(),
-		}),
+		headers: route
+			.get("/responses/headers")
+			.response(200, z.object({ ok: z.literal(true) }), {
+				headers: z.object({
+					"x-declared-result": z.string(),
+					"x-optional-result": z.string().optional(),
+				}),
+			}),
+		text: route
+			.get("/responses/text")
+			.response(200, z.string(), { contentType: "text/plain" }),
 		undeclared: route
 			.get("/responses/undeclared")
 			.response(200, z.object({ ok: z.literal(true) })),

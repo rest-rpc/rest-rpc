@@ -153,10 +153,9 @@ describe("handleHttpRoute", () => {
 
 	it("passes decoded custom procedure input and its content type", async () => {
 		const declaration = coreRoute
-			.input(
-				z.object({ title: z.string() }),
-				"application/x-www-form-urlencoded",
-			)
+			.input(z.object({ title: z.string() }), {
+				contentType: "application/x-www-form-urlencoded",
+			})
 			.output(z.object({ title: z.string() }))["~restrpc"];
 		const result = await handleHttpRoute(
 			declaration,
@@ -255,8 +254,7 @@ describe("handleHttpRoute", () => {
 
 	it("normalizes declared response headers", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/todos").response(200, {
-				body: z.object({ id: z.string() }),
+			coreRoute.get("/todos").response(200, z.object({ id: z.string() }), {
 				headers: z.object({
 					etag: z.string(),
 					"x-optional": z.string().optional(),
@@ -376,10 +374,9 @@ describe("handleHttpRoute", () => {
 describe("handleHttpRoute custom responses", () => {
 	it("normalizes custom single bodies after validating without serializing them", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/report.csv").response(200, {
-				contentType: "text/csv",
-				body: z.string(),
-			})["~restrpc"],
+			coreRoute
+				.get("/report.csv")
+				.response(200, z.string(), { contentType: "text/csv" })["~restrpc"],
 			() => ({ status: 200, body: "id,title\n1,First\n" }),
 			{
 				request: {},
@@ -396,9 +393,8 @@ describe("handleHttpRoute custom responses", () => {
 
 	it("normalizes custom response bodies with selected content types", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/images/:id").response(200, {
+			coreRoute.get("/images/:id").response(200, z.string(), {
 				contentType: ["image/png", "image/jpeg"],
-				body: z.string(),
 			})["~restrpc"],
 			() => ({
 				status: 200,

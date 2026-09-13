@@ -50,11 +50,13 @@ const createRequestTestContract = () => ({
 					id: z.string(),
 				}),
 			)
-			.body(z.string(), "text/plain")
+			.body(z.string(), { contentType: "text/plain" })
 			.response(204),
 		json: route
 			.post("/uploads/json")
-			.body(z.object({ type: z.string() }), "application/json")
+			.body(z.object({ type: z.string() }), {
+				contentType: "application/json",
+			})
 			.response(204),
 	},
 });
@@ -390,7 +392,7 @@ describe("ApiClient requests", () => {
 							title: z.string(),
 							remember: z.boolean().optional(),
 						}),
-						"application/x-www-form-urlencoded",
+						{ contentType: "application/x-www-form-urlencoded" },
 					)
 					.response(204),
 			},
@@ -427,7 +429,7 @@ describe("ApiClient requests", () => {
 							body: z.string(),
 							title: z.string(),
 						}),
-						"application/x-www-form-urlencoded",
+						{ contentType: "application/x-www-form-urlencoded" },
 					)
 					.response(204),
 			},
@@ -461,7 +463,7 @@ describe("ApiClient requests", () => {
 							title: z.string(),
 							tags: z.array(z.string()),
 						}),
-						"application/x-www-form-urlencoded",
+						{ contentType: "application/x-www-form-urlencoded" },
 					)
 					.response(204),
 			},
@@ -496,7 +498,7 @@ describe("ApiClient requests", () => {
 							file: z.instanceof(Blob),
 							tags: z.array(z.string()).optional(),
 						}),
-						"multipart/form-data",
+						{ contentType: "multipart/form-data" },
 					)
 					.response(204),
 			},
@@ -532,7 +534,7 @@ describe("ApiClient requests", () => {
 							body: z.string(),
 							title: z.string(),
 						}),
-						"multipart/form-data",
+						{ contentType: "multipart/form-data" },
 					)
 					.response(204),
 			},
@@ -564,7 +566,9 @@ describe("ApiClient requests", () => {
 							id: z.string(),
 						}),
 					)
-					.body(z.string(), ["image/png", "image/jpeg"])
+					.body(z.string(), {
+						contentType: ["image/png", "image/jpeg"],
+					})
 					.response(204),
 			},
 		};

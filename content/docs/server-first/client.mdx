@@ -58,7 +58,7 @@ await client.$post(
 );
 ```
 
-Requests declared with `body(schema, contentType)` must always supply a
+Requests declared with `body(schema, { contentType })` must always supply a
 `contentType` option to a server-first client.
 
 ```ts

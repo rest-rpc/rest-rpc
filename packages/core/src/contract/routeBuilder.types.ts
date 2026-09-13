@@ -1,5 +1,5 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type { BodyContentType, Stream } from "./body.ts";
+import type { BodyOptions, Stream } from "./body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	HttpMethod,
@@ -93,13 +93,13 @@ type WithResponse<
 type WithProcedureInput<
 	TState extends BuilderState,
 	TSchema extends StandardSchemaV1,
-	TContentType extends BodyContentType | undefined,
+	TOptions extends BodyOptions | undefined,
 > = {
 	route: TState["route"];
 	request: TState["request"] & {
 		body: TSchema;
-	} & (TContentType extends BodyContentType
-			? { contentType: TContentType }
+	} & (TOptions extends BodyOptions
+			? { contentType: TOptions["contentType"] }
 			: EmptyObject);
 	responses: TState["responses"];
 	openApi: TState["openApi"];
@@ -185,38 +185,26 @@ type ResponseMethods<
 	TState extends BuilderState,
 	TExtension extends BuilderExtension | never,
 > = {
-	/** Declares a response status and schema. @see {@link https://rest-rpc.dev/docs/contract/declaration#responses} */
+	/** Declares a response status, schema, and HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-responses} */
 	response<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1 | undefined = undefined,
+		const TOptions extends ResponseOptions | undefined = undefined,
 		const TPath extends string = string,
 		const TMetadata extends RouteMetadata | never = never,
 	>(
 		this: BuilderReceiver<TPath, TMetadata>,
 		status: TStatus,
 		schema?: TSchema,
+		options?: TOptions,
 	): RouteBuilderView<
 		WithResponse<
 			TState,
 			TStatus,
-			{ body: TSchema extends StandardSchemaV1 ? TSchema : undefined }
+			{
+				body: TSchema extends StandardSchemaV1 ? TSchema : undefined;
+			} & (TOptions extends ResponseOptions ? TOptions : EmptyObject)
 		>,
-		TExtension,
-		TPath,
-		TMetadata
-	>;
-	/** Declares a response body and its HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-responses} */
-	response<
-		const TStatus extends number,
-		const TOptions extends ResponseOptions,
-		const TPath extends string = string,
-		const TMetadata extends RouteMetadata | never = never,
-	>(
-		this: BuilderReceiver<TPath, TMetadata>,
-		status: TStatus,
-		options: TOptions,
-	): RouteBuilderView<
-		WithResponse<TState, TStatus, TOptions>,
 		TExtension,
 		TPath,
 		TMetadata
@@ -246,37 +234,25 @@ type BodyMethods<
 	TState,
 	"body",
 	{
-		/** Declares a JSON request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-json-body} */
+		/** Declares a request body and its HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-requests} */
 		body<
 			const TSchema extends StandardSchemaV1,
+			const TOptions extends BodyOptions | undefined = undefined,
 			const TPath extends string = string,
 			const TMetadata extends RouteMetadata | never = never,
 		>(
 			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
+			options?: TOptions,
 		): RouteBuilderView<
-			WithRequest<TState, "body", TSchema, "body">,
-			TExtension,
-			TPath,
-			TMetadata
-		>;
-		/** Declares a custom-content request body. @see {@link https://rest-rpc.dev/docs/http-requests#request-with-custom-content-type} */
-		body<
-			const TSchema extends StandardSchemaV1,
-			const TContentType extends BodyContentType,
-			const TPath extends string = string,
-			const TMetadata extends RouteMetadata | never = never,
-		>(
-			this: BuilderReceiver<TPath, TMetadata>,
-			schema: TSchema,
-			contentType: TContentType,
-		): RouteBuilderView<
-			WithRequest<
-				WithRequest<TState, "body", TSchema, "body">,
-				"contentType",
-				TContentType,
-				"body"
-			>,
+			TOptions extends BodyOptions
+				? WithRequest<
+						WithRequest<TState, "body", TSchema, "body">,
+						"contentType",
+						TOptions["contentType"],
+						"body"
+					>
+				: WithRequest<TState, "body", TSchema, "body">,
 			TExtension,
 			TPath,
 			TMetadata
@@ -422,12 +398,12 @@ type ProcedureMethods<
 		/** Declares the procedure's input schema and optional body media type. */
 		input<
 			const TSchema extends StandardSchemaV1,
-			const TContentType extends BodyContentType | undefined = undefined,
+			const TOptions extends BodyOptions | undefined = undefined,
 		>(
 			schema: TSchema,
-			contentType?: TContentType,
+			options?: TOptions,
 		): RouteBuilderView<
-			WithProcedureInput<TState, TSchema, TContentType>,
+			WithProcedureInput<TState, TSchema, TOptions>,
 			TExtension,
 			"",
 			never
@@ -536,14 +512,14 @@ type ProcedureRootMethods<TExtension extends BuilderExtension | never> = {
 	/** Declares the procedure's input schema and optional body media type. */
 	input<
 		const TInput extends StandardSchemaV1,
-		const TContentType extends BodyContentType | undefined = undefined,
+		const TOptions extends BodyOptions | undefined = undefined,
 	>(
 		schema: TInput,
-		contentType?: TContentType,
+		options?: TOptions,
 	): RouteBuilderView<
 		ProcedureState<
-			{ body: TInput } & (TContentType extends BodyContentType
-				? { contentType: TContentType }
+			{ body: TInput } & (TOptions extends BodyOptions
+				? { contentType: TOptions["contentType"] }
 				: EmptyObject),
 			EmptyObject,
 			"input"

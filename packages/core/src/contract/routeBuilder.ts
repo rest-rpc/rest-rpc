@@ -1,8 +1,5 @@
-import {
-	isStandardSchema,
-	type StandardSchemaV1,
-} from "../standard-schema/index.ts";
-import type { BodyContentType } from "./body.ts";
+import type { StandardSchemaV1 } from "../standard-schema/index.ts";
+import type { BodyOptions } from "./body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	HttpMethod,
@@ -158,26 +155,26 @@ export class RouteBuilder {
 		return new RouteBuilder(httpState(this["~restrpc"], "DELETE", path));
 	}
 
-	body(schema: StandardSchemaV1, contentType?: BodyContentType): RouteBuilder {
+	body(schema: StandardSchemaV1, options?: BodyOptions): RouteBuilder {
 		const state = this["~restrpc"];
 		return new RouteBuilder({
 			...state,
 			request: {
 				...state.request,
 				body: schema,
-				...(contentType === undefined ? {} : { contentType }),
+				...options,
 			},
 		});
 	}
 
-	input(schema: StandardSchemaV1, contentType?: BodyContentType): RouteBuilder {
+	input(schema: StandardSchemaV1, options?: BodyOptions): RouteBuilder {
 		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
 			request: {
 				...state.request,
 				body: schema,
-				...(contentType === undefined ? {} : { contentType }),
+				...options,
 			},
 		});
 	}
@@ -235,15 +232,10 @@ export class RouteBuilder {
 
 	response(
 		status: number,
-		input?: StandardSchemaV1 | ResponseOptions,
+		schema?: StandardSchemaV1,
+		options?: ResponseOptions,
 	): RouteBuilder {
-		const response =
-			input === undefined
-				? { body: undefined }
-				: isStandardSchema(input)
-					? { body: input }
-					: input;
-		return addResponse(this["~restrpc"], status, response);
+		return addResponse(this["~restrpc"], status, { ...options, body: schema });
 	}
 
 	output(schema: StandardSchemaV1): RouteBuilder {

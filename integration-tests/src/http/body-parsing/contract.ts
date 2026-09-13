@@ -8,11 +8,11 @@ export const bodyParsingContract = {
 		.response(200, z.object({ count: z.number(), title: z.string() })),
 	text: route
 		.post("/body-parsing/text")
-		.body(z.string(), "text/plain")
+		.body(z.string(), { contentType: "text/plain" })
 		.response(200, z.object({ body: z.string() })),
 	textVariant: route
 		.post("/body-parsing/text-variant")
-		.body(z.string(), ["text/plain", "text/markdown"])
+		.body(z.string(), { contentType: ["text/plain", "text/markdown"] })
 		.response(200, z.object({ contentType: z.string(), body: z.string() })),
 	customJson: route
 		.post("/body-parsing/custom-json")
@@ -21,7 +21,7 @@ export const bodyParsingContract = {
 				count: z.number(),
 				nested: z.object({ ok: z.boolean() }),
 			}),
-			"application/json; charset=utf-8",
+			{ contentType: "application/json; charset=utf-8" },
 		)
 		.response(200, z.object({ count: z.number(), ok: z.boolean() })),
 	formUrlEncoded: route
@@ -33,7 +33,7 @@ export const bodyParsingContract = {
 				title: z.string(),
 				tags: z.array(z.string()).optional(),
 			}),
-			"application/x-www-form-urlencoded",
+			{ contentType: "application/x-www-form-urlencoded" },
 		)
 		.response(
 			200,
@@ -46,7 +46,9 @@ export const bodyParsingContract = {
 		),
 	binary: route
 		.post("/body-parsing/binary")
-		.body(z.instanceof(Uint8Array), "application/octet-stream")
+		.body(z.instanceof(Uint8Array), {
+			contentType: "application/octet-stream",
+		})
 		.response(
 			200,
 			z.object({ byteLength: z.number(), bytes: z.array(z.number()) }),

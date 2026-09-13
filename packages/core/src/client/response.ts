@@ -7,10 +7,7 @@ import type {
 	SuccessfulDeclaredClientResponse,
 } from "../contract/response.ts";
 import { getRouteResponses } from "../contract/response.ts";
-import {
-	isStandardSchema,
-	validateStandardSchema,
-} from "../standard-schema/index.ts";
+import { validateStandardSchema } from "../standard-schema/index.ts";
 import { parseNdjsonStream } from "./stream.ts";
 import type { ApiClientBodyParser, FetchArgs } from "./types.ts";
 
@@ -159,7 +156,7 @@ export const readDeclaredBody = async (
 			rawResponse,
 		);
 		const value = await bodyParser(rawResponse);
-		if (!validate || !isStandardSchema(schema)) return value;
+		if (!validate || isStream(schema)) return value;
 
 		const result = await validateStandardSchema(schema, value);
 		if (result.issues) throw result.issues;
@@ -176,9 +173,6 @@ export const readDeclaredBody = async (
 
 	const value = await rawResponse.json();
 	if (!validate) return value;
-	if (!isStandardSchema(schema)) {
-		throw new Error("Server returned an unsupported response body");
-	}
 
 	const result = await validateStandardSchema(schema, value);
 	if (result.issues) throw result.issues;

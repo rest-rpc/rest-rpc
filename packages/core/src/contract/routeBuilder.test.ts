@@ -59,6 +59,38 @@ describe("route builder runtime", () => {
 		assert.equal(declaration["~restrpc"].responses[201].body, schema);
 	});
 
+	it("stores body and response options beside their schemas", () => {
+		const bodySchema = z.string();
+		const headers = z.object({ location: z.string() });
+		const declaration = route
+			.post("/items")
+			.body(bodySchema, { contentType: "text/plain" })
+			.response(201, bodySchema, { contentType: "text/plain", headers })
+			.response(204, undefined, { headers });
+
+		assert.deepEqual(declaration["~restrpc"].request, {
+			body: bodySchema,
+			contentType: "text/plain",
+		});
+		assert.deepEqual(declaration["~restrpc"].responses[201], {
+			body: bodySchema,
+			contentType: "text/plain",
+			headers,
+		});
+		assert.deepEqual(declaration["~restrpc"].responses[204], {
+			body: undefined,
+			headers,
+		});
+
+		const procedure = route
+			.input(bodySchema, { contentType: "text/plain" })
+			.output(bodySchema);
+		assert.deepEqual(procedure["~restrpc"].request, {
+			body: bodySchema,
+			contentType: "text/plain",
+		});
+	});
+
 	it("returns a new declaration from every builder method", () => {
 		const schema = type<{ value: string }>();
 		const initial = route.post("/items");

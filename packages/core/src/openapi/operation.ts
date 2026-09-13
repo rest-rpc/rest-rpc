@@ -12,10 +12,7 @@ import type {
 	ResponseHeaders,
 } from "../contract/response.ts";
 import { getRouteResponses } from "../contract/response.ts";
-import {
-	isStandardSchema,
-	type StandardSchemaV1,
-} from "../standard-schema/index.ts";
+import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 
 export const JSON_CONTENT_TYPE = "application/json";
 export const NDJSON_CONTENT_TYPE = "application/x-ndjson";
@@ -182,15 +179,10 @@ export const createRequestBody = (
 				: [customContentType as string]
 			: [JSON_CONTENT_TYPE];
 	if (contentTypes.length === 0) return undefined;
-	const openApiSchema = isStandardSchema(schema)
-		? (converter?.(schema, "input") ?? {})
-		: undefined;
+	const openApiSchema = converter?.(schema, "input") ?? {};
 
 	return {
-		content: createContent(
-			contentTypes,
-			openApiSchema ? { schema: openApiSchema } : {},
-		),
+		content: createContent(contentTypes, { schema: openApiSchema }),
 	};
 };
 
@@ -235,17 +227,12 @@ export const createResponse = (
 				? contentType
 				: [contentType as string]
 			: [JSON_CONTENT_TYPE];
-	const openApiSchema = isStandardSchema(schema)
-		? (converter?.(schema, "output") ?? {})
-		: {};
+	const openApiSchema = converter?.(schema, "output") ?? {};
 
 	return {
 		description: openApiResponse?.description ?? description,
 		...(headers ? { headers } : {}),
-		content: createContent(
-			contentTypes,
-			openApiSchema ? { schema: openApiSchema } : {},
-		),
+		content: createContent(contentTypes, { schema: openApiSchema }),
 	};
 };
 
@@ -271,10 +258,9 @@ export const createOpenApiResponseHeaders = (
 
 	return Object.fromEntries(
 		Object.entries(headers).map(([name, header]) => {
-			const schema = isStandardSchema(header) ? header : header.schema;
-			const description = isStandardSchema(header)
-				? undefined
-				: header.description;
+			const isSchema = "~standard" in header;
+			const schema = isSchema ? header : header.schema;
+			const description = isSchema ? undefined : header.description;
 
 			return [
 				name,

@@ -85,8 +85,7 @@ describe("ApiClient responses", () => {
 				get: route
 					.get("/todos/:id")
 					.params(z.object({ id: z.string() }))
-					.response(200, {
-						body: z.object({ id: z.string() }),
+					.response(200, z.object({ id: z.string() }), {
 						headers: z.object({
 							etag: z.string(),
 							"x-count": z.coerce.number<number>(),
@@ -430,10 +429,9 @@ describe("ApiClient responses", () => {
 	it("parses and validates declared custom text responses", async () => {
 		const apiContract = {
 			reports: {
-				csv: route.get("/reports.csv").response(200, {
-					contentType: "text/csv",
-					body: z.string(),
-				}),
+				csv: route
+					.get("/reports.csv")
+					.response(200, z.string(), { contentType: "text/csv" }),
 			},
 		};
 		captureFetch(
@@ -456,9 +454,8 @@ describe("ApiClient responses", () => {
 	it("uses a custom body parser for custom responses", async () => {
 		const apiContract = {
 			reports: {
-				binaryText: route.get("/reports/custom").response(200, {
+				binaryText: route.get("/reports/custom").response(200, z.string(), {
 					contentType: "application/octet-stream",
-					body: z.string(),
 				}),
 			},
 		};
@@ -481,10 +478,11 @@ describe("ApiClient responses", () => {
 	it("returns selected content type metadata for custom response bodies", async () => {
 		const apiContract = {
 			reports: {
-				image: route.get("/reports/image").response(200, {
-					contentType: ["image/png", "image/jpeg"],
-					body: z.instanceof(Uint8Array),
-				}),
+				image: route
+					.get("/reports/image")
+					.response(200, z.instanceof(Uint8Array), {
+						contentType: ["image/png", "image/jpeg"],
+					}),
 			},
 		};
 		captureFetch(
@@ -507,10 +505,9 @@ describe("ApiClient responses", () => {
 	it("rejects custom response bodies with mismatched content types", async () => {
 		const apiContract = {
 			reports: {
-				csv: route.get("/reports.csv").response(200, {
-					contentType: "text/csv",
-					body: z.string(),
-				}),
+				csv: route
+					.get("/reports.csv")
+					.response(200, z.string(), { contentType: "text/csv" }),
 			},
 		};
 		captureFetch(

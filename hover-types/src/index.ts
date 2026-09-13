@@ -52,16 +52,14 @@ export const hoverApi = {
 		create: route
 			.post("/todos")
 			.body(schemaType<{ title: string }>())
-			.response(201, {
-				body: schemaType<{ id: string; title: string }>(),
+			.response(201, schemaType<{ id: string; title: string }>(), {
 				headers: schemaType<{ location: string; "x-next-cursor"?: string }>(),
 			})
 			.response(400, schemaType<{ code: "INVALID_TODO" }>()),
 		download: route
 			.get("/todos/:id/export")
 			.params(schemaType<{ id: string }>())
-			.response(200, {
-				body: schemaType<Uint8Array>(),
+			.response(200, schemaType<Uint8Array>(), {
 				contentType: ["text/csv", "application/json"] as const,
 			}),
 		events: route
@@ -84,8 +82,7 @@ export const declaredHoverApi = {
 		create: route
 			.post("/todos")
 			.body(schemaType<{ title: string }>())
-			.response(201, {
-				body: schemaType<{ id: string; title: string }>(),
+			.response(201, schemaType<{ id: string; title: string }>(), {
 				headers: schemaType<{
 					location: string;
 					"x-next-cursor"?: string;

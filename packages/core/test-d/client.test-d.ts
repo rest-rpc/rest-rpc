@@ -28,7 +28,9 @@ const shorthandApi = {
 		get: route.output(shorthandOutputSchema),
 		add: route.input(shorthandInputSchema).output(shorthandOutputSchema),
 		import: route
-			.input(shorthandInputSchema, ["text/plain", "text/markdown"])
+			.input(shorthandInputSchema, {
+				contentType: ["text/plain", "text/markdown"],
+			})
 			.output(shorthandOutputSchema),
 	},
 };
@@ -188,19 +190,16 @@ expectError(
 expectError(
 	route.get("/items").headers(z.object({ "x-page": z.coerce.number() })),
 );
-route
-	.post("/forms")
-	.body(
-		z.object({ count: z.coerce.number<number>() }),
-		"application/x-www-form-urlencoded",
-	);
+route.post("/forms").body(z.object({ count: z.coerce.number<number>() }), {
+	contentType: "application/x-www-form-urlencoded",
+});
 route.post("/uploads").body(
 	schemaType<{
 		file: Blob;
 		parts?: Array<Blob | string>;
 		title: string;
 	}>(),
-	"multipart/form-data",
+	{ contentType: "multipart/form-data" },
 );
 
 const groupedRequestApi = {
@@ -323,8 +322,7 @@ const responseApi = {
 		create: route
 			.post("/todos")
 			.body(z.object({ title: z.string() }))
-			.response(201, {
-				body: todoSchema,
+			.response(201, todoSchema, {
 				headers: z.object({
 					location: z.string(),
 					"x-next-cursor": z.string().optional(),
@@ -469,10 +467,9 @@ expectError(streamResponseClient.todos.events.fetch);
 
 const csvResponseApi = {
 	todos: {
-		exportCsv: route.get("/todos.csv").response(200, {
-			contentType: "text/csv",
-			body: z.string(),
-		}),
+		exportCsv: route
+			.get("/todos.csv")
+			.response(200, z.string(), { contentType: "text/csv" }),
 	},
 };
 
@@ -494,10 +491,11 @@ csvResponseClient.todos.exportCsv().then((response) => {
 
 const imageResponseApi = {
 	todos: {
-		exportImage: route.get("/todos/image").response(200, {
-			contentType: ["image/png", "image/jpeg"],
-			body: z.instanceof(Uint8Array),
-		}),
+		exportImage: route
+			.get("/todos/image")
+			.response(200, z.instanceof(Uint8Array), {
+				contentType: ["image/png", "image/jpeg"],
+			}),
 	},
 };
 
@@ -522,7 +520,9 @@ const customRequestApi = {
 		uploadImage: route
 			.post("/todos/:id/image")
 			.params(z.object({ id: z.string() }))
-			.body(z.instanceof(Uint8Array), ["image/png", "image/jpeg"])
+			.body(z.instanceof(Uint8Array), {
+				contentType: ["image/png", "image/jpeg"],
+			})
 			.response(204),
 	},
 };
@@ -554,7 +554,9 @@ const rawCustomRequestApi = {
 	todos: {
 		submitForm: route
 			.post("/todos/form")
-			.body(z.instanceof(URLSearchParams), "application/x-www-form-urlencoded")
+			.body(z.instanceof(URLSearchParams), {
+				contentType: "application/x-www-form-urlencoded",
+			})
 			.response(204),
 	},
 };

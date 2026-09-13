@@ -27,9 +27,8 @@ export type ResponseDeclaration = {
 	headers?: ResponseHeaders;
 };
 
-/** Options accepted when declaring a response body and its HTTP metadata. */
+/** HTTP metadata associated with a declared response schema. */
 export type ResponseOptions = {
-	body: ResponseSchema | undefined;
 	contentType?: BodyContentType;
 	headers?: ResponseHeaders;
 };

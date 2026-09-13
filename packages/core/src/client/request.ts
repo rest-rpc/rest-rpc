@@ -56,7 +56,7 @@ const normalizeHeaders = (headers: Record<string, string> | undefined) =>
 export const assertNoContentTypeHeader = (headers: Record<string, string>) => {
 	if (hasHeader(headers, "content-type")) {
 		throw new Error(
-			'ApiClient getGlobalHeaders() must not return a "content-type" header. Pass the content type to body(schema, contentType) on the route declaration instead.',
+			'ApiClient getGlobalHeaders() must not return a "content-type" header. Pass the content type to body(schema, { contentType }) on the route declaration instead.',
 		);
 	}
 };

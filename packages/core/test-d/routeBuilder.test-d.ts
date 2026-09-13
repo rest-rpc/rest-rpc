@@ -57,7 +57,7 @@ expectAssignable<RouteDeclaration>(shorthandWithInput["~restrpc"]);
 expectAssignable<Contract>(shorthandWithInput);
 
 const formInput = route
-	.input(input, "application/x-www-form-urlencoded")
+	.input(input, { contentType: "application/x-www-form-urlencoded" })
 	.output(todo);
 expectType<typeof input>(formInput["~restrpc"].request.body);
 expectType<"application/x-www-form-urlencoded">(
@@ -141,8 +141,8 @@ expectType<{
 // Preserves schema inference for form and multipart content types.
 const importRoute = route
 	.post("/imports")
-	.body(input, "application/x-www-form-urlencoded")
-	.response(201, { contentType: "text/csv", body: customText });
+	.body(input, { contentType: "application/x-www-form-urlencoded" })
+	.response(201, customText, { contentType: "text/csv" });
 
 expectType<typeof input>(importRoute["~restrpc"].request.body);
 expectType<"application/x-www-form-urlencoded">(
@@ -153,19 +153,19 @@ expectType<typeof customText>(importRoute["~restrpc"].responses[201].body);
 // Supports form and multipart body schemas.
 const formSchema = route
 	.post("/form-schema")
-	.body(input, "application/x-www-form-urlencoded")
+	.body(input, { contentType: "application/x-www-form-urlencoded" })
 	.response(201);
 expectType<typeof input>(formSchema["~restrpc"].request.body);
 const multipartSchema = route
 	.post("/multipart-schema")
-	.body(input, "multipart/form-data")
+	.body(input, { contentType: "multipart/form-data" })
 	.response(201);
 expectType<typeof input>(multipartSchema["~restrpc"].request.body);
 
 // Preserves schema and content-type inference for custom request bodies.
 const customRequestBody = route
 	.post("/custom-body")
-	.body(input, "application/xml")
+	.body(input, { contentType: "application/xml" })
 	.response(201);
 expectType<typeof input>(customRequestBody["~restrpc"].request.body);
 expectType<"application/xml">(
@@ -178,10 +178,7 @@ expectError(route.post("/custom-body-schema").body(input, { invalid: true }));
 const transformedCustomText = z.number().transform(String);
 const transformedCustomResponse = route
 	.get("/transformed-custom-response")
-	.response(200, {
-		contentType: "text/plain",
-		body: transformedCustomText,
-	});
+	.response(200, transformedCustomText, { contentType: "text/plain" });
 expectType<typeof transformedCustomText>(
 	transformedCustomResponse["~restrpc"].responses[200].body,
 );
@@ -213,7 +210,7 @@ expectError(
 // Preserves response body, stream, and typed response-header inference.
 const typedResponses = route
 	.get("/typed-responses")
-	.response(200, { body: todo, headers: typedResponseHeaders })
+	.response(200, todo, { headers: typedResponseHeaders })
 	.streamResponse(201, customBytes);
 expectType<typeof todo>(typedResponses["~restrpc"].responses[200].body);
 expectType<typeof typedResponseHeaders>(
@@ -223,8 +220,7 @@ expectType<typeof customBytes>(
 	typedResponses["~restrpc"].responses[201].body.schema,
 );
 expectError(
-	route.get("/invalid-response-headers").response(200, {
-		body: todo,
+	route.get("/invalid-response-headers").response(200, todo, {
 		headers: schemaType<{ invalid: { nested: string } }>(),
 	}),
 );
@@ -247,11 +243,14 @@ expectAssignable<RouteDeclaration>(
 expectAssignable<RouteDeclaration>(
 	route.get("/health").response(204, undefined)["~restrpc"],
 );
-const noBodyWithHeaders = route.get("/created").response(204, {
-	body: undefined,
+const noBodyWithHeaders = route.get("/created").response(204, undefined, {
+	contentType: "text/plain",
 	headers: typedResponseHeaders,
 });
 expectType<undefined>(noBodyWithHeaders["~restrpc"].responses[204].body);
+expectType<"text/plain">(
+	noBodyWithHeaders["~restrpc"].responses[204].contentType,
+);
 expectType<typeof typedResponseHeaders>(
 	noBodyWithHeaders["~restrpc"].responses[204].headers,
 );
@@ -271,7 +270,7 @@ expectAssignable<RouteDeclaration>(duplicateResponseStatus["~restrpc"]);
 const mixedResponses = route
 	.get("/responses")
 	.response(200, todo)
-	.response(201, { contentType: "text/csv", body: customText })
+	.response(201, customText, { contentType: "text/csv" })
 	.streamResponse(202, event);
 
 expectType<typeof todo>(mixedResponses["~restrpc"].responses[200].body);
@@ -283,7 +282,7 @@ expectAssignable<RouteDeclaration>(mixedResponses["~restrpc"]);
 // Keeps unused request and route configuration available after a response.
 const configuredAfterResponse = route
 	.post("/configured-after-response")
-	.response(200, { contentType: "text/plain", body: customText })
+	.response(200, customText, { contentType: "text/plain" })
 	.body(input)
 	.jsonQuery(schemaType<{ search: string }>())
 	.params(schemaType<{ id: string }>())
@@ -307,7 +306,7 @@ expectAssignable<RouteDeclaration>(configuredAfterResponse["~restrpc"]);
 
 // Keeps HTTP body and query setters mutually exclusive.
 const bodyUsed = route.post("/body-used").body(input);
-expectError(bodyUsed.body(input, "text/plain"));
+expectError(bodyUsed.body(input, { contentType: "text/plain" }));
 expectError(route.get("/query-used").query(input).jsonQuery(input));
 expectError(route.get("/json-query-used").jsonQuery(input).query(input));
 
@@ -329,4 +328,7 @@ expectAssignable<RouteDeclaration>(
 );
 
 expectError(route.get("/health").response(todo));
+expectError(route.get("/legacy-response").response(200, { body: todo }));
+expectError(route.post("/legacy-body").body(input, "text/plain"));
+expectError(route.input(input, "text/plain"));
 expectError(apiRoute.post("/todos").responses({ 201: todo }));

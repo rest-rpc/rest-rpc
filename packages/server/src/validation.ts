@@ -10,7 +10,6 @@ import {
 	type RequestHeadersDeclaration,
 } from "@rest-rpc/core/contract";
 import {
-	isStandardSchema,
 	type StandardSchemaV1,
 	validateStandardSchema,
 } from "@rest-rpc/core/standard-schema";
@@ -100,14 +99,11 @@ const validateObjectSchema = async (
 };
 
 const validateRequestObject = async (
-	declaration: unknown,
+	declaration: RequestObjectSchema | undefined,
 	input: unknown,
 ): Promise<SegmentValidationResult> => {
-	if (isStandardSchema(declaration)) {
-		return validateObjectSchema(declaration as RequestObjectSchema, input);
-	}
-
-	return { data: {}, errors: [] };
+	if (!declaration) return { data: {}, errors: [] };
+	return validateObjectSchema(declaration, input);
 };
 
 const validateHeaders = async (
@@ -148,12 +144,6 @@ const validateCustomBody = async (
 	const declaration = route.request;
 	if (!declaration?.body || declaration.contentType === undefined) {
 		return { data: {}, errors: [] };
-	}
-	if (!isStandardSchema(declaration.body)) {
-		return {
-			data: {},
-			errors: [{ message: "Unsupported custom body schema." }],
-		};
 	}
 	const contentTypes =
 		declaration.contentType === undefined

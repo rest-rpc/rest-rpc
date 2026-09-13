@@ -114,7 +114,7 @@ const routeSource = (index, serverFirst) => {
 	if (path.includes(":id")) builder.push(".params(paramsSchema)");
 	builder.push(".query(querySchema)");
 	if (method !== "GET" && method !== "DELETE")
-		builder.push(".body(bodySchema)");
+		builder.push('.body(bodySchema, { contentType: "application/json" })');
 	builder.push(
 		".headers(routeHeadersSchema)",
 		`.metadata({ feature: 'group-${group}' })`,
@@ -131,7 +131,7 @@ const routeSource = (index, serverFirst) => {
 			}))`);
 	} else {
 		builder.push(
-			".response(200, todoSchema)",
+			'.response(200, todoSchema, { contentType: "application/json" })',
 			".response(400, errorSchema)",
 			".response(404, errorSchema)",
 		);
@@ -162,9 +162,9 @@ const shorthandRouteSource = (index, serverFirst) => {
 	if (serverFirst) {
 		const builder = [
 			"route.output(todoSchema)",
-			"route.input(bodySchema).output(todoSchema)",
+			'route.input(bodySchema, { contentType: "application/json" }).output(todoSchema)',
 			"route",
-			"route.input(bodySchema)",
+			'route.input(bodySchema, { contentType: "application/json" })',
 		][index % 4];
 		return `route${index}: ${builder}.handler(() => ({
 			id: "todo-${index}",
@@ -177,7 +177,7 @@ const shorthandRouteSource = (index, serverFirst) => {
 	return `route${index}: ${
 		index % 2 === 0
 			? "route.output(todoSchema)"
-			: "route.input(bodySchema).output(todoSchema)"
+			: 'route.input(bodySchema, { contentType: "application/json" }).output(todoSchema)'
 	}`;
 };
 

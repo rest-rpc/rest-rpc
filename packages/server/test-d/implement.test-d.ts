@@ -10,19 +10,20 @@ const contract = {
 			.params(z.object({ id: z.string() }))
 			.response(200, z.object({ id: z.string() })),
 		create: route
-			.input(z.object({ title: z.string() }), "text/plain")
+			.input(z.object({ title: z.string() }), { contentType: "text/plain" })
 			.output(z.object({ id: z.string(), title: z.string() })),
 		upload: route
 			.post("/images")
-			.body(z.instanceof(Uint8Array), ["image/png", "image/jpeg"])
+			.body(z.instanceof(Uint8Array), {
+				contentType: ["image/png", "image/jpeg"],
+			})
 			.response(204),
-		download: route.get("/images/:id").response(200, {
+		download: route.get("/images/:id").response(200, z.instanceof(Uint8Array), {
 			contentType: ["image/png", "image/jpeg"],
-			body: z.instanceof(Uint8Array),
 		}),
 		importCsv: route
 			.post("/imports.csv")
-			.body(z.string(), "text/csv")
+			.body(z.string(), { contentType: "text/csv" })
 			.response(204),
 	},
 } as const;

@@ -214,7 +214,7 @@ describe("validateRequest", () => {
 				.post("/images")
 				.body(
 					z.string().transform((value) => value.toUpperCase()),
-					["image/png", "image/jpeg"],
+					{ contentType: ["image/png", "image/jpeg"] },
 				)
 				.response(204)["~restrpc"],
 			{
@@ -236,9 +236,10 @@ describe("validateRequest", () => {
 
 	it("enforces a single explicitly declared custom body content type", async () => {
 		const result = await validateRequest(
-			route.post("/text").body(z.string(), "text/plain").response(204)[
-				"~restrpc"
-			],
+			route
+				.post("/text")
+				.body(z.string(), { contentType: "text/plain" })
+				.response(204)["~restrpc"],
 			{
 				body: "valid text",
 				headers: { "content-type": "text/markdown" },
@@ -263,7 +264,7 @@ describe("validateRequest", () => {
 						count: z.coerce.number<number>(),
 						remember: z.string().optional(),
 					}),
-					"application/x-www-form-urlencoded",
+					{ contentType: "application/x-www-form-urlencoded" },
 				)
 				.response(204)["~restrpc"],
 			{
@@ -298,7 +299,7 @@ describe("validateRequest", () => {
 						title: z.string(),
 						tags: z.array(z.string()),
 					}),
-					"application/x-www-form-urlencoded",
+					{ contentType: "application/x-www-form-urlencoded" },
 				)
 				.response(204)["~restrpc"],
 			{
@@ -345,7 +346,7 @@ describe("validateRequest", () => {
 						file: z.instanceof(Blob),
 						tags: z.array(z.string()),
 					}),
-					"multipart/form-data",
+					{ contentType: "multipart/form-data" },
 				)
 				.response(204)["~restrpc"],
 			{

@@ -17,7 +17,12 @@ export {
 export type { Contract, RouteDeclaration } from "./contract/index.ts";
 export type { ClientRequest } from "./contract/request.ts";
 export { route } from "./contract/routeBuilder.ts";
-export type { BodyContentType, KnownBodyContentType } from "./contract/body.ts";
+export type {
+	BodyContentType,
+	BodyOptions,
+	KnownBodyContentType,
+} from "./contract/body.ts";
+export type { ResponseOptions } from "./contract/response.ts";
 export type {
 	CreateOpenApiDocumentOptions,
 	OpenApiDocument,

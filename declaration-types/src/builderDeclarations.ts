@@ -39,19 +39,19 @@ export const initialHttp = route.get("/initial");
 export const jsonBody = route.post("/body").body(scalar);
 export const formBody = route
 	.post("/form")
-	.body(scalar, "application/x-www-form-urlencoded");
+	.body(scalar, { contentType: "application/x-www-form-urlencoded" });
 export const formBodyWithArrays = route
 	.post("/form-arrays")
-	.body(scalar, "application/x-www-form-urlencoded");
+	.body(scalar, { contentType: "application/x-www-form-urlencoded" });
 export const multipartBody = route
 	.post("/multipart")
-	.body(scalar, "multipart/form-data");
+	.body(scalar, { contentType: "multipart/form-data" });
 export const multipartBodyWithArrays = route
 	.post("/multipart-arrays")
-	.body(scalar, "multipart/form-data");
+	.body(scalar, { contentType: "multipart/form-data" });
 export const customTypedBody = route
 	.post("/custom-typed-body")
-	.body(scalar, "text/plain");
+	.body(scalar, { contentType: "text/plain" });
 export const queryRoute = route.get("/query").query(query);
 export const jsonQueryRoute = route.get("/json-query").jsonQuery(scalar);
 export const paramsRoute = route.get("/params/:id").params(params);
@@ -63,14 +63,10 @@ export const responseRoute = route.get("/response").response(200, scalar);
 export const noBodyResponseRoute = route.get("/no-body").response(204);
 export const responseHeadersRoute = route
 	.get("/response-headers")
-	.response(200, {
-		body: scalar,
-		headers,
-	});
-export const customResponseRoute = route.get("/custom-response").response(200, {
-	body: customResponseScalar,
-	contentType: "text/plain",
-});
+	.response(200, scalar, { headers });
+export const customResponseRoute = route
+	.get("/custom-response")
+	.response(200, customResponseScalar, { contentType: "text/plain" });
 export const streamResponseRoute = route
 	.get("/stream-response")
 	.streamResponse(200, scalar);
