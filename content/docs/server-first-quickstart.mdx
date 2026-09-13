@@ -3,9 +3,8 @@ title: Server-first Quickstart
 description: Learn how to use rest-rpc with server-first approach
 ---
 
-While rest-rpc is primarily designed for contract-first development,
-it can also be used server-first. In server-first development, the
-client is derived from the server implementation automatically.
+rest-rpc can also be used with a server-first approach while retaining full type safety.
+In server-first development, the client is derived from the server implementation automatically.
 
 This is useful when:
 
@@ -67,7 +66,7 @@ bun add @rest-rpc/core @rest-rpc/node zod
 </Tabs>
 
 Every server adapter supports server-first development. This guide uses the
-Node and Fetch adapters for its examples; the other adapters are covered in
+Node adapter for its examples; the other adapters are covered in
 their server guides.
 
 For the TanStack Query client example, also install:
@@ -77,9 +76,6 @@ pnpm add @rest-rpc/tanstack-query @tanstack/react-query
 ```
 
 ## Define routes on the server
-
-<Tabs>
-<Tab title="Node.js HTTP">
 
 ```ts
 import { createServer } from "node:http";
@@ -98,10 +94,10 @@ export const routes = {
 	},
 };
 
-const handle = createRouteHandler(routes);
+const handler = createRouteHandler(routes);
 
 const server = createServer(async (request, response) => {
-	const { matched } = await handle(request, response);
+	const { matched } = await handler(request, response);
 	if (!matched) {
 		response.writeHead(404).end("Not found");
 	}
@@ -109,40 +105,6 @@ const server = createServer(async (request, response) => {
 
 server.listen(3000);
 ```
-
-</Tab>
-<Tab title="Fetch API">
-
-```ts
-import { route, createRouteHandler } from "@rest-rpc/fetch";
-import { z } from "zod";
-
-export const routes = {
-	todos: {
-		create: route
-			.post("/todos")
-			.body(z.object({ title: z.string().min(1) }))
-			.handler(async ({ body: { title } }) => ({
-				status: 201,
-				body: { id: crypto.randomUUID(), title, completed: false },
-			})),
-	},
-};
-
-const handle = createRouteHandler(routes);
-
-export default {
-	async fetch(request: Request) {
-		const result = await handle(request);
-		return result.matched
-			? result.response
-			: new Response("Not found", { status: 404 });
-	},
-};
-```
-
-</Tab>
-</Tabs>
 
 ## Create a Client
 
@@ -196,10 +158,7 @@ createTodo.mutate({
 
 - [Server-first Server](/docs/server-first/server/) covers request and response
   inference.
-- [Server-first Client](/docs/server-first/client/) covers grouped inputs,
-  special request encodings, and TanStack Query differences.
+- [Server-first Client](/docs/server-first/client/) covers the client API differences compared to contract-first.
 - [HTTP Requests](/docs/http-requests/) and [HTTP Responses](/docs/http-responses/)
   cover behavior shared with contract-first routes.
-- [Node HTTP](/docs/server/node/) and [Fetch Runtime](/docs/server/fetch/) cover
-  adapter setup and options.
-- [Contract-first Quickstart](/docs/quickstart/) covers the contract-first approach if that feels more natural to you.
+- [Contract-first Quickstart](/docs/quickstart/) covers the contract-first approach.

@@ -500,10 +500,10 @@ const routes = {
 		}),
 	},
 };
-const handle = createRouteHandler(routes);
+const handler = createRouteHandler(routes);
 
 const server = createServer(async (request, response) => {
-	const { matched } = await handle(request, response);
+	const { matched } = await handler(request, response);
 	if (!matched) {
 		response.writeHead(404).end("Not found");
 	}
@@ -534,11 +534,11 @@ const routes = {
 		}),
 	},
 };
-const handle = createRouteHandler(routes);
+const handler = createRouteHandler(routes);
 
 export default {
 	async fetch(request: Request) {
-		const result = await handle(request);
+		const result = await handler(request);
 		return result.matched
 			? result.response
 			: new Response("Not found", { status: 404 });

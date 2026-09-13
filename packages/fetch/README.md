@@ -87,10 +87,10 @@ export const routes = {
 	},
 };
 
-const handle = createRouteHandler(routes);
+const handler = createRouteHandler(routes);
 
 const server = createServer(async (request, response) => {
-	const { matched } = await handle(request, response);
+	const { matched } = await handler(request, response);
 	if (!matched) {
 		response.writeHead(404).end("Not found");
 	}

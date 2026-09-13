@@ -38,7 +38,7 @@ export const routes = {
 		.get("/todos/:id")
 		.params(z.object({ id: z.string() }))
 		.handler(({ params: { id } }) => ({
-			status: 200 as const,
+			status: 200,
 			body: { id, title: "Example" },
 		})),
 };
@@ -74,9 +74,10 @@ const implementor = implement(api);
 
 const routes = {
 	todos: {
-		getById: implementor.todos.getById.handler(({ params: { id } }) =>
-			getTodo(id),
-		),
+		getById: implementor.todos.getById.handler(({ params: { id } }) => ({
+			status: 200,
+			body: getTodo(id),
+		})),
 	},
 };
 
@@ -123,10 +124,10 @@ export const routes = {
 	},
 };
 
-const handle = createRouteHandler(routes);
+const handler = createRouteHandler(routes);
 
 const server = createServer(async (request, response) => {
-	const { matched } = await handle(request, response);
+	const { matched } = await handler(request, response);
 	if (!matched) {
 		response.writeHead(404).end("Not found");
 	}
@@ -145,7 +146,6 @@ const client = initClient<typeof routes>({
 	baseUrl: "https://api.example.com",
 });
 
-// Select the HTTP method and path, then provide explicit request segments.
 const response = await client.$post("/todos", {
 	body: { title: "Ship v1" },
 });
