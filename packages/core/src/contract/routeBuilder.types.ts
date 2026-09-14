@@ -497,10 +497,42 @@ type ProcedureState<TRequest, TResponses, TUsed extends BuilderMethod> = {
 };
 
 type HttpRootMethods<TOptions, TExtension extends BuilderExtension | never> = {
-	[TMethod in Lowercase<HttpMethod>]: <const TPath extends string>(
+	get<const TPath extends string>(
 		path: TPath,
-	) => RouteBuilderView<
-		HttpStateFor<TOptions, Uppercase<TMethod> & HttpMethod>,
+	): RouteBuilderView<
+		HttpStateFor<TOptions, "GET">,
+		TExtension,
+		PathFor<TOptions, TPath>,
+		MetadataFor<TOptions>
+	>;
+	post<const TPath extends string>(
+		path: TPath,
+	): RouteBuilderView<
+		HttpStateFor<TOptions, "POST">,
+		TExtension,
+		PathFor<TOptions, TPath>,
+		MetadataFor<TOptions>
+	>;
+	put<const TPath extends string>(
+		path: TPath,
+	): RouteBuilderView<
+		HttpStateFor<TOptions, "PUT">,
+		TExtension,
+		PathFor<TOptions, TPath>,
+		MetadataFor<TOptions>
+	>;
+	patch<const TPath extends string>(
+		path: TPath,
+	): RouteBuilderView<
+		HttpStateFor<TOptions, "PATCH">,
+		TExtension,
+		PathFor<TOptions, TPath>,
+		MetadataFor<TOptions>
+	>;
+	delete<const TPath extends string>(
+		path: TPath,
+	): RouteBuilderView<
+		HttpStateFor<TOptions, "DELETE">,
 		TExtension,
 		PathFor<TOptions, TPath>,
 		MetadataFor<TOptions>
