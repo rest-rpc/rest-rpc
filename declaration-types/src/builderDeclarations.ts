@@ -29,7 +29,7 @@ export const shorthandClient = initClient(shorthandContract, {
 export const configuredRoute = route.with({
 	pathPrefix: "/api",
 	metadata: { scope: "test" },
-	responses: { 401: { body: scalar } },
+	responses: { 401: scalar },
 	headers,
 	openApi: { tags: ["test"] },
 });

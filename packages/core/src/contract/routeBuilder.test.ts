@@ -102,6 +102,17 @@ describe("route builder runtime", () => {
 		});
 	});
 
+	it("normalizes common response schemas into response declarations", () => {
+		const errorSchema = z.object({ message: z.string() });
+		const declaration = route
+			.with({ responses: { 500: errorSchema } })
+			.get("/items");
+
+		assert.deepEqual(declaration["~restrpc"].responses, {
+			500: { body: errorSchema },
+		});
+	});
+
 	it("returns a new declaration from every builder method", () => {
 		const schema = type<{ value: string }>();
 		const initial = route.post("/items");

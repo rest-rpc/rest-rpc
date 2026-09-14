@@ -176,7 +176,7 @@ const apiRoute = route.with({
 	pathPrefix: "/api",
 	metadata: { auth: "required" },
 	headers: z.object({ "x-request-id": z.string().optional() }),
-	responses: { 401: { body: z.object({ code: z.literal("UNAUTHORIZED") }) } },
+	responses: { 401: z.object({ code: z.literal("UNAUTHORIZED") }) },
 	openApi: {
 		tags: ["Todos"],
 		security: [{ bearerAuth: [] }],

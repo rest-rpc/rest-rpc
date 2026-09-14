@@ -26,7 +26,7 @@ const customBytes = schemaType<Uint8Array>();
 const apiRoute = route.with({
 	pathPrefix: "/api",
 	headers: factoryHeaders,
-	responses: { 401: { body: unauthorized } },
+	responses: { 401: unauthorized },
 	metadata: { auth: true as const },
 	openApi: { tags: ["API"] },
 });
@@ -103,6 +103,7 @@ expectType<typeof todo>(create["~restrpc"].responses[201].body);
 expectType<typeof unauthorized>(create["~restrpc"].responses[401].body);
 expectAssignable<RouteDeclaration>(create["~restrpc"]);
 expectAssignable<Contract>(create);
+expectError(route.with({ responses: { 401: { body: unauthorized } } }));
 
 // Routes without a declared response carry an empty response map.
 const incompleteHttp = route.get("/incomplete");

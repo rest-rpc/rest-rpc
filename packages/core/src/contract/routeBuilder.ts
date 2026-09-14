@@ -14,7 +14,11 @@ import type {
 	RequestParamsSchema,
 	QueryOptions,
 } from "./request.ts";
-import type { ResponseDeclaration, ResponseOptions } from "./response.ts";
+import type {
+	ResponseDeclaration,
+	ResponseOptions,
+	RouteResponses,
+} from "./response.ts";
 import type {
 	RootRouteBuilder,
 	RouteBuilderOptions,
@@ -22,7 +26,8 @@ import type {
 
 export type { RouteBuilderOptions } from "./routeBuilder.types.ts";
 
-type RouteBuilderState = Partial<RouteDeclaration> & RouteBuilderOptions;
+type RouteBuilderState = Partial<RouteDeclaration> &
+	Omit<RouteBuilderOptions, "responses">;
 
 const assertHttpStatusCode = (status: number) => {
 	if (!Number.isInteger(status) || status < 100 || status > 599) {
@@ -35,6 +40,13 @@ const assertStaticPathPrefix = (pathPrefix: string | undefined) => {
 		throw new Error("Route builder pathPrefix cannot include path params.");
 	}
 };
+
+const normalizeCommonResponses = (
+	responses: NonNullable<RouteBuilderOptions["responses"]>,
+): RouteResponses =>
+	Object.fromEntries(
+		Object.entries(responses).map(([status, body]) => [status, { body }]),
+	);
 
 const mergeUnique = (common: string[] = [], local: string[] = []) => [
 	...new Set([...common, ...local]),
@@ -132,7 +144,12 @@ export class RouteBuilder {
 
 	with(options: RouteBuilderOptions): RouteBuilder {
 		assertStaticPathPrefix(options.pathPrefix);
-		return new RouteBuilder({ ...this["~restrpc"], ...options });
+		const { responses, ...sharedOptions } = options;
+		return new RouteBuilder({
+			...this["~restrpc"],
+			...sharedOptions,
+			...(responses ? { responses: normalizeCommonResponses(responses) } : {}),
+		});
 	}
 
 	get(path: string): RouteBuilder {

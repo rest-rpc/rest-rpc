@@ -13,7 +13,7 @@ import type {
 	RequestHeadersSchema,
 	RequestParamsSchema,
 } from "./request.ts";
-import type { ResponseOptions, RouteResponses } from "./response.ts";
+import type { ResponseOptions } from "./response.ts";
 
 type EmptyObject = Record<never, never>;
 
@@ -21,7 +21,7 @@ type EmptyObject = Record<never, never>;
 export type RouteBuilderOptions = {
 	pathPrefix?: string;
 	metadata?: RouteMetadata;
-	responses?: RouteResponses;
+	responses?: Record<number, StandardSchemaV1>;
 	headers?: RequestHeadersSchema;
 	openApi?: CommonOpenApiRouteOptions;
 };
@@ -442,9 +442,6 @@ export type RouteBuilderView<
 		Extract<TExtension, BuilderExtension>
 	>;
 
-type OptionValue<TOptions, TKey extends PropertyKey, TFallback> =
-	TOptions extends Record<TKey, infer TValue> ? TValue : TFallback;
-
 type RequestFor<TOptions> = TOptions extends {
 	headers: infer THeaders extends RequestHeadersSchema;
 }
@@ -469,13 +466,21 @@ type OpenApiFor<TOptions> = TOptions extends {
 	? OpenApiRouteOptions
 	: never;
 
+type ResponsesFor<TOptions> = TOptions extends {
+	responses: infer TResponses extends Record<number, StandardSchemaV1>;
+}
+	? {
+			[TStatus in keyof TResponses]: { body: TResponses[TStatus] };
+		}
+	: EmptyObject;
+
 type HttpStateFor<TOptions, TMethod extends HttpMethod> = {
 	route: {
 		readonly kind: "http";
 		readonly method: TMethod;
 	};
 	request: RequestFor<TOptions>;
-	responses: OptionValue<TOptions, "responses", EmptyObject>;
+	responses: ResponsesFor<TOptions>;
 	openApi: OpenApiFor<TOptions>;
 	used: never;
 };
