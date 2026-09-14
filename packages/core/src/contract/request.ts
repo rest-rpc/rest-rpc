@@ -9,6 +9,12 @@ export type RequestSegment = "body" | "query" | "params" | "headers";
 /** Scalar value accepted by ordinary HTTP request schemas. */
 export type RequestScalar = string | number | boolean;
 
+/** An ordinary query schema whose wire input contains scalar or array values. */
+export type RequestQuerySchema = StandardSchemaV1<
+	Record<string, RequestScalar | readonly RequestScalar[] | undefined>,
+	unknown
+>;
+
 /** An ordinary params schema whose wire input contains scalar values. */
 export type RequestParamsSchema = StandardSchemaV1<
 	Record<string, RequestScalar>,
@@ -35,14 +41,6 @@ export function getRequestHeaderSchemas(
 		(schema): schema is RequestHeadersSchema => schema !== undefined,
 	);
 }
-
-/** A supported URL query serialization strategy. */
-export type QuerySerialization = "json";
-
-/** Options for declaring URL query serialization. */
-export type QueryOptions = {
-	serialization: QuerySerialization;
-};
 
 export type RequestBodySchema = StandardSchemaV1;
 

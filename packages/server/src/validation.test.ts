@@ -165,53 +165,6 @@ describe("validateRequest", () => {
 		}
 	});
 
-	it("parses JSON query values before schema validation", async () => {
-		const result = await validateRequest(
-			route
-				.get("/todos")
-				.query(
-					z.object({
-						page: z.number(),
-						filters: z.object({ tags: z.array(z.string()) }),
-					}),
-					{ serialization: "json" },
-				)
-				.response(204)["~restrpc"],
-			{
-				query: new URLSearchParams({
-					query: JSON.stringify({
-						page: 2,
-						filters: { tags: ["api", "typescript"] },
-					}),
-				}),
-			},
-		);
-
-		assert.equal(result.success, true);
-		if (result.success) {
-			assert.deepEqual(result.data, {
-				query: { page: 2, filters: { tags: ["api", "typescript"] } },
-			});
-		}
-	});
-
-	it("allows omitted optional JSON query values", async () => {
-		const result = await validateRequest(
-			route
-				.get("/todos")
-				.query(z.object({ page: z.number() }).optional(), {
-					serialization: "json",
-				})
-				.response(204)["~restrpc"],
-			{},
-		);
-
-		assert.equal(result.success, true);
-		if (result.success) {
-			assert.deepEqual(result.data, { query: undefined });
-		}
-	});
-
 	it("returns custom request bodies and selected content type separately", async () => {
 		const result = await validateRequest(
 			route
@@ -367,25 +320,6 @@ describe("validateRequest", () => {
 			assert.equal(result.data.body.count, 3);
 			assert.ok(result.data.body.file instanceof Blob);
 			assert.deepEqual(result.data.body.tags, ["ts", "rpc"]);
-		}
-	});
-
-	it("rejects malformed JSON query values as request validation errors", async () => {
-		const result = await validateRequest(
-			route
-				.get("/todos")
-				.query(z.object({ page: z.number() }), { serialization: "json" })
-				.response(204)["~restrpc"],
-			{
-				query: new URLSearchParams({ query: "{" }),
-			},
-		);
-
-		assert.equal(result.success, false);
-		if (!result.success) {
-			assert.deepEqual(result.issues.query, [
-				{ message: 'Invalid JSON query parameter "query".' },
-			]);
 		}
 	});
 });

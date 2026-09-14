@@ -41,7 +41,6 @@ export const hoverApi = {
 					status: "open" | "done";
 					limit: number;
 				}>(),
-				{ serialization: "json" },
 			)
 			.response(
 				200,

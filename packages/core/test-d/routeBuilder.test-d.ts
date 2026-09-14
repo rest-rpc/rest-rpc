@@ -187,11 +187,7 @@ expectType<typeof transformedCustomText>(
 );
 
 // Preserves query and streaming response inference.
-const search = route
-	.get("/search")
-	.query(input, { serialization: "json" })
-	.streamResponse(200, todo);
-expectType<"json">(search["~restrpc"].request.querySerialization);
+const search = route.get("/search").query(input).streamResponse(200, todo);
 expectType<typeof todo>(search["~restrpc"].responses[200].body);
 expectType<"application/x-ndjson">(
 	search["~restrpc"].responses[200].contentType,
@@ -206,8 +202,12 @@ const scalarRequest = route
 expectType<typeof scalarQuery>(scalarRequest["~restrpc"].request.query);
 expectType<typeof scalarParams>(scalarRequest["~restrpc"].request.params);
 
-// Query schemas are unrestricted; serialization is an explicit HTTP choice.
-route.get("/nested-query").query(schemaType<{ filters: { tags: string[] } }>());
+// Structured query inputs must use scalar or array wire values.
+expectError(
+	route
+		.get("/nested-query")
+		.query(schemaType<{ filters: { tags: string[] } }>()),
+);
 expectError(
 	route.get("/array-param/:ids").params(schemaType<{ ids: string[] }>()),
 );
@@ -285,16 +285,13 @@ const configuredAfterResponse = route
 	.post("/configured-after-response")
 	.response(200, customText, { contentType: "text/plain" })
 	.body(input)
-	.query(schemaType<{ search: string }>(), { serialization: "json" })
+	.query(schemaType<{ search: string }>())
 	.params(schemaType<{ id: string }>())
 	.headers(input)
 	.metadata({ auth: true })
 	.openAPI({ summary: "Configured after response" })
 	.streamResponse(201, event);
 expectType<typeof input>(configuredAfterResponse["~restrpc"].request.body);
-expectType<"json">(
-	configuredAfterResponse["~restrpc"].request.querySerialization,
-);
 expectType<typeof customText>(
 	configuredAfterResponse["~restrpc"].responses[200].body,
 );
@@ -311,12 +308,6 @@ expectAssignable<RouteDeclaration>(configuredAfterResponse["~restrpc"]);
 const bodyUsed = route.post("/body-used").body(input);
 expectError(bodyUsed.body(input, { contentType: "text/plain" }));
 expectError(route.get("/query-used").query(input).query(input));
-expectError(
-	route
-		.get("/json-query-used")
-		.query(input, { serialization: "json" })
-		.query(input),
-);
 
 // Allows each HTTP request setter only once regardless of response order.
 const singleUseHttpConfigured = route

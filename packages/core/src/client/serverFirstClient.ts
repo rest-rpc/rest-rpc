@@ -1,6 +1,5 @@
 import type { HttpMethod } from "../contract/routeDeclaration.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
-import type { QuerySerialization } from "../contract/request.ts";
 import { executeRequest, type ExecuteRequestOptions } from "./request.ts";
 import type {
 	ClientRequestDeclaration,
@@ -31,7 +30,7 @@ type ServerFirstProcedureImplementation = {
 };
 
 type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
-	? Omit<TRequest, "body" | "contentType" | "querySerialization"> &
+	? Omit<TRequest, "body" | "contentType"> &
 			(TRequest extends { body: infer TBody } ? { body: TBody } : unknown) &
 			(TRequest extends { contentType: infer TContentType }
 				? {
@@ -40,13 +39,6 @@ type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
 							: TContentType extends string
 								? readonly [TContentType]
 								: TContentType;
-					}
-				: unknown) &
-			(TRequest extends { querySerialization: infer TSerialization }
-				? {
-						querySerialization: TSerialization extends string
-							? readonly [TSerialization]
-							: TSerialization;
 					}
 				: unknown)
 	: never;
@@ -239,7 +231,6 @@ const createRuntimeRoute = (
 	path: string,
 	input: ServerFirstRequestInput | undefined,
 	contentType: string | undefined,
-	querySerialization: QuerySerialization | undefined,
 ) => {
 	const requestDeclaration: ClientRequestDeclaration = {};
 
@@ -250,9 +241,6 @@ const createRuntimeRoute = (
 
 	if (input && "query" in input) {
 		requestDeclaration.query = {};
-		if (querySerialization !== undefined) {
-			requestDeclaration.querySerialization = querySerialization;
-		}
 	}
 
 	if (input && "params" in input) {
@@ -353,7 +341,6 @@ export const createServerFirstClient = <
 						path,
 						requestInput,
 						fetchOptions?.contentType,
-						fetchOptions?.querySerialization,
 					);
 					return executeRequest(
 						runtime.route,

@@ -25,16 +25,6 @@ const contract = {
 			.post("/imports.csv")
 			.body(z.string(), { contentType: "text/csv" })
 			.response(204),
-		search: route
-			.get("/search")
-			.query(
-				z.object({
-					page: z.number(),
-					filters: z.object({ tag: z.string() }),
-				}),
-				{ serialization: "json" },
-			)
-			.response(204),
 	},
 } as const;
 
@@ -67,15 +57,9 @@ const importCsv = implementor.todos.importCsv.handler(
 	},
 );
 
-const search = implementor.todos.search.handler(({ query }) => {
-	expectType<{ page: number; filters: { tag: string } }>(query);
-	return { status: 204 };
-});
-
 const serverFirstClient = initClient<{
 	upload: typeof upload;
 	importCsv: typeof importCsv;
-	search: typeof search;
 }>({ baseUrl: "https://example.test" });
 serverFirstClient.$post(
 	"/images",
@@ -91,17 +75,6 @@ serverFirstClient.$post(
 expectError(
 	serverFirstClient.$post("/imports.csv", { body: "id,title\n1,Todo\n" }),
 );
-serverFirstClient.$get(
-	"/search",
-	{ query: { page: 2, filters: { tag: "open" } } },
-	{ querySerialization: "json" },
-);
-expectError(
-	serverFirstClient.$get("/search", {
-		query: { page: 2, filters: { tag: "open" } },
-	}),
-);
-
 implementor.todos.download.handler(() => ({
 	status: 200,
 	body: new Uint8Array(),

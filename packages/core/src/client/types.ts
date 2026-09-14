@@ -1,17 +1,15 @@
 import type { Contract, RouteDeclaration } from "../contract/contract.ts";
 import type { ClientRequest } from "../contract/request.ts";
-import type { QuerySerialization } from "../contract/request.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { DeclaredClientResponse } from "../contract/response.ts";
 
 export type FetchOptions = Omit<RequestInit, "method" | "body" | "headers"> & {
 	contentType?: string;
-	querySerialization?: QuerySerialization;
 };
 
 export type ApiClientFetchOptions = Omit<
 	FetchOptions,
-	"signal" | "contentType" | "querySerialization"
+	"signal" | "contentType"
 >;
 
 /**
@@ -55,42 +53,18 @@ type DeclaredContentType<E> = E extends {
 	? TContentType
 	: never;
 
-type DeclaredQuerySerialization<E> = E extends {
-	request: { querySerialization: infer TSerialization };
-}
-	? TSerialization
-	: never;
-
-type FetchOptionsFor<E> = Omit<
-	FetchOptions,
-	"contentType" | "querySerialization"
-> &
+type FetchOptionsFor<E> = Omit<FetchOptions, "contentType"> &
 	([DeclaredContentType<E>] extends [never]
 		? { contentType?: never }
 		: DeclaredContentType<E> extends readonly string[]
 			? { contentType: DeclaredContentType<E>[number] }
-			: { contentType?: never }) &
-	([DeclaredQuerySerialization<E>] extends [never]
-		? { querySerialization?: never }
-		: DeclaredQuerySerialization<E> extends readonly string[]
-			? {
-					querySerialization: DeclaredQuerySerialization<E>[number];
-				}
-			: { querySerialization?: never });
+			: { contentType?: never });
 
 type RequiresFetchOptions<E> = [DeclaredContentType<E>] extends [never]
-	? [DeclaredQuerySerialization<E>] extends [never]
-		? false
-		: DeclaredQuerySerialization<E> extends readonly string[]
-			? true
-			: false
+	? false
 	: DeclaredContentType<E> extends readonly string[]
 		? true
-		: [DeclaredQuerySerialization<E>] extends [never]
-			? false
-			: DeclaredQuerySerialization<E> extends readonly string[]
-				? true
-				: false;
+		: false;
 
 export type FetchArgs<
 	E extends RouteDeclaration = RouteDeclaration,

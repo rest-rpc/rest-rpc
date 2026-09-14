@@ -143,13 +143,6 @@ const serializeParams = (
 };
 
 const serializeQuery = (route: ClientRequestRoute, query: unknown) => {
-	if (route.request?.querySerialization === "json") {
-		const stringValue = stringifyJsonQueryValue(route, query);
-		if (stringValue === undefined) return "";
-
-		return `?query=${encodeURIComponent(stringValue)}`;
-	}
-
 	const searchParams = new URLSearchParams();
 	for (const [key, value] of Object.entries(query ?? {})) {
 		if (Array.isArray(value)) {
@@ -166,18 +159,6 @@ const serializeQuery = (route: ClientRequestRoute, query: unknown) => {
 
 	const search = searchParams.toString();
 	return search ? `?${search}` : "";
-};
-
-const stringifyJsonQueryValue = (route: ClientRequestRoute, value: unknown) => {
-	if (value === undefined) return undefined;
-	try {
-		return JSON.stringify(value);
-	} catch (error) {
-		throw new Error(
-			`Invalid JSON query for ${route.method} ${route.path}. Expected a JSON-serializable value.`,
-			{ cause: error },
-		);
-	}
 };
 
 export const constructBaseRequest = (
@@ -321,11 +302,8 @@ export const executeRequest = async <E extends RouteDeclaration>(
 	);
 
 	try {
-		const {
-			contentType: _contentType,
-			querySerialization: _querySerialization,
-			...requestFetchOptions
-		} = fetchOptions ?? {};
+		const { contentType: _contentType, ...requestFetchOptions } =
+			fetchOptions ?? {};
 		const init = addNextFetchTags(
 			{
 				...options.fetchOptions,

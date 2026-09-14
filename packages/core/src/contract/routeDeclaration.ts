@@ -1,10 +1,10 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { BodyContentType } from "./body.ts";
 import type {
-	QuerySerialization,
 	RequestBodySchema,
 	RequestHeadersDeclaration,
 	RequestParamsSchema,
+	RequestQuerySchema,
 } from "./request.ts";
 import type { RouteResponses } from "./response.ts";
 
@@ -48,8 +48,7 @@ export type CommonOpenApiRouteOptions = Omit<
 export type RouteRequestDeclaration = {
 	body?: RequestBodySchema;
 	contentType?: BodyContentType;
-	query?: StandardSchemaV1;
-	querySerialization?: QuerySerialization | readonly QuerySerialization[];
+	query?: RequestQuerySchema;
 	params?: RequestParamsSchema;
 	headers?: RequestHeadersDeclaration;
 };

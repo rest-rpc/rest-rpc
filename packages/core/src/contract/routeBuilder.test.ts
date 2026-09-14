@@ -90,17 +90,6 @@ describe("route builder runtime", () => {
 			headers,
 		});
 
-		const querySchema = z.object({
-			filters: z.object({ tag: z.string() }),
-		});
-		const jsonQuery = route.get("/items").query(querySchema, {
-			serialization: "json",
-		});
-		assert.deepEqual(jsonQuery["~restrpc"].request, {
-			query: querySchema,
-			querySerialization: "json",
-		});
-
 		const procedure = route
 			.input(bodySchema, { contentType: "text/plain" })
 			.output(bodySchema);

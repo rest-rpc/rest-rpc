@@ -64,9 +64,6 @@ const parseQueryOrFormData = (searchParams: URLSearchParams | FormData) => {
 	return data;
 };
 
-const parseJsonQuery = (value: string | null) =>
-	value === null ? undefined : JSON.parse(value);
-
 export const getHeaderValue = (
 	headers: unknown,
 	name: string,
@@ -202,28 +199,6 @@ const validateCustomBody = async (
 	};
 };
 
-const validateJsonQuery = async (
-	schema: StandardSchemaV1,
-	query: URLSearchParams | undefined,
-): Promise<SegmentValidationResult> => {
-	let input: unknown;
-	try {
-		input = parseJsonQuery(query?.get("query") ?? null);
-	} catch {
-		return {
-			data: {},
-			errors: [{ message: 'Invalid JSON query parameter "query".' }],
-		};
-	}
-
-	const result = await validateStandardSchema(schema, input);
-	if (result.issues) {
-		return { data: {}, errors: result.issues };
-	}
-
-	return { data: { query: result.value }, errors: [] };
-};
-
 const getValidatedRequestData = (
 	route: RouteDeclaration,
 	body: SegmentValidationResult,
@@ -248,14 +223,7 @@ const getValidatedRequestData = (
 					contentType: (body.data as Record<string, unknown>).contentType,
 				}
 			: {}),
-		...(request?.query
-			? {
-					query:
-						request.querySerialization === "json"
-							? (query.data as Record<string, unknown>).query
-							: query.data,
-				}
-			: {}),
+		...(request?.query ? { query: query.data } : {}),
 		...(request?.params ? { params: params.data } : {}),
 		...(request?.headers ? { headers: headers.data } : {}),
 	};
@@ -270,13 +238,10 @@ export async function validateRequest(
 		request?.contentType !== undefined
 			? await validateCustomBody(route, segments.body, segments.headers)
 			: await validateRequestObject(request?.body, segments.body);
-	const query =
-		request?.querySerialization === "json" && request.query
-			? await validateJsonQuery(request.query, segments.query)
-			: await validateRequestObject(
-					request?.query,
-					segments.query ? parseQueryOrFormData(segments.query) : undefined,
-				);
+	const query = await validateRequestObject(
+		request?.query,
+		segments.query ? parseQueryOrFormData(segments.query) : undefined,
+	);
 	const params = await validateRequestObject(request?.params, segments.params);
 	const headers = await validateHeaders(request?.headers, segments.headers);
 	const issues = {

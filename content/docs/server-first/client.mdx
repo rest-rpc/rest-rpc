@@ -45,20 +45,13 @@ with only their path: `await client.$get("/health")`.
 ## Mark Explicit Request Encodings
 
 Specify a body `contentType` in the call options so the client knows how to
-encode form, multipart, and custom request bodies. Specify `querySerialization`
-when the declared route uses JSON query serialization.
+encode form, multipart, and custom request bodies.
 
 ```ts
 await client.$post(
 	"/uploads",
 	{ body: { title: "Screenshot", file } },
 	{ contentType: "multipart/form-data" },
-);
-
-await client.$get(
-	"/search",
-	{ query: { page: 2, filters: { tag: "open" } } },
-	{ querySerialization: "json" },
 );
 ```
 

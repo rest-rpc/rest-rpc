@@ -24,12 +24,11 @@ export {
 } from "./path.ts";
 export type {
 	ClientRequest,
-	QueryOptions,
-	QuerySerialization,
 	RequestBodySchema,
 	RequestHeadersDeclaration,
 	RequestHeadersSchema,
 	RequestParamsSchema,
+	RequestQuerySchema,
 	ServerRequest,
 } from "./request.ts";
 export { getRequestHeaderSchemas } from "./request.ts";

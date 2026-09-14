@@ -11,7 +11,6 @@ export type {
 export { getNextFetchTags, initClient } from "./client/index.ts";
 export type { Contract, RouteDeclaration } from "./contract/index.ts";
 export type { ClientRequest } from "./contract/request.ts";
-export type { QueryOptions, QuerySerialization } from "./contract/request.ts";
 export { route } from "./contract/routeBuilder.ts";
 export type {
 	BodyContentType,

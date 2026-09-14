@@ -78,64 +78,6 @@ describe("OpenAPI operations", () => {
 		);
 	});
 
-	it("creates one JSON query parameter for JSON serialization", () => {
-		const parameters = createParameters(
-			z.object({
-				page: z.number(),
-				filters: z.object({ tags: z.array(z.string()) }),
-			}),
-			"query",
-			operationOptions,
-			"json",
-		);
-
-		assert.deepEqual(parameters, [
-			{
-				name: "query",
-				in: "query",
-				content: {
-					"application/json": {
-						schema: {
-							type: "object",
-							properties: {
-								page: { type: "number" },
-								filters: {
-									type: "object",
-									properties: {
-										tags: {
-											type: "array",
-											items: { type: "string" },
-										},
-									},
-									required: ["tags"],
-								},
-							},
-							required: ["page", "filters"],
-						},
-					},
-				},
-			},
-		]);
-	});
-
-	it("does not assume JSON query parameters are required", () => {
-		const parameters = createParameters(
-			z.object({ page: z.number() }).optional(),
-			"query",
-			operationOptions,
-			"json",
-		);
-
-		assert.deepEqual(
-			parameters.map((parameter) => ({
-				name: parameter.name,
-				in: parameter.in,
-				required: parameter.required,
-			})),
-			[{ name: "query", in: "query", required: undefined }],
-		);
-	});
-
 	it("documents object-schema path params as required", () => {
 		const parameters = createParameters(
 			z.object({ id: z.string().optional() }),

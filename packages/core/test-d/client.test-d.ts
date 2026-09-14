@@ -179,9 +179,11 @@ scalarRequestClient.items.get({
 	query: { page: 2, active: false },
 });
 
-route.get("/items").query(schemaType<{ filters: { tag: string } }>());
+expectError(
+	route.get("/items").query(schemaType<{ filters: { tag: string } }>()),
+);
 expectError(route.get("/items/:id").params(schemaType<{ id: string[] }>()));
-route.get("/items").query(z.object({ page: z.coerce.number() }));
+expectError(route.get("/items").query(z.object({ page: z.coerce.number() })));
 expectError(
 	route.get("/items/:id").params(z.object({ id: z.coerce.number() })),
 );
@@ -270,64 +272,6 @@ expectError(
 		title: "Write type tests",
 	}),
 );
-
-const jsonQueryApi = {
-	todos: {
-		jsonSearch: route
-			.get("/todos/json-search")
-			.query(
-				z.object({
-					page: z.string().transform((value) => Number(value)),
-					filters: z.object({ tags: z.array(z.string()) }),
-				}),
-				{ serialization: "json" },
-			)
-			.response(200, z.array(todoSchema)),
-		optionalJsonSearch: route
-			.get("/todos/optional-json-search")
-			.query(z.object({ page: z.number() }).optional(), {
-				serialization: "json",
-			})
-			.response(200, z.array(todoSchema)),
-	},
-};
-
-const jsonQueryClient = initClient(jsonQueryApi, {
-	baseUrl: "https://example.test",
-});
-
-jsonQueryClient.todos
-	.jsonSearch({
-		query: {
-			page: "1",
-			filters: { tags: ["api"] },
-		},
-	})
-	.then((response) => {
-		if (response.status !== 200) throw new Error("Unexpected status");
-		expectType<Array<{ id: string; title: string }>>(response.body);
-	});
-expectError(
-	jsonQueryClient.todos.jsonSearch(
-		{
-			query: {
-				page: "1",
-				filters: { tags: ["api"] },
-			},
-		},
-		{ querySerialization: "json" },
-	),
-);
-expectError(jsonQueryClient.todos.jsonSearch({ query: { page: "1" } }));
-expectError(jsonQueryClient.todos.jsonSearch());
-jsonQueryClient.todos
-	.optionalJsonSearch({ query: undefined })
-	.then((response) => {
-		if (response.status !== 200) throw new Error("Unexpected status");
-		expectType<Array<{ id: string; title: string }>>(response.body);
-	});
-expectError(jsonQueryClient.todos.optionalJsonSearch({}));
-expectError(jsonQueryClient.todos.optionalJsonSearch());
 
 const responseApi = {
 	todos: {

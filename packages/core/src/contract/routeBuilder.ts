@@ -12,7 +12,7 @@ import { getPathParamNames } from "./path.ts";
 import type {
 	RequestHeadersSchema,
 	RequestParamsSchema,
-	QueryOptions,
+	RequestQuerySchema,
 } from "./request.ts";
 import type {
 	ResponseDeclaration,
@@ -210,15 +210,11 @@ export class RouteBuilder {
 		});
 	}
 
-	query(schema: StandardSchemaV1, options?: QueryOptions): RouteBuilder {
+	query(schema: RequestQuerySchema): RouteBuilder {
 		const state = this["~restrpc"];
 		return new RouteBuilder({
 			...state,
-			request: {
-				...state.request,
-				query: schema,
-				...(options ? { querySerialization: options.serialization } : {}),
-			},
+			request: { ...state.request, query: schema },
 		});
 	}
 

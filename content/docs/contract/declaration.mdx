@@ -89,40 +89,6 @@ route
 	.response(200, todoSchema);
 ```
 
-## JSON Query
-
-When you need to pass a complex object as a query parameter, set the query
-serialization to `json`.
-The object is serialized to a JSON string and sent as a single query parameter named `query` in the URL.
-
-```ts
-const api = {
-	search: route
-		.get("/search")
-		.query(
-			z.object({
-				page: z.number(),
-				includeArchived: z.boolean(),
-				filters: z.object({
-					tags: z.array(z.string()),
-				}),
-			}),
-			{ serialization: "json" },
-		)
-		.response(200, z.object({ results: z.array(z.string()) })),
-};
-```
-
-```ts
-await client.search({
-	query: {
-		page: 2,
-		includeArchived: false,
-		filters: { tags: ["docs", "api"] },
-	},
-});
-```
-
 ## Responses
 
 `.response(status, schema)` declares a response body for a status.

@@ -294,65 +294,6 @@ describe("ApiClient requests", () => {
 		assert.deepEqual(request.headers, {});
 	});
 
-	it("serializes JSON query values into the query parameter", () => {
-		const apiContract = {
-			items: {
-				search: route
-					.get("/items")
-					.query(
-						z.object({
-							page: z.number(),
-							filters: z.object({
-								tags: z.array(z.string()),
-							}),
-						}),
-						{ serialization: "json" },
-					)
-					.response(204),
-			},
-		};
-		const request = constructBaseRequest(
-			"https://api.test",
-			apiContract.items.search["~restrpc"],
-			{
-				query: {
-					page: 2,
-					filters: { tags: ["api", "typescript"] },
-				},
-			},
-		);
-
-		assert.equal(
-			request.url,
-			"https://api.test/items?query=%7B%22page%22%3A2%2C%22filters%22%3A%7B%22tags%22%3A%5B%22api%22%2C%22typescript%22%5D%7D%7D",
-		);
-	});
-
-	it("omits optional JSON query values when the query key is not provided", () => {
-		const apiContract = {
-			items: {
-				search: route
-					.get("/items")
-					.query(
-						z
-							.object({
-								page: z.number(),
-							})
-							.optional(),
-						{ serialization: "json" },
-					)
-					.response(204),
-			},
-		};
-		const request = constructBaseRequest(
-			"https://api.test",
-			apiContract.items.search["~restrpc"],
-			{},
-		);
-
-		assert.equal(request.url, "https://api.test/items");
-	});
-
 	it("sends JSON request bodies with generated content type", async () => {
 		const calls = captureFetch(
 			jsonResponse({ id: "todo-1", title: "Buy milk" }, 201),
