@@ -143,30 +143,35 @@ const serializeParams = (
 };
 
 const serializeQuery = (route: ClientRequestRoute, query: unknown) => {
-	const usesJsonSerialization = route.request?.querySerialization === "json";
-	const queryValues = usesJsonSerialization ? { query } : (query ?? {});
-	const entries = Object.entries(queryValues).flatMap(([key, value]) => {
-		if (!usesJsonSerialization && Array.isArray(value)) {
-			return value.map((item) => [`${key}[]`, String(item)]);
-		}
-		const stringValue = usesJsonSerialization
-			? stringifyJsonQueryValue(route, value)
-			: value === undefined
-				? undefined
-				: String(value);
-		return stringValue === undefined ? [] : [[key, stringValue]];
-	});
+	if (route.request?.querySerialization === "json") {
+		const stringValue = stringifyJsonQueryValue(route, query);
+		if (stringValue === undefined) return "";
 
-	const search = new URLSearchParams(entries).toString();
+		return `?query=${encodeURIComponent(stringValue)}`;
+	}
+
+	const searchParams = new URLSearchParams();
+	for (const [key, value] of Object.entries(query ?? {})) {
+		if (Array.isArray(value)) {
+			for (const item of value) {
+				searchParams.append(`${key}[]`, String(item));
+			}
+			continue;
+		}
+
+		if (value !== undefined) {
+			searchParams.append(key, String(value));
+		}
+	}
+
+	const search = searchParams.toString();
 	return search ? `?${search}` : "";
 };
 
 const stringifyJsonQueryValue = (route: ClientRequestRoute, value: unknown) => {
 	if (value === undefined) return undefined;
 	try {
-		const json = JSON.stringify(value);
-		if (json === undefined) return undefined;
-		return json;
+		return JSON.stringify(value);
 	} catch (error) {
 		throw new Error(
 			`Invalid JSON query for ${route.method} ${route.path}. Expected a JSON-serializable value.`,
