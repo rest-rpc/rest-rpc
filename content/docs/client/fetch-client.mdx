@@ -79,8 +79,7 @@ const client = initClient(api, {
 		},
 		bodyParser: {
 			type: "ApiClientBodyParser",
-			description:
-				"Custom parser for non-stream responses with a declared content type.",
+			description: "Custom parser for non-stream, non-JSON response bodies.",
 		},
 		getGlobalHeaders: {
 			type: "() => Record<string, string> | Promise<Record<string, string>>",
@@ -99,10 +98,11 @@ const client = initClient(api, {
 	}}
 />
 
-`bodyParser` receives non-stream responses whose route declares a custom
-content type. By default, the client uses the response `Content-Type` to read
-JSON, URL-encoded data, multipart data, text, or bytes. The parsed value is
-still validated when `validateResponses` is enabled.
+For contract-first clients, `bodyParser` receives non-stream responses whose
+route declares a custom content type. Server-first clients use it for every
+non-stream, non-JSON content type. By default, the client reads URL-encoded
+data, multipart data, text, or bytes according to the response `Content-Type`.
+The parsed value is still validated when `validateResponses` is enabled.
 
 ```ts
 const client = initClient(api, {

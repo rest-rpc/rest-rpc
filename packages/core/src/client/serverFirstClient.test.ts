@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { initClient, SERVER_FIRST_RESPONSE_KIND_HEADER } from "./index.ts";
+import { initClient } from "./index.ts";
 
 type RuntimeRouteClient = (...args: unknown[]) => Promise<{
 	body: unknown;
@@ -23,10 +23,10 @@ type FetchCall = {
 	init?: RequestInit;
 };
 
-const response = (kind: string, body?: BodyInit | null, status = 200) =>
+const response = (body?: BodyInit | null, status = 200, contentType?: string) =>
 	new Response(body, {
 		status,
-		headers: { [SERVER_FIRST_RESPONSE_KIND_HEADER]: `v=1 kind=${kind}` },
+		headers: contentType ? { "content-type": contentType } : undefined,
 	});
 
 const createClient = (
@@ -52,7 +52,7 @@ const createClient = (
 describe("initClient server-first mode", () => {
 	it("selects a method and path and delegates ordinary requests to fetch", async () => {
 		const { calls, client } = createClient(() =>
-			response("json", JSON.stringify({ id: "todo-1" }), 201),
+			response(JSON.stringify({ id: "todo-1" }), 201, "application/json"),
 		);
 
 		const result = await client.$post(
@@ -83,7 +83,7 @@ describe("initClient server-first mode", () => {
 
 	it("accumulates shorthand paths while preserving explicit selectors", async () => {
 		const { calls, client } = createClient(() =>
-			response("json", JSON.stringify({ id: "todo-1" })),
+			response(JSON.stringify({ id: "todo-1" }), 200, "application/json"),
 		);
 
 		assert.deepEqual(await client.todos.get(undefined, { cache: "no-store" }), {
@@ -106,14 +106,16 @@ describe("initClient server-first mode", () => {
 	});
 
 	it("throws native errors for unsuccessful shorthand calls", async () => {
-		const { client } = createClient(() => response("json", "{}", 500));
+		const { client } = createClient(() =>
+			response("{}", 500, "application/json"),
+		);
 
 		await assert.rejects(client.todos.get(), Error);
 	});
 
 	it("allows a top-level shorthand route to use an HTTP method name", async () => {
 		const { calls, client } = createClient(() =>
-			response("json", JSON.stringify({ ok: true })),
+			response(JSON.stringify({ ok: true }), 200, "application/json"),
 		);
 
 		assert.deepEqual(await client.get(), { ok: true });
@@ -122,7 +124,7 @@ describe("initClient server-first mode", () => {
 	});
 
 	it("serializes explicit server-first request encodings", async () => {
-		const { calls, client } = createClient(() => response("empty", null, 204));
+		const { calls, client } = createClient(() => response(null, 204));
 
 		await client.$post(
 			"/form",
@@ -165,47 +167,40 @@ describe("initClient server-first mode", () => {
 		});
 	});
 
-	it("requires valid response-kind metadata", async () => {
-		const missing = createClient(() => new Response("{}"));
-		await assert.rejects(
-			missing.client.$get("/todos"),
-			/missing required X-Rest-Rpc-Response-Kind header/,
+	it("treats a response without content-type as empty", async () => {
+		const { client } = createClient(
+			() => new Response(new TextEncoder().encode("ignored")),
 		);
 
-		const invalid = createClient(
-			() =>
-				new Response("{}", {
-					headers: { [SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=2 kind=json" },
-				}),
-		);
-		await assert.rejects(
-			invalid.client.$get("/todos"),
-			/invalid server-first response kind/,
-		);
+		const result = await client.$get("/empty");
+
+		assert.equal(result.body, undefined);
 	});
 
-	it("requires content-type metadata for custom responses", async () => {
-		const { client } = createClient(
-			() =>
-				new Response(null, {
-					headers: {
-						[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=custom",
-					},
-				}),
+	it("reads JSON-compatible content types", async () => {
+		const { client } = createClient(() =>
+			response(
+				JSON.stringify({ title: "Invalid todo" }),
+				422,
+				"application/problem+json; charset=utf-8",
+			),
 		);
 
-		await assert.rejects(
-			client.$get("/export"),
-			/missing required Content-Type header/,
-		);
+		const result = await client.$get("/todos");
+
+		assert.deepEqual(result.body, { title: "Invalid todo" });
 	});
 
 	it("reads empty, NDJSON, and custom responses", async () => {
-		const empty = createClient(() => response("empty", null, 204));
+		const empty = createClient(() => response(null, 204));
 		assert.equal((await empty.client.$get("/empty")).body, undefined);
 
 		const ndjson = createClient(() =>
-			response("ndjson", '{"id":"one"}\n{"id":"two"}\n'),
+			response(
+				'{"id":"one"}\n{"id":"two"}\n',
+				200,
+				"application/x-ndjson; charset=utf-8",
+			),
 		);
 		const stream = (await ndjson.client.$get("/stream")).body as AsyncIterable<{
 			id: string;
@@ -217,10 +212,7 @@ describe("initClient server-first mode", () => {
 		const custom = createClient(
 			() =>
 				new Response("csv", {
-					headers: {
-						"content-type": "text/csv",
-						[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=custom",
-					},
+					headers: { "content-type": "text/csv" },
 				}),
 		);
 		const customResponse = await custom.client.$get("/export");
@@ -232,10 +224,7 @@ describe("initClient server-first mode", () => {
 		const { client } = createClient(
 			() =>
 				new Response("custom", {
-					headers: {
-						"content-type": "application/octet-stream",
-						[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=custom",
-					},
+					headers: { "content-type": "application/octet-stream" },
 				}),
 			{ bodyParser: (response) => response.text() },
 		);
@@ -246,7 +235,7 @@ describe("initClient server-first mode", () => {
 	});
 
 	it("uses method:path identities for automatic Next.js tags", async () => {
-		const { calls, client } = createClient(() => response("empty", null, 204), {
+		const { calls, client } = createClient(() => response(null, 204), {
 			nextFetchTags: { enabled: true, tagPrefix: "api" },
 		});
 

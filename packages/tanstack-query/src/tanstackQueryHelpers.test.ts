@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SERVER_FIRST_RESPONSE_KIND_HEADER } from "@rest-rpc/core/client";
 import type { RouteDeclaration } from "@rest-rpc/core/contract";
 import { skipToken } from "@tanstack/query-core";
 import { createTanstackQueryHelpers } from "./tanstackQueryHelpers.ts";
@@ -10,7 +9,6 @@ const jsonResponse = (body: unknown) =>
 		status: 200,
 		headers: {
 			"content-type": "application/json",
-			[SERVER_FIRST_RESPONSE_KIND_HEADER]: "v=1 kind=json",
 		},
 	});
 

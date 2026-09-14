@@ -19,73 +19,6 @@ type FetchedRouteResponse<E extends RouteDeclaration> =
 
 const isSuccessStatus = (status: number) => status >= 200 && status < 300;
 
-/**
- * Response header through which server-first clients identify the body encoding.
- *
- * @remarks Browser clients must be allowed to read this header through CORS.
- * The built-in server adapters emit it automatically.
- *
- * @see {@link https://rest-rpc.dev/docs/server-first/client#expose-response-metadata-through-cors}
- */
-export const SERVER_FIRST_RESPONSE_KIND_HEADER = "X-Rest-Rpc-Response-Kind";
-
-type ServerFirstResponseKind = "empty" | "json" | "ndjson" | "custom";
-
-const serverFirstResponseKinds: readonly ServerFirstResponseKind[] = [
-	"empty",
-	"json",
-	"ndjson",
-	"custom",
-];
-
-const isServerFirstResponseKind = (
-	value: string | undefined,
-): value is ServerFirstResponseKind =>
-	value !== undefined &&
-	serverFirstResponseKinds.some((responseKind) => responseKind === value);
-
-const parseHeaderOptions = (header: string) => {
-	const options = new Map<string, string>();
-	for (const field of header.trim().split(/\s+/u)) {
-		const separatorIndex = field.indexOf("=");
-		if (separatorIndex <= 0 || separatorIndex !== field.lastIndexOf("=")) {
-			return undefined;
-		}
-
-		const name = field.slice(0, separatorIndex);
-		const value = field.slice(separatorIndex + 1);
-		if (!value || options.has(name)) return undefined;
-		options.set(name, value);
-	}
-	return options;
-};
-
-const getServerFirstResponseKind = (
-	rawResponse: Response,
-): ServerFirstResponseKind => {
-	const header = rawResponse.headers.get(SERVER_FIRST_RESPONSE_KIND_HEADER);
-	if (!header) {
-		throw new Error(
-			`Server response is missing required ${SERVER_FIRST_RESPONSE_KIND_HEADER} header to use server-first client.`,
-		);
-	}
-
-	const options = parseHeaderOptions(header);
-	const hasExpectedOptions =
-		options?.size === 2 && options.has("v") && options.has("kind");
-	const hasSupportedVersion = options?.get("v") === "1";
-	const kind = options?.get("kind");
-	if (
-		!hasExpectedOptions ||
-		!hasSupportedVersion ||
-		!isServerFirstResponseKind(kind)
-	) {
-		throw new Error("Server returned an invalid server-first response kind.");
-	}
-
-	return kind;
-};
-
 export const getResponseSchema = (
 	route: RouteDeclaration,
 	status: number,
@@ -96,45 +29,38 @@ export const getResponseSchema = (
 	return entry?.[1];
 };
 
-/** Reads a response using server-first response-kind metadata. */
+/** Reads a server-first response according to its Content-Type header. */
 export const readServerFirstResponse = async (
 	rawResponse: Response,
 	bodyParser: ApiClientBodyParser = defaultBodyParser,
 ) => {
-	const kind = getServerFirstResponseKind(rawResponse);
+	const contentType = rawResponse.headers.get("content-type") ?? undefined;
+	const normalizedContentType = normalizeContentType(contentType ?? "");
 	let body: unknown;
-	let contentType: string | undefined;
 
-	switch (kind) {
-		case "empty":
-			body = undefined;
-			break;
-		case "json":
-			body = await rawResponse.json();
-			break;
-		case "ndjson":
-			if (!rawResponse.body) {
-				throw new Error("Server returned an empty stream response");
-			}
-			body = parseNdjsonStream(undefined, rawResponse.body, false);
-			break;
-		case "custom":
-			contentType = rawResponse.headers.get("content-type") ?? undefined;
-			if (!contentType) {
-				throw new Error(
-					"Server response is missing required Content-Type header for a custom response kind.",
-				);
-			}
-			body = await bodyParser(rawResponse);
-			break;
+	if (!contentType) {
+		body = undefined;
+	} else if (isJsonContentType(normalizedContentType)) {
+		body = await rawResponse.json();
+	} else if (normalizedContentType === "application/x-ndjson") {
+		if (!rawResponse.body) {
+			throw new Error("Server returned an empty stream response");
+		}
+		body = parseNdjsonStream(undefined, rawResponse.body, false);
+	} else {
+		body = await bodyParser(rawResponse);
 	}
+	const isCustomContentType =
+		contentType !== undefined &&
+		normalizedContentType !== "application/x-ndjson" &&
+		!isJsonContentType(normalizedContentType);
 
 	return {
 		status: rawResponse.status,
 		body,
 		headers: rawResponse.headers,
 		responseHeaders: Object.fromEntries(rawResponse.headers.entries()),
-		...(contentType ? { contentType } : {}),
+		...(isCustomContentType ? { contentType } : {}),
 	};
 };
 
@@ -179,11 +105,14 @@ export const readDeclaredBody = async (
 const normalizeContentType = (contentType: string) =>
 	contentType.split(";")[0]?.trim().toLowerCase() ?? "";
 
+const isJsonContentType = (contentType: string) =>
+	contentType === "application/json" || contentType.endsWith("+json");
+
 const defaultBodyParser: ApiClientBodyParser = async (rawResponse) => {
 	const normalized = normalizeContentType(
 		rawResponse.headers.get("content-type") ?? "",
 	);
-	if (normalized === "application/json" || normalized.endsWith("+json")) {
+	if (isJsonContentType(normalized)) {
 		return rawResponse.json();
 	}
 	if (normalized === "application/x-www-form-urlencoded") {

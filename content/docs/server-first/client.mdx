@@ -65,14 +65,12 @@ await client.$get(
 The payload types and encoding behavior are documented in
 [HTTP Requests](/docs/http-requests).
 
-## Expose Response Metadata Through CORS
+## Response Parsing
 
-For cross-origin browser clients, expose the response-kind header set by the
-server adapter so the client can decode inferred responses:
-
-```http
-Access-Control-Expose-Headers: X-Rest-Rpc-Response-Kind
-```
+The client uses the response `Content-Type` to select the body parser. JSON and
+NDJSON responses are decoded directly, other content types use the configured
+`bodyParser`, and a response without `Content-Type` is treated as having no
+body. No rest-rpc-specific response headers are required.
 
 ## TanStack Query
 

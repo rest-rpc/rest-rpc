@@ -1,13 +1,7 @@
 import type { HttpRouteResult } from "./handleHttpRoute.ts";
-import { SERVER_FIRST_RESPONSE_KIND_HEADER } from "@rest-rpc/core/client";
 import type { HttpHeaderValue } from "./headers.ts";
 
 type MaybePromise<T> = T | Promise<T>;
-
-const responseKindFor = (result: HttpRouteResult) => {
-	if (result.kind === "stream") return "ndjson";
-	return result.kind;
-};
 
 /**
  * Adapter callbacks used to write a normalized HTTP route result.
@@ -34,12 +28,6 @@ export async function handleHttpRouteResult<TResponse>(
 	for (const [name, value] of Object.entries(result.headers ?? {})) {
 		if (value !== undefined) writer.setHeader(name, value);
 	}
-	if (result.responseKindMetadata !== false)
-		writer.setHeader(
-			SERVER_FIRST_RESPONSE_KIND_HEADER,
-			`v=1 kind=${responseKindFor(result)}`,
-		);
-
 	if (result.kind === "empty") {
 		return writer.sendEmpty(result.status);
 	}

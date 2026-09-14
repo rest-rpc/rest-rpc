@@ -19,7 +19,6 @@ import {
 } from "./validation.ts";
 
 type HttpRouteResultBase = {
-	responseKindMetadata?: boolean;
 	status: number;
 	headers?: HttpHeaders;
 };

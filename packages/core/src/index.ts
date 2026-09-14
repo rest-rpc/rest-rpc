@@ -8,11 +8,7 @@ export type {
 	ServerFirstClientFor,
 	ServerFirstClientOptions,
 } from "./client/index.ts";
-export {
-	getNextFetchTags,
-	initClient,
-	SERVER_FIRST_RESPONSE_KIND_HEADER,
-} from "./client/index.ts";
+export { getNextFetchTags, initClient } from "./client/index.ts";
 export type { Contract, RouteDeclaration } from "./contract/index.ts";
 export type { ClientRequest } from "./contract/request.ts";
 export type { QueryOptions, QuerySerialization } from "./contract/request.ts";

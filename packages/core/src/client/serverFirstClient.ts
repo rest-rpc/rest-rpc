@@ -212,7 +212,7 @@ type ServerFirstShorthandClientTree<TNode> = unknown extends TNode
  *
  * @remarks The server implementation is a type-only client dependency, so
  * client-side response validation is not available. At runtime, the client
- * relies on response metadata emitted by a rest-rpc server adapter.
+ * uses the response Content-Type to select a body parser.
  *
  * @see {@link https://rest-rpc.dev/docs/server-first/client}
  */

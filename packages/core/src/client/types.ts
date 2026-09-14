@@ -24,7 +24,7 @@ export type FetchLike = (
 	init?: RequestInit,
 ) => Promise<Response>;
 
-/** Parses a non-stream custom-content response body for an API client. */
+/** Parses a non-stream, non-JSON response body for an API client. */
 export type ApiClientBodyParser = (
 	response: Response,
 ) => unknown | Promise<unknown>;
