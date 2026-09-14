@@ -59,7 +59,7 @@ describe("route builder runtime", () => {
 		assert.equal(declaration["~restrpc"].responses[201].body, schema);
 	});
 
-	it("stores body and response options beside their schemas", () => {
+	it("stores request and response options beside their schemas", () => {
 		const bodySchema = z.string();
 		const headers = z.object({ location: z.string() });
 		const declaration = route
@@ -80,6 +80,17 @@ describe("route builder runtime", () => {
 		assert.deepEqual(declaration["~restrpc"].responses[204], {
 			body: undefined,
 			headers,
+		});
+
+		const querySchema = z.object({
+			filters: z.object({ tag: z.string() }),
+		});
+		const jsonQuery = route.get("/items").query(querySchema, {
+			serialization: "json",
+		});
+		assert.deepEqual(jsonQuery["~restrpc"].request, {
+			query: querySchema,
+			querySerialization: "json",
 		});
 
 		const procedure = route

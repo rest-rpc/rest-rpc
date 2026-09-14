@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	initClient,
-	request,
-	SERVER_FIRST_RESPONSE_KIND_HEADER,
-} from "./index.ts";
+import { initClient, SERVER_FIRST_RESPONSE_KIND_HEADER } from "./index.ts";
 
 type RuntimeRouteClient = (...args: unknown[]) => Promise<{
 	body: unknown;
@@ -138,9 +134,11 @@ describe("initClient server-first mode", () => {
 			{ body: { title: "Todo", tags: ["docs", "api"] } },
 			{ contentType: "multipart/form-data" },
 		);
-		await client.$get("/search", {
-			query: request.jsonQuery({ page: 2, filters: { tag: "open" } }),
-		});
+		await client.$get(
+			"/search",
+			{ query: { page: 2, filters: { tag: "open" } } },
+			{ querySerialization: "json" },
+		);
 		await client.$post(
 			"/custom",
 			{ body: "id,title\n1,Todo\n" },
@@ -160,6 +158,7 @@ describe("initClient server-first mode", () => {
 			calls[2]?.url,
 			"https://api.test/search?query=%7B%22page%22%3A2%2C%22filters%22%3A%7B%22tag%22%3A%22open%22%7D%7D",
 		);
+		assert.equal("querySerialization" in calls[2]!.init!, false);
 		assert.equal(calls[3]?.init?.body, "id,title\n1,Todo\n");
 		assert.deepEqual(calls[3]?.init?.headers, {
 			"content-type": "text/csv",

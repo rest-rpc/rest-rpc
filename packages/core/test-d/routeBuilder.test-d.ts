@@ -184,8 +184,11 @@ expectType<typeof transformedCustomText>(
 );
 
 // Preserves query and streaming response inference.
-const search = route.get("/search").jsonQuery(input).streamResponse(200, todo);
-expectType<"jsonQuery">(search["~restrpc"].request.query.kind);
+const search = route
+	.get("/search")
+	.query(input, { serialization: "json" })
+	.streamResponse(200, todo);
+expectType<"json">(search["~restrpc"].request.querySerialization);
 expectType<"stream">(search["~restrpc"].responses[200].body.kind);
 
 // Ordinary params and query schemas accept scalar wire inputs.
@@ -197,12 +200,8 @@ const scalarRequest = route
 expectType<typeof scalarQuery>(scalarRequest["~restrpc"].request.query);
 expectType<typeof scalarParams>(scalarRequest["~restrpc"].request.params);
 
-// Structured ordinary wire inputs must use jsonQuery instead.
-expectError(
-	route
-		.get("/nested-query")
-		.query(schemaType<{ filters: { tags: string[] } }>()),
-);
+// Query schemas are unrestricted; serialization is an explicit HTTP choice.
+route.get("/nested-query").query(schemaType<{ filters: { tags: string[] } }>());
 expectError(
 	route.get("/array-param/:ids").params(schemaType<{ ids: string[] }>()),
 );
@@ -284,14 +283,16 @@ const configuredAfterResponse = route
 	.post("/configured-after-response")
 	.response(200, customText, { contentType: "text/plain" })
 	.body(input)
-	.jsonQuery(schemaType<{ search: string }>())
+	.query(schemaType<{ search: string }>(), { serialization: "json" })
 	.params(schemaType<{ id: string }>())
 	.headers(input)
 	.metadata({ auth: true })
 	.openAPI({ summary: "Configured after response" })
 	.streamResponse(201, event);
 expectType<typeof input>(configuredAfterResponse["~restrpc"].request.body);
-expectType<"jsonQuery">(configuredAfterResponse["~restrpc"].request.query.kind);
+expectType<"json">(
+	configuredAfterResponse["~restrpc"].request.querySerialization,
+);
 expectType<typeof customText>(
 	configuredAfterResponse["~restrpc"].responses[200].body,
 );
@@ -307,8 +308,13 @@ expectAssignable<RouteDeclaration>(configuredAfterResponse["~restrpc"]);
 // Keeps HTTP body and query setters mutually exclusive.
 const bodyUsed = route.post("/body-used").body(input);
 expectError(bodyUsed.body(input, { contentType: "text/plain" }));
-expectError(route.get("/query-used").query(input).jsonQuery(input));
-expectError(route.get("/json-query-used").jsonQuery(input).query(input));
+expectError(route.get("/query-used").query(input).query(input));
+expectError(
+	route
+		.get("/json-query-used")
+		.query(input, { serialization: "json" })
+		.query(input),
+);
 
 // Allows each HTTP request setter only once regardless of response order.
 const singleUseHttpConfigured = route

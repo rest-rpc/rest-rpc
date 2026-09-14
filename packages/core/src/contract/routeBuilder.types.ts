@@ -8,11 +8,10 @@ import type {
 	RouteRequestDeclaration,
 } from "./routeDeclaration.ts";
 import type {
-	JsonQuery,
+	QueryOptions,
 	RequestHeadersDeclaration,
 	RequestHeadersSchema,
 	RequestParamsSchema,
-	RequestQuerySchema,
 } from "./request.ts";
 import type { ResponseOptions, RouteResponses } from "./response.ts";
 
@@ -267,30 +266,25 @@ type RequestMethods<
 	TState,
 	"query",
 	{
-		/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
+		/** Declares URL query parameters and their serialization. @see {@link https://rest-rpc.dev/docs/contract/declaration#request-model} */
 		query<
-			const TSchema extends RequestQuerySchema,
-			const TPath extends string = string,
-			const TMetadata extends RouteMetadata | never = never,
-		>(
-			this: BuilderReceiver<TPath, TMetadata>,
-			schema: TSchema,
-		): RouteBuilderView<
-			WithRequest<TState, "query", TSchema, "query">,
-			TExtension,
-			TPath,
-			TMetadata
-		>;
-		/** Declares a JSON-encoded query value. @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query} */
-		jsonQuery<
 			const TSchema extends StandardSchemaV1,
+			const TOptions extends QueryOptions | undefined = undefined,
 			const TPath extends string = string,
 			const TMetadata extends RouteMetadata | never = never,
 		>(
 			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
+			options?: TOptions,
 		): RouteBuilderView<
-			WithRequest<TState, "query", JsonQuery<TSchema>, "query">,
+			TOptions extends QueryOptions
+				? WithRequest<
+						WithRequest<TState, "query", TSchema, "query">,
+						"querySerialization",
+						TOptions["serialization"],
+						"query"
+					>
+				: WithRequest<TState, "query", TSchema, "query">,
 			TExtension,
 			TPath,
 			TMetadata

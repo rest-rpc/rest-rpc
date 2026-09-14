@@ -12,7 +12,7 @@ import { getPathParamNames } from "./path.ts";
 import type {
 	RequestHeadersSchema,
 	RequestParamsSchema,
-	RequestQuerySchema,
+	QueryOptions,
 } from "./request.ts";
 import type { ResponseDeclaration, ResponseOptions } from "./response.ts";
 import type {
@@ -190,19 +190,15 @@ export class RouteBuilder {
 		});
 	}
 
-	query(schema: RequestQuerySchema): RouteBuilder {
+	query(schema: StandardSchemaV1, options?: QueryOptions): RouteBuilder {
 		const state = this["~restrpc"];
 		return new RouteBuilder({
 			...state,
-			request: { ...state.request, query: schema },
-		});
-	}
-
-	jsonQuery(schema: StandardSchemaV1): RouteBuilder {
-		const state = this["~restrpc"];
-		return new RouteBuilder({
-			...state,
-			request: { ...state.request, query: { kind: "jsonQuery", schema } },
+			request: {
+				...state.request,
+				query: schema,
+				...(options ? { querySerialization: options.serialization } : {}),
+			},
 		});
 	}
 

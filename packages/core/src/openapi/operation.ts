@@ -2,11 +2,11 @@ import { isStream } from "../contract/body.ts";
 import type { OpenApiResponseOptions } from "../contract/routeDeclaration.ts";
 import type { RouteDeclaration } from "../contract/routeDeclaration.ts";
 import type {
-	JsonQuery,
+	QuerySerialization,
 	RequestHeadersDeclaration,
 	RequestBodySchema,
 } from "../contract/request.ts";
-import { getRequestHeaderSchemas, isJsonQuery } from "../contract/request.ts";
+import { getRequestHeaderSchemas } from "../contract/request.ts";
 import type {
 	ResponseDeclaration,
 	ResponseHeaders,
@@ -110,14 +110,15 @@ const createContent = (
 	Object.fromEntries(contentTypes.map((contentType) => [contentType, value]));
 
 export const createParameters = (
-	schema: StandardSchemaV1 | JsonQuery | undefined,
+	schema: StandardSchemaV1 | undefined,
 	location: "path" | "query" | "header",
 	options: CreateOperationOptions,
+	querySerialization?: QuerySerialization | readonly QuerySerialization[],
 ): OpenApiParameter[] => {
 	if (!schema) return [];
 
-	if (isJsonQuery(schema)) {
-		const jsonSchema = options.schemaConverter?.(schema.schema, "input") ?? {};
+	if (querySerialization === "json") {
+		const jsonSchema = options.schemaConverter?.(schema, "input") ?? {};
 
 		return [
 			{
@@ -317,7 +318,12 @@ export const createOperation = (
 	const request = route.request;
 	const parameters = [
 		...createParameters(request?.params, "path", options),
-		...createParameters(request?.query, "query", options),
+		...createParameters(
+			request?.query,
+			"query",
+			options,
+			request?.querySerialization,
+		),
 		...createHeaderParameters(request?.headers, options),
 	].map(
 		(parameter) =>

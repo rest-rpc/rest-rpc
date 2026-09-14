@@ -39,12 +39,13 @@ export const requestValidationContract = {
 		.response(200, z.object({ value: z.literal("") })),
 	jsonQuery: route
 		.get("/request-validation/json-query")
-		.jsonQuery(
+		.query(
 			z.object({
 				page: z.number(),
 				includeArchived: z.boolean(),
 				filters: z.object({ tags: z.array(z.string()) }),
 			}),
+			{ serialization: "json" },
 		)
 		.response(
 			200,

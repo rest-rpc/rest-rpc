@@ -108,7 +108,9 @@ describe("Next fetch tags", () => {
 			items: {
 				list: groupedRoute
 					.get("/items")
-					.jsonQuery(type<{ page: number; filters: { tag: string } }>())
+					.query(type<{ page: number; filters: { tag: string } }>(), {
+						serialization: "json",
+					})
 					.response(204),
 			},
 		};

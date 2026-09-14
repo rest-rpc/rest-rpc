@@ -26,15 +26,15 @@ export {
 } from "./path.ts";
 export type {
 	ClientRequest,
-	JsonQuery,
+	QueryOptions,
+	QuerySerialization,
 	RequestBodySchema,
 	RequestHeadersDeclaration,
 	RequestHeadersSchema,
 	RequestParamsSchema,
-	RequestQuerySchema,
 	ServerRequest,
 } from "./request.ts";
-export { isJsonQuery, getRequestHeaderSchemas } from "./request.ts";
+export { getRequestHeaderSchemas } from "./request.ts";
 export type {
 	DeclaredClientResponse,
 	ErrorDeclaredClientResponse,

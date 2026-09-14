@@ -78,17 +78,15 @@ describe("OpenAPI operations", () => {
 		);
 	});
 
-	it("creates one JSON query parameter for jsonQuery schemas", () => {
+	it("creates one JSON query parameter for JSON serialization", () => {
 		const parameters = createParameters(
-			{
-				kind: "jsonQuery",
-				schema: z.object({
-					page: z.number(),
-					filters: z.object({ tags: z.array(z.string()) }),
-				}),
-			},
+			z.object({
+				page: z.number(),
+				filters: z.object({ tags: z.array(z.string()) }),
+			}),
 			"query",
 			operationOptions,
+			"json",
 		);
 
 		assert.deepEqual(parameters, [
@@ -120,11 +118,12 @@ describe("OpenAPI operations", () => {
 		]);
 	});
 
-	it("does not assume jsonQuery parameters are required", () => {
+	it("does not assume JSON query parameters are required", () => {
 		const parameters = createParameters(
-			{ kind: "jsonQuery", schema: z.object({ page: z.number() }).optional() },
+			z.object({ page: z.number() }).optional(),
 			"query",
 			operationOptions,
+			"json",
 		);
 
 		assert.deepEqual(

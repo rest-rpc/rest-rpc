@@ -299,13 +299,14 @@ describe("ApiClient requests", () => {
 			items: {
 				search: route
 					.get("/items")
-					.jsonQuery(
+					.query(
 						z.object({
 							page: z.number(),
 							filters: z.object({
 								tags: z.array(z.string()),
 							}),
 						}),
+						{ serialization: "json" },
 					)
 					.response(204),
 			},
@@ -332,12 +333,13 @@ describe("ApiClient requests", () => {
 			items: {
 				search: route
 					.get("/items")
-					.jsonQuery(
+					.query(
 						z
 							.object({
 								page: z.number(),
 							})
 							.optional(),
+						{ serialization: "json" },
 					)
 					.response(204),
 			},

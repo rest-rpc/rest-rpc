@@ -179,11 +179,9 @@ scalarRequestClient.items.get({
 	query: { page: 2, active: false },
 });
 
-expectError(
-	route.get("/items").query(schemaType<{ filters: { tag: string } }>()),
-);
+route.get("/items").query(schemaType<{ filters: { tag: string } }>());
 expectError(route.get("/items/:id").params(schemaType<{ id: string[] }>()));
-expectError(route.get("/items").query(z.object({ page: z.coerce.number() })));
+route.get("/items").query(z.object({ page: z.coerce.number() }));
 expectError(
 	route.get("/items/:id").params(z.object({ id: z.coerce.number() })),
 );
@@ -277,16 +275,19 @@ const jsonQueryApi = {
 	todos: {
 		jsonSearch: route
 			.get("/todos/json-search")
-			.jsonQuery(
+			.query(
 				z.object({
 					page: z.string().transform((value) => Number(value)),
 					filters: z.object({ tags: z.array(z.string()) }),
 				}),
+				{ serialization: "json" },
 			)
 			.response(200, z.array(todoSchema)),
 		optionalJsonSearch: route
 			.get("/todos/optional-json-search")
-			.jsonQuery(z.object({ page: z.number() }).optional())
+			.query(z.object({ page: z.number() }).optional(), {
+				serialization: "json",
+			})
 			.response(200, z.array(todoSchema)),
 	},
 };
@@ -306,6 +307,17 @@ jsonQueryClient.todos
 		if (response.status !== 200) throw new Error("Unexpected status");
 		expectType<Array<{ id: string; title: string }>>(response.body);
 	});
+expectError(
+	jsonQueryClient.todos.jsonSearch(
+		{
+			query: {
+				page: "1",
+				filters: { tags: ["api"] },
+			},
+		},
+		{ querySerialization: "json" },
+	),
+);
 expectError(jsonQueryClient.todos.jsonSearch({ query: { page: "1" } }));
 expectError(jsonQueryClient.todos.jsonSearch());
 jsonQueryClient.todos

@@ -9,12 +9,6 @@ export type RequestSegment = "body" | "query" | "params" | "headers";
 /** Scalar value accepted by ordinary HTTP request schemas. */
 export type RequestScalar = string | number | boolean;
 
-/** An ordinary query schema whose wire input contains scalar or array values. */
-export type RequestQuerySchema = StandardSchemaV1<
-	Record<string, RequestScalar | readonly RequestScalar[] | undefined>,
-	unknown
->;
-
 /** An ordinary params schema whose wire input contains scalar values. */
 export type RequestParamsSchema = StandardSchemaV1<
 	Record<string, RequestScalar>,
@@ -42,24 +36,13 @@ export function getRequestHeaderSchemas(
 	);
 }
 
-/**
- * Declares a query string field that carries a JSON-encoded object value.
- *
- * @see {@link https://rest-rpc.dev/docs/contract/declaration#json-query}
- */
-export type JsonQuery<TSchema extends StandardSchemaV1 = StandardSchemaV1> = {
-	kind: "jsonQuery";
-	schema: TSchema;
-};
+/** A supported URL query serialization strategy. */
+export type QuerySerialization = "json";
 
-export function isJsonQuery(schema: unknown): schema is JsonQuery {
-	return (
-		typeof schema === "object" &&
-		schema !== null &&
-		"kind" in schema &&
-		schema.kind === "jsonQuery"
-	);
-}
+/** Options for declaring URL query serialization. */
+export type QueryOptions = {
+	serialization: QuerySerialization;
+};
 
 export type RequestBodySchema = StandardSchemaV1 | undefined;
 
@@ -71,13 +54,6 @@ type InferRequestBody<
 		? StandardSchemaV1.InferInput<TBody>
 		: StandardSchemaV1.InferOutput<TBody>
 	: never;
-
-type InferJsonQuery<TQuery, TIO extends "input" | "output"> =
-	TQuery extends JsonQuery<infer TSchema>
-		? TIO extends "input"
-			? StandardSchemaV1.InferInput<TSchema>
-			: StandardSchemaV1.InferOutput<TSchema>
-		: never;
 
 type InferRequestHeaders<
 	THeaders extends RequestHeadersDeclaration,
@@ -109,13 +85,11 @@ type InferRequestHeaders<
 type InferRequestObjectSegment<
 	TSegment,
 	TIO extends "input" | "output",
-> = TSegment extends JsonQuery
-	? InferJsonQuery<TSegment, TIO>
-	: TSegment extends StandardSchemaV1
-		? TIO extends "input"
-			? StandardSchemaV1.InferInput<TSegment>
-			: StandardSchemaV1.InferOutput<TSegment>
-		: never;
+> = TSegment extends StandardSchemaV1
+	? TIO extends "input"
+		? StandardSchemaV1.InferInput<TSegment>
+		: StandardSchemaV1.InferOutput<TSegment>
+	: never;
 
 type InferRequestSegments<R, TIO extends "input" | "output"> = {
 	body: R extends { body: infer TBody } ? InferRequestBody<TBody, TIO> : never;

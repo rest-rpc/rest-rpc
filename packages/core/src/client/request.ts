@@ -1,6 +1,5 @@
 import type { RouteDeclaration } from "../contract/contract.ts";
 import { replacePathParams } from "../contract/path.ts";
-import { isJsonQuery } from "../contract/request.ts";
 import type { GroupedRequestInput } from "./requestInput.ts";
 import { getNextFetchTags } from "./nextFetchTags.ts";
 import type { ClientRequestRoute } from "./requestRoute.ts";
@@ -144,14 +143,13 @@ const serializeParams = (
 };
 
 const serializeQuery = (route: ClientRequestRoute, query: unknown) => {
-	const queryValues = isJsonQuery(route.request?.query)
-		? { query }
-		: (query ?? {});
+	const usesJsonSerialization = route.request?.querySerialization === "json";
+	const queryValues = usesJsonSerialization ? { query } : (query ?? {});
 	const entries = Object.entries(queryValues).flatMap(([key, value]) => {
-		if (!isJsonQuery(route.request?.query) && Array.isArray(value)) {
+		if (!usesJsonSerialization && Array.isArray(value)) {
 			return value.map((item) => [`${key}[]`, String(item)]);
 		}
-		const stringValue = isJsonQuery(route.request?.query)
+		const stringValue = usesJsonSerialization
 			? stringifyJsonQueryValue(route, value)
 			: value === undefined
 				? undefined
@@ -318,8 +316,11 @@ export const executeRequest = async <E extends RouteDeclaration>(
 	);
 
 	try {
-		const { contentType: _contentType, ...requestFetchOptions } =
-			fetchOptions ?? {};
+		const {
+			contentType: _contentType,
+			querySerialization: _querySerialization,
+			...requestFetchOptions
+		} = fetchOptions ?? {};
 		const init = addNextFetchTags(
 			{
 				...options.fetchOptions,

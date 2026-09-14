@@ -168,11 +168,12 @@ describe("validateRequest", () => {
 		const result = await validateRequest(
 			route
 				.get("/todos")
-				.jsonQuery(
+				.query(
 					z.object({
 						page: z.number(),
 						filters: z.object({ tags: z.array(z.string()) }),
 					}),
+					{ serialization: "json" },
 				)
 				.response(204)["~restrpc"],
 			{
@@ -197,7 +198,9 @@ describe("validateRequest", () => {
 		const result = await validateRequest(
 			route
 				.get("/todos")
-				.jsonQuery(z.object({ page: z.number() }).optional())
+				.query(z.object({ page: z.number() }).optional(), {
+					serialization: "json",
+				})
 				.response(204)["~restrpc"],
 			{},
 		);
@@ -370,7 +373,7 @@ describe("validateRequest", () => {
 		const result = await validateRequest(
 			route
 				.get("/todos")
-				.jsonQuery(z.object({ page: z.number() }))
+				.query(z.object({ page: z.number() }), { serialization: "json" })
 				.response(204)["~restrpc"],
 			{
 				query: new URLSearchParams({ query: "{" }),

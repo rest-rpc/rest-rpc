@@ -53,7 +53,9 @@ export const customTypedBody = route
 	.post("/custom-typed-body")
 	.body(scalar, { contentType: "text/plain" });
 export const queryRoute = route.get("/query").query(query);
-export const jsonQueryRoute = route.get("/json-query").jsonQuery(scalar);
+export const jsonQueryRoute = route
+	.get("/json-query")
+	.query(scalar, { serialization: "json" });
 export const paramsRoute = route.get("/params/:id").params(params);
 export const headersRoute = route.get("/headers").headers(headers);
 export const keyedRoute = route.get("/keys").query(query);

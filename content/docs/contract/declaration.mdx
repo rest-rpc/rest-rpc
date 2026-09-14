@@ -91,14 +91,15 @@ route
 
 ## JSON Query
 
-When you need to pass a complex object as a query parameter, you can use `.jsonQuery()`.
+When you need to pass a complex object as a query parameter, set the query
+serialization to `json`.
 The object is serialized to a JSON string and sent as a single query parameter named `query` in the URL.
 
 ```ts
 const api = {
 	search: route
 		.get("/search")
-		.jsonQuery(
+		.query(
 			z.object({
 				page: z.number(),
 				includeArchived: z.boolean(),
@@ -106,6 +107,7 @@ const api = {
 					tags: z.array(z.string()),
 				}),
 			}),
+			{ serialization: "json" },
 		)
 		.response(200, z.object({ results: z.array(z.string()) })),
 };

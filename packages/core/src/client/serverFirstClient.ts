@@ -1,7 +1,6 @@
 import type { HttpMethod } from "../contract/routeDeclaration.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
-import type { JsonQuery } from "../contract/request.ts";
-import type { StandardSchemaV1 } from "../standard-schema/index.ts";
+import type { QuerySerialization } from "../contract/request.ts";
 import { executeRequest, type ExecuteRequestOptions } from "./request.ts";
 import type {
 	ClientRequestDeclaration,
@@ -31,31 +30,8 @@ type ServerFirstProcedureImplementation = {
 	};
 };
 
-const requestEncoding = Symbol("rest-rpc.request-encoding");
-
-/**
- * Marks a value with the transport encoding required by a server-first route.
- *
- * @see {@link https://rest-rpc.dev/docs/server-first/client#mark-explicit-request-encodings}
- */
-export interface EncodedRequest<TKind extends string, TValue> {
-	readonly [requestEncoding]: TKind;
-	readonly value: TValue;
-}
-
-type ClientSchema<TInput> = StandardSchemaV1<TInput, unknown>;
-
-type ClientRequestQuery<TQuery> =
-	TQuery extends JsonQuery<infer TSchema>
-		? JsonQuery<
-				ClientSchema<
-					EncodedRequest<"jsonQuery", StandardSchemaV1.InferInput<TSchema>>
-				>
-			>
-		: TQuery;
-
 type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
-	? Omit<TRequest, "body" | "query" | "contentType"> &
+	? Omit<TRequest, "body" | "contentType" | "querySerialization"> &
 			(TRequest extends { body: infer TBody } ? { body: TBody } : unknown) &
 			(TRequest extends { contentType: infer TContentType }
 				? {
@@ -64,8 +40,12 @@ type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
 							: TContentType;
 					}
 				: unknown) &
-			(TRequest extends { query: infer TQuery }
-				? { query: ClientRequestQuery<TQuery> }
+			(TRequest extends { querySerialization: infer TSerialization }
+				? {
+						querySerialization: TSerialization extends string
+							? readonly [TSerialization]
+							: TSerialization;
+					}
 				: unknown)
 	: never;
 
@@ -245,31 +225,6 @@ type ServerFirstRequestInput = {
 	headers?: Record<string, unknown>;
 };
 
-type RuntimeEncodedRequest = EncodedRequest<string, unknown>;
-
-const encodedRequest = <TKind extends string, TValue>(
-	kind: TKind,
-	value: TValue,
-): EncodedRequest<TKind, TValue> => ({
-	[requestEncoding]: kind,
-	value,
-});
-
-/**
- * Marks JSON query values for server-first client calls.
- *
- * @remarks Request bodies use the `contentType` call option and flat query
- * objects do not need a wrapper.
- *
- * @see {@link https://rest-rpc.dev/docs/server-first/client#mark-explicit-request-encodings}
- */
-export const request = {
-	jsonQuery: <TValue>(value: TValue) => encodedRequest("jsonQuery", value),
-} as const;
-
-const isEncodedRequest = (value: unknown): value is RuntimeEncodedRequest =>
-	typeof value === "object" && value !== null && requestEncoding in value;
-
 const getServerFirstArgs = (args: unknown[]) => {
 	return {
 		requestInput: args[0] as ServerFirstRequestInput | undefined,
@@ -282,10 +237,9 @@ const createRuntimeRoute = (
 	path: string,
 	input: ServerFirstRequestInput | undefined,
 	contentType: string | undefined,
+	querySerialization: QuerySerialization | undefined,
 ) => {
 	const requestDeclaration: ClientRequestDeclaration = {};
-	const normalizedInput: ServerFirstRequestInput = { ...input };
-	const tagInput: ServerFirstRequestInput = { ...input };
 
 	if (input && "body" in input) {
 		if (contentType !== undefined) {
@@ -297,18 +251,9 @@ const createRuntimeRoute = (
 	}
 
 	if (input && "query" in input) {
-		const query = input.query;
-		if (isEncodedRequest(query)) {
-			if (query[requestEncoding] !== "jsonQuery") {
-				throw new Error("Unsupported server-first query encoding.");
-			}
-			requestDeclaration.query = {
-				kind: "jsonQuery",
-			};
-			normalizedInput.query = query.value;
-			tagInput.query = query.value;
-		} else {
-			requestDeclaration.query = {};
+		requestDeclaration.query = {};
+		if (querySerialization !== undefined) {
+			requestDeclaration.querySerialization = querySerialization;
 		}
 	}
 
@@ -325,8 +270,7 @@ const createRuntimeRoute = (
 			path,
 			request: requestDeclaration,
 		} satisfies ClientRequestRoute,
-		requestInput: normalizedInput,
-		tagInput,
+		requestInput: input,
 	};
 };
 
@@ -413,13 +357,14 @@ export const createServerFirstClient = <
 						path,
 						requestInput,
 						fetchOptions?.contentType,
+						fetchOptions?.querySerialization,
 					);
 					return executeRequest(
 						runtime.route,
 						runtime.route,
 						[runtime.requestInput, fetchOptions],
 						requestOptions,
-						runtime.tagInput,
+						runtime.requestInput,
 					).then((response) =>
 						readServerFirstResponse(response, options.bodyParser),
 					);

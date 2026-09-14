@@ -35,12 +35,13 @@ export const hoverApi = {
 			.response(404, schemaType<{ code: "TODO_NOT_FOUND" }>()),
 		page: route
 			.get("/todos/page")
-			.jsonQuery(
+			.query(
 				schemaType<{
 					cursor?: string;
 					status: "open" | "done";
 					limit: number;
 				}>(),
+				{ serialization: "json" },
 			)
 			.response(
 				200,

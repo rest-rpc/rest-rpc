@@ -1,9 +1,7 @@
 import {
 	type BodyContentType,
-	isJsonQuery,
 	getRequestHeaderSchemas,
 	isStream,
-	type JsonQuery,
 	type ResponseBodySchema,
 	type ResponseDeclaration,
 	type RouteDeclaration,
@@ -206,7 +204,7 @@ const validateCustomBody = async (
 };
 
 const validateJsonQuery = async (
-	declaration: JsonQuery,
+	schema: StandardSchemaV1,
 	query: URLSearchParams | undefined,
 ): Promise<SegmentValidationResult> => {
 	let input: unknown;
@@ -219,7 +217,7 @@ const validateJsonQuery = async (
 		};
 	}
 
-	const result = await validateStandardSchema(declaration.schema, input);
+	const result = await validateStandardSchema(schema, input);
 	if (result.issues) {
 		return { data: {}, errors: result.issues };
 	}
@@ -252,9 +250,10 @@ const getValidatedRequestData = (
 			: {}),
 		...(request?.query
 			? {
-					query: isJsonQuery(request.query)
-						? (query.data as Record<string, unknown>).query
-						: query.data,
+					query:
+						request.querySerialization === "json"
+							? (query.data as Record<string, unknown>).query
+							: query.data,
 				}
 			: {}),
 		...(request?.params ? { params: params.data } : {}),
@@ -271,12 +270,13 @@ export async function validateRequest(
 		request?.contentType !== undefined
 			? await validateCustomBody(route, segments.body, segments.headers)
 			: await validateRequestObject(request?.body, segments.body);
-	const query = isJsonQuery(request?.query)
-		? await validateJsonQuery(request.query, segments.query)
-		: await validateRequestObject(
-				request?.query,
-				segments.query ? parseQueryOrFormData(segments.query) : undefined,
-			);
+	const query =
+		request?.querySerialization === "json" && request.query
+			? await validateJsonQuery(request.query, segments.query)
+			: await validateRequestObject(
+					request?.query,
+					segments.query ? parseQueryOrFormData(segments.query) : undefined,
+				);
 	const params = await validateRequestObject(request?.params, segments.params);
 	const headers = await validateHeaders(request?.headers, segments.headers);
 	const issues = {

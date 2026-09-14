@@ -45,27 +45,20 @@ with only their path: `await client.$get("/health")`.
 ## Mark Explicit Request Encodings
 
 Specify a body `contentType` in the call options so the client knows how to
-encode form, multipart, and custom request bodies. JSON query values still use
-the `request.jsonQuery()` helper.
+encode form, multipart, and custom request bodies. Specify `querySerialization`
+when the declared route uses JSON query serialization.
 
 ```ts
-import { request } from "@rest-rpc/core";
-
 await client.$post(
 	"/uploads",
 	{ body: { title: "Screenshot", file } },
 	{ contentType: "multipart/form-data" },
 );
-```
 
-Requests declared with `body(schema, { contentType })` must always supply a
-`contentType` option to a server-first client.
-
-```ts
-await client.$post(
-	"/imports.csv",
-	{ body: "id,title\n1,Write docs\n" },
-	{ contentType: "text/csv" },
+await client.$get(
+	"/search",
+	{ query: { page: 2, filters: { tag: "open" } } },
+	{ querySerialization: "json" },
 );
 ```
 

@@ -1,15 +1,17 @@
 import type { Contract, RouteDeclaration } from "../contract/contract.ts";
 import type { ClientRequest } from "../contract/request.ts";
+import type { QuerySerialization } from "../contract/request.ts";
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { DeclaredClientResponse } from "../contract/response.ts";
 
 export type FetchOptions = Omit<RequestInit, "method" | "body" | "headers"> & {
 	contentType?: string;
+	querySerialization?: QuerySerialization;
 };
 
 export type ApiClientFetchOptions = Omit<
 	FetchOptions,
-	"signal" | "contentType"
+	"signal" | "contentType" | "querySerialization"
 >;
 
 /**
@@ -53,33 +55,58 @@ type DeclaredContentType<E> = E extends {
 	? TContentType
 	: never;
 
-type FetchOptionsFor<E> = Omit<FetchOptions, "contentType"> &
+type DeclaredQuerySerialization<E> = E extends {
+	request: { querySerialization: infer TSerialization };
+}
+	? TSerialization
+	: never;
+
+type FetchOptionsFor<E> = Omit<
+	FetchOptions,
+	"contentType" | "querySerialization"
+> &
 	([DeclaredContentType<E>] extends [never]
 		? { contentType?: never }
 		: DeclaredContentType<E> extends readonly string[]
 			? { contentType: DeclaredContentType<E>[number] }
-			: { contentType?: never });
+			: { contentType?: never }) &
+	([DeclaredQuerySerialization<E>] extends [never]
+		? { querySerialization?: never }
+		: DeclaredQuerySerialization<E> extends readonly string[]
+			? {
+					querySerialization: DeclaredQuerySerialization<E>[number];
+				}
+			: { querySerialization?: never });
+
+type RequiresFetchOptions<E> = [DeclaredContentType<E>] extends [never]
+	? [DeclaredQuerySerialization<E>] extends [never]
+		? false
+		: DeclaredQuerySerialization<E> extends readonly string[]
+			? true
+			: false
+	: DeclaredContentType<E> extends readonly string[]
+		? true
+		: [DeclaredQuerySerialization<E>] extends [never]
+			? false
+			: DeclaredQuerySerialization<E> extends readonly string[]
+				? true
+				: false;
 
 export type FetchArgs<
 	E extends RouteDeclaration = RouteDeclaration,
 	TGlobalHeaders extends HeaderRecord = Record<never, string>,
 > =
 	ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>> extends never
-		? [request?: undefined, options?: FetchOptions]
-		: [DeclaredContentType<E>] extends [never]
+		? [request?: undefined, options?: FetchOptionsFor<E>]
+		: RequiresFetchOptions<E> extends false
 			? [
 					request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
 					options?: FetchOptionsFor<E>,
 				]
-			: DeclaredContentType<E> extends readonly string[]
-				? [
-						request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
-						options: FetchOptionsFor<E>,
-					]
-				: [
-						request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
-						options?: FetchOptionsFor<E>,
-					];
+			: [
+					request: ClientRequest<E, GlobalHeaderKeys<TGlobalHeaders>>,
+					options: FetchOptionsFor<E>,
+				];
 
 type Simplify<T> = T extends unknown ? { [TKey in keyof T]: T[TKey] } : never;
 
