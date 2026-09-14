@@ -1,7 +1,6 @@
 import {
 	type BodyContentType,
 	getRequestHeaderSchemas,
-	isStream,
 	type ResponseBodySchema,
 	type ResponseDeclaration,
 	type RouteDeclaration,
@@ -243,6 +242,7 @@ const getValidatedRequestData = (
 				}
 			: {}),
 		...(request?.contentType !== undefined &&
+		request.contentType !== "application/json" &&
 		(body.data as Record<string, unknown>).contentType !== undefined
 			? {
 					contentType: (body.data as Record<string, unknown>).contentType,
@@ -309,7 +309,7 @@ export const validateResponseBody = async (
 	schema: ResponseBodySchema | undefined,
 	body: unknown,
 ): Promise<unknown> => {
-	if (!schema || isStream(schema)) {
+	if (!schema) {
 		return body;
 	}
 
@@ -371,8 +371,7 @@ export const validateResponseStreamChunk = async (
 ) => {
 	if (!schema) return chunk;
 
-	const declaredChunkSchema = isStream(schema) ? schema.schema : schema;
-	const validation = await validateStandardSchema(declaredChunkSchema, chunk);
+	const validation = await validateStandardSchema(schema, chunk);
 	if (validation.issues) {
 		throw new ResponseValidationError("stream", validation.issues);
 	}

@@ -1,10 +1,10 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type { BodyContentType, Stream } from "./body.ts";
+import type { BodyContentType } from "./body.ts";
 import type { RouteDeclaration } from "./routeDeclaration.ts";
 
 export type ResponseSchema = StandardSchemaV1;
 
-export type ResponseBodySchema = ResponseSchema | Stream;
+export type ResponseBodySchema = ResponseSchema;
 
 /**
  * Declares a whole-object schema for typed response headers.
@@ -21,11 +21,17 @@ export type ResponseHeaders = StandardSchemaV1<
  *
  * @see {@link https://rest-rpc.dev/docs/http-responses}
  */
-export type ResponseDeclaration = {
-	body: ResponseBodySchema | undefined;
-	contentType?: BodyContentType;
-	headers?: ResponseHeaders;
-};
+export type ResponseDeclaration =
+	| {
+			body: ResponseBodySchema;
+			contentType: BodyContentType;
+			headers?: ResponseHeaders;
+	  }
+	| {
+			body: undefined;
+			contentType?: never;
+			headers?: ResponseHeaders;
+	  };
 
 /** HTTP metadata associated with a declared response schema. */
 export type ResponseOptions = {
@@ -55,40 +61,56 @@ export const getRouteResponses = (route: {
 
 type Simplify<T> = T extends unknown ? { [TKey in keyof T]: T[TKey] } : never;
 
-type InferClientResponseBody<TResponse> = TResponse extends StandardSchemaV1
-	? StandardSchemaV1.InferOutput<TResponse>
-	: TResponse extends undefined
-		? undefined
-		: TResponse extends Stream<infer TBody>
-			? AsyncIterable<StandardSchemaV1.InferOutput<TBody>>
-			: never;
+type IsNdjsonResponse<TResponse> = TResponse extends {
+	contentType: "application/x-ndjson";
+}
+	? true
+	: false;
 
-export type ServerResponseBody<TResponse> = TResponse extends StandardSchemaV1
-	? StandardSchemaV1.InferInput<TResponse>
-	: TResponse extends undefined
-		? undefined
-		: TResponse extends Stream<infer TBody>
-			? AsyncIterable<StandardSchemaV1.InferInput<TBody>>
-			: never;
+type InferClientResponseBody<TResponse> =
+	ResponseBody<TResponse> extends infer TBody
+		? TBody extends StandardSchemaV1
+			? IsNdjsonResponse<TResponse> extends true
+				? AsyncIterable<StandardSchemaV1.InferOutput<TBody>>
+				: StandardSchemaV1.InferOutput<TBody>
+			: TBody extends undefined
+				? undefined
+				: never
+		: never;
+
+export type ServerResponseBody<TResponse> =
+	ResponseBody<TResponse> extends infer TBody
+		? TBody extends StandardSchemaV1
+			? IsNdjsonResponse<TResponse> extends true
+				? AsyncIterable<StandardSchemaV1.InferInput<TBody>>
+				: StandardSchemaV1.InferInput<TBody>
+			: TBody extends undefined
+				? undefined
+				: never
+		: never;
 
 type ClientResponseMetadata<TResponse> = TResponse extends {
 	contentType: infer TContentType;
 }
-	? TContentType extends readonly string[]
-		? { contentType: TContentType[number] }
-		: TContentType extends string
-			? { contentType: TContentType }
-			: unknown
+	? TContentType extends "application/json" | "application/x-ndjson"
+		? unknown
+		: TContentType extends readonly string[]
+			? { contentType: TContentType[number] }
+			: TContentType extends string
+				? { contentType: TContentType }
+				: unknown
 	: unknown;
 
 type ServerResponseMetadata<TResponse> = TResponse extends {
 	contentType: infer TContentType;
 }
-	? TContentType extends readonly string[]
-		? { contentType: TContentType[number] }
-		: TContentType extends string
-			? { contentType?: TContentType }
-			: unknown
+	? TContentType extends "application/json" | "application/x-ndjson"
+		? unknown
+		: TContentType extends readonly string[]
+			? { contentType: TContentType[number] }
+			: TContentType extends string
+				? { contentType?: TContentType }
+				: unknown
 	: unknown;
 
 type ResponseBody<TResponse> = TResponse extends { body: infer TBody }
@@ -125,7 +147,7 @@ type ResponseEntry<TStatus extends number, TBody> = {
 
 type ClientResponseEntry<TStatus extends number, TResponse> = ResponseEntry<
 	TStatus,
-	InferClientResponseBody<ResponseBody<TResponse>>
+	InferClientResponseBody<TResponse>
 > &
 	ClientResponseMetadata<TResponse> &
 	ResponseHeadersMetadata<TResponse, "output"> extends infer TEntry
@@ -141,7 +163,7 @@ type ServerResponseBase<TStatus extends number, TBody> = [TBody] extends [
 type ServerResponseEntry<
 	TStatus extends number,
 	TResponse,
-> = ServerResponseBase<TStatus, ServerResponseBody<ResponseBody<TResponse>>> &
+> = ServerResponseBase<TStatus, ServerResponseBody<TResponse>> &
 	ServerResponseMetadata<TResponse> &
 	ResponseHeadersMetadata<TResponse, "input"> extends infer TEntry
 	? Simplify<TEntry>

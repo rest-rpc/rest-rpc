@@ -99,7 +99,9 @@ expectType<{ readonly auth: true; readonly permission: "todos:create" }>(
 );
 expectType<OpenApiRouteOptions>(create["~restrpc"].openApi);
 expectType<typeof input>(create["~restrpc"].request.body);
+expectType<"application/json">(create["~restrpc"].request.contentType);
 expectType<typeof todo>(create["~restrpc"].responses[201].body);
+expectType<"application/json">(create["~restrpc"].responses[201].contentType);
 expectType<typeof unauthorized>(create["~restrpc"].responses[401].body);
 expectAssignable<RouteDeclaration>(create["~restrpc"]);
 expectAssignable<Contract>(create);
@@ -190,7 +192,10 @@ const search = route
 	.query(input, { serialization: "json" })
 	.streamResponse(200, todo);
 expectType<"json">(search["~restrpc"].request.querySerialization);
-expectType<"stream">(search["~restrpc"].responses[200].body.kind);
+expectType<typeof todo>(search["~restrpc"].responses[200].body);
+expectType<"application/x-ndjson">(
+	search["~restrpc"].responses[200].contentType,
+);
 
 // Ordinary params and query schemas accept scalar wire inputs.
 const scalarRequest = route
@@ -216,9 +221,7 @@ expectType<typeof todo>(typedResponses["~restrpc"].responses[200].body);
 expectType<typeof typedResponseHeaders>(
 	typedResponses["~restrpc"].responses[200].headers,
 );
-expectType<typeof customBytes>(
-	typedResponses["~restrpc"].responses[201].body.schema,
-);
+expectType<typeof customBytes>(typedResponses["~restrpc"].responses[201].body);
 expectError(
 	route.get("/invalid-response-headers").response(200, todo, {
 		headers: schemaType<{ invalid: { nested: string } }>(),
@@ -244,13 +247,9 @@ expectAssignable<RouteDeclaration>(
 	route.get("/health").response(204, undefined)["~restrpc"],
 );
 const noBodyWithHeaders = route.get("/created").response(204, undefined, {
-	contentType: "text/plain",
 	headers: typedResponseHeaders,
 });
 expectType<undefined>(noBodyWithHeaders["~restrpc"].responses[204].body);
-expectType<"text/plain">(
-	noBodyWithHeaders["~restrpc"].responses[204].contentType,
-);
 expectType<typeof typedResponseHeaders>(
 	noBodyWithHeaders["~restrpc"].responses[204].headers,
 );
@@ -275,8 +274,10 @@ const mixedResponses = route
 
 expectType<typeof todo>(mixedResponses["~restrpc"].responses[200].body);
 expectType<typeof customText>(mixedResponses["~restrpc"].responses[201].body);
-expectType<"stream">(mixedResponses["~restrpc"].responses[202].body.kind);
-expectType<typeof event>(mixedResponses["~restrpc"].responses[202].body.schema);
+expectType<typeof event>(mixedResponses["~restrpc"].responses[202].body);
+expectType<"application/x-ndjson">(
+	mixedResponses["~restrpc"].responses[202].contentType,
+);
 expectAssignable<RouteDeclaration>(mixedResponses["~restrpc"]);
 
 // Keeps unused request and route configuration available after a response.
@@ -298,7 +299,7 @@ expectType<typeof customText>(
 	configuredAfterResponse["~restrpc"].responses[200].body,
 );
 expectType<typeof event>(
-	configuredAfterResponse["~restrpc"].responses[201].body.schema,
+	configuredAfterResponse["~restrpc"].responses[201].body,
 );
 expectType<{ readonly auth: true }>(
 	configuredAfterResponse["~restrpc"].metadata,
@@ -335,7 +336,5 @@ expectAssignable<RouteDeclaration>(
 );
 
 expectError(route.get("/health").response(todo));
-expectError(route.get("/legacy-response").response(200, { body: todo }));
-expectError(route.post("/legacy-body").body(input, "text/plain"));
 expectError(route.input(input, "text/plain"));
 expectError(apiRoute.post("/todos").responses({ 201: todo }));

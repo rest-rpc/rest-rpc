@@ -570,7 +570,10 @@ describe("OpenAPI operations", () => {
 	it("creates NDJSON stream responses as text wire bodies", () => {
 		const response = createResponse(
 			"",
-			{ body: { kind: "stream", schema: z.object({ id: z.string() }) } },
+			{
+				body: z.object({ id: z.string() }),
+				contentType: "application/x-ndjson",
+			},
 			schemaConverter,
 		);
 

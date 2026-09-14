@@ -1,4 +1,3 @@
-import { isStream } from "../contract/body.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import type {
 	DeclaredClientResponse,
@@ -149,26 +148,24 @@ export const readDeclaredBody = async (
 	if (schema === undefined) return undefined;
 
 	if (customContentType !== undefined) {
-		resolveDeclaredContentType(
+		const contentType = resolveDeclaredContentType(
 			Array.isArray(customContentType)
 				? customContentType
 				: [customContentType as string],
 			rawResponse,
 		);
+		if (normalizeContentType(contentType) === "application/x-ndjson") {
+			if (!rawResponse.body) {
+				throw new Error("Server returned an empty stream response");
+			}
+			return parseNdjsonStream(schema, rawResponse.body, validate);
+		}
 		const value = await bodyParser(rawResponse);
-		if (!validate || isStream(schema)) return value;
+		if (!validate) return value;
 
 		const result = await validateStandardSchema(schema, value);
 		if (result.issues) throw result.issues;
 		return result.value;
-	}
-
-	if (isStream(schema)) {
-		if (!rawResponse.body) {
-			throw new Error("Server returned an empty stream response");
-		}
-
-		return parseNdjsonStream(schema.schema, rawResponse.body, validate);
 	}
 
 	const value = await rawResponse.json();
@@ -204,11 +201,14 @@ const resolveDeclaredContentType = (
 	const responseContentType = rawResponse.headers.get("content-type");
 	const contentType =
 		responseContentType &&
-		contentTypes.find(
-			(value) =>
-				normalizeContentType(value) ===
-				normalizeContentType(responseContentType),
-		);
+		contentTypes.find((value) => {
+			const declared = normalizeContentType(value);
+			const received = normalizeContentType(responseContentType);
+			return (
+				declared === received ||
+				(declared === "application/json" && received.endsWith("+json"))
+			);
+		});
 
 	if (!contentType) {
 		throw new Error(
@@ -225,6 +225,12 @@ const declaredResponseMetadata = (
 ) => {
 	const { contentType } = schema;
 	if (contentType !== undefined) {
+		if (
+			contentType === "application/json" ||
+			contentType === "application/x-ndjson"
+		) {
+			return {};
+		}
 		return {
 			contentType: resolveDeclaredContentType(
 				Array.isArray(contentType) ? contentType : [contentType as string],

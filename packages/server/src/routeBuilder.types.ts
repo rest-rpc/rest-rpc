@@ -7,7 +7,6 @@ import type {
 	ServerErrors,
 	ServerRequest,
 	ServerResponse,
-	Stream,
 } from "@rest-rpc/core/contract";
 import type { StandardSchemaV1 } from "@rest-rpc/core/standard-schema";
 
@@ -162,35 +161,38 @@ type ImplicitResponseBodyDeclaration<TResponse> = TResponse extends {
 	body: infer TBody;
 }
 	? TBody extends AsyncIterable<infer TItem>
-		? Stream<ClientSchema<TItem>>
+		? ClientSchema<TItem>
 		: ClientSchema<TBody>
 	: undefined;
 
-type ImplicitResponseDeclaration<TResponse> =
-	ImplicitResponseBodyDeclaration<TResponse> extends infer TBody
-		? TBody extends Stream
-			? TResponse extends { responseHeaders: infer THeaders }
-				? {
-						body: TBody;
-						headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
-					}
-				: { body: TBody }
-			: TResponse extends { contentType: infer TContentType extends string }
-				? {
-						body: TBody;
-						contentType: TContentType;
-					} & (TResponse extends { responseHeaders: infer THeaders }
-						? {
-								headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
-							}
-						: unknown)
-				: TResponse extends { responseHeaders: infer THeaders }
-					? {
-							body: TBody;
-							headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
-						}
-					: { body: TBody }
-		: never;
+type ImplicitResponseContentType<TResponse> = TResponse extends {
+	body: infer TBody;
+}
+	? TBody extends AsyncIterable<unknown>
+		? "application/x-ndjson"
+		: TResponse extends { contentType: infer TContentType extends string }
+			? TContentType
+			: "application/json"
+	: never;
+
+type ImplicitResponseDeclaration<TResponse> = TResponse extends {
+	body: unknown;
+}
+	? {
+			body: ImplicitResponseBodyDeclaration<TResponse>;
+			contentType: ImplicitResponseContentType<TResponse>;
+		} & (TResponse extends { responseHeaders: infer THeaders }
+			? {
+					headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+				}
+			: unknown)
+	: { body: undefined } & (TResponse extends {
+			responseHeaders: infer THeaders;
+		}
+			? {
+					headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+				}
+			: unknown);
 
 type ResponseStatuses<TResponse> = TResponse extends {
 	status: infer TStatus extends number;
@@ -209,7 +211,12 @@ type InferredHttpRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
 };
 
 type InferredProcedureRoute<TRoute, TResult> = Omit<TRoute, "responses"> & {
-	responses: { 200: { body: ClientSchema<Awaited<TResult>> } };
+	responses: {
+		200: {
+			body: ClientSchema<Awaited<TResult>>;
+			contentType: "application/json";
+		};
+	};
 };
 
 /** Terminal builder shape containing a route declaration and its handler. */

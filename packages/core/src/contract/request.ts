@@ -44,7 +44,7 @@ export type QueryOptions = {
 	serialization: QuerySerialization;
 };
 
-export type RequestBodySchema = StandardSchemaV1 | undefined;
+export type RequestBodySchema = StandardSchemaV1;
 
 type InferRequestBody<
 	TBody,
@@ -189,11 +189,13 @@ export type ClientRequest<
 type ServerContentType<TRequest> = TRequest extends {
 	contentType: infer TContentType;
 }
-	? TContentType extends readonly string[]
-		? { contentType: TContentType[number] }
-		: TContentType extends string
-			? { contentType: TContentType }
-			: unknown
+	? TContentType extends "application/json"
+		? unknown
+		: TContentType extends readonly string[]
+			? { contentType: TContentType[number] }
+			: TContentType extends string
+				? { contentType: TContentType }
+				: unknown
 	: unknown;
 
 export type ServerRequest<E extends { request?: RouteRequestDeclaration }> =

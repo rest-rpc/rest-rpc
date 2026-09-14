@@ -1,5 +1,3 @@
-import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-
 /** A commonly supported request or response body media type. */
 export type KnownBodyContentType =
 	| "application/json"
@@ -18,22 +16,3 @@ export type BodyContentType =
 export type BodyOptions = {
 	contentType: BodyContentType;
 };
-
-/**
- * Declares a streaming response body.
- *
- * @see {@link https://rest-rpc.dev/docs/http-responses#streaming-ndjson-responses}
- */
-export type Stream<TBody extends StandardSchemaV1 = StandardSchemaV1> = {
-	kind: "stream";
-	schema: TBody;
-};
-
-export function isStream(response: unknown): response is Stream {
-	return (
-		typeof response === "object" &&
-		response !== null &&
-		"kind" in response &&
-		response.kind === "stream"
-	);
-}

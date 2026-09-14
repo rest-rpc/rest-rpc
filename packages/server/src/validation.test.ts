@@ -82,6 +82,7 @@ describe("validateRequest", () => {
 				.response(204)["~restrpc"],
 			{
 				body: { createdAt: "2026-08-10T00:00:00.000Z" },
+				headers: { "content-type": "application/json" },
 			},
 		);
 
@@ -491,10 +492,7 @@ describe("validateResponseStreamChunks", () => {
 			yield "id,title\n";
 		}
 
-		const chunks = validateResponseStreamChunks(rows(), {
-			kind: "stream",
-			schema: z.number(),
-		});
+		const chunks = validateResponseStreamChunks(rows(), z.number());
 
 		await assert.rejects(
 			async () => {

@@ -56,7 +56,15 @@ describe("route builder runtime", () => {
 			.metadata({ scope: "write" })
 			.openAPI({ tags: ["Items"] });
 		assert.equal(declaration["~restrpc"].request?.body, schema);
+		assert.equal(
+			declaration["~restrpc"].request?.contentType,
+			"application/json",
+		);
 		assert.equal(declaration["~restrpc"].responses[201].body, schema);
+		assert.equal(
+			declaration["~restrpc"].responses[201].contentType,
+			"application/json",
+		);
 	});
 
 	it("stores request and response options beside their schemas", () => {
@@ -100,6 +108,12 @@ describe("route builder runtime", () => {
 			body: bodySchema,
 			contentType: "text/plain",
 		});
+
+		const stream = route.get("/events").streamResponse(200, bodySchema);
+		assert.deepEqual(stream["~restrpc"].responses[200], {
+			body: bodySchema,
+			contentType: "application/x-ndjson",
+		});
 	});
 
 	it("normalizes common response schemas into response declarations", () => {
@@ -109,7 +123,7 @@ describe("route builder runtime", () => {
 			.get("/items");
 
 		assert.deepEqual(declaration["~restrpc"].responses, {
-			500: { body: errorSchema },
+			500: { body: errorSchema, contentType: "application/json" },
 		});
 	});
 

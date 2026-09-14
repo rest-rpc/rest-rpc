@@ -1,4 +1,3 @@
-import { isStream } from "../contract/body.ts";
 import type { OpenApiResponseOptions } from "../contract/routeDeclaration.ts";
 import type { RouteDeclaration } from "../contract/routeDeclaration.ts";
 import type {
@@ -168,7 +167,7 @@ export const createHeaderParameters = (
 };
 
 export const createRequestBody = (
-	schema: RequestBodySchema,
+	schema: RequestBodySchema | undefined,
 	converter: SchemaConverter | undefined,
 	customContentType?: string | readonly string[],
 ): OpenApiRequestBody | undefined => {
@@ -210,7 +209,7 @@ export const createResponse = (
 		};
 	}
 
-	if (isStream(schema)) {
+	if (contentType === NDJSON_CONTENT_TYPE) {
 		return {
 			description: openApiResponse?.description ?? description,
 			...(headers ? { headers } : {}),

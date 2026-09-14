@@ -35,9 +35,11 @@ type ServerFirstRequestDeclaration<TRequest> = TRequest extends object
 			(TRequest extends { body: infer TBody } ? { body: TBody } : unknown) &
 			(TRequest extends { contentType: infer TContentType }
 				? {
-						contentType: TContentType extends string
-							? readonly [TContentType]
-							: TContentType;
+						contentType: TContentType extends "application/json"
+							? TContentType
+							: TContentType extends string
+								? readonly [TContentType]
+								: TContentType;
 					}
 				: unknown) &
 			(TRequest extends { querySerialization: infer TSerialization }
@@ -242,12 +244,8 @@ const createRuntimeRoute = (
 	const requestDeclaration: ClientRequestDeclaration = {};
 
 	if (input && "body" in input) {
-		if (contentType !== undefined) {
-			requestDeclaration.body = {};
-			requestDeclaration.contentType = contentType;
-		} else {
-			requestDeclaration.body = {};
-		}
+		requestDeclaration.body = {};
+		requestDeclaration.contentType = contentType ?? "application/json";
 	}
 
 	if (input && "query" in input) {
@@ -298,9 +296,7 @@ const executeShorthandRequest = async (
 			? {
 					request: {
 						body: {},
-						...(fetchOptions?.contentType === undefined
-							? {}
-							: { contentType: fetchOptions.contentType }),
+						contentType: fetchOptions?.contentType ?? "application/json",
 					},
 				}
 			: {}),

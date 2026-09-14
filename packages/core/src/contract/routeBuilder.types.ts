@@ -1,5 +1,5 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
-import type { BodyOptions, Stream } from "./body.ts";
+import type { BodyOptions } from "./body.ts";
 import type {
 	CommonOpenApiRouteOptions,
 	HttpMethod,
@@ -16,6 +16,23 @@ import type {
 import type { ResponseOptions } from "./response.ts";
 
 type EmptyObject = Record<never, never>;
+type JsonContentType = "application/json";
+type NdjsonContentType = "application/x-ndjson";
+
+type ContentTypeFor<TOptions> = TOptions extends BodyOptions
+	? TOptions["contentType"]
+	: JsonContentType;
+
+type ResponseFor<TSchema, TOptions> = TSchema extends StandardSchemaV1
+	? {
+			body: TSchema;
+			contentType: ContentTypeFor<TOptions>;
+		} & (TOptions extends { headers: infer THeaders }
+			? { headers: THeaders }
+			: EmptyObject)
+	: { body: undefined } & (TOptions extends { headers: infer THeaders }
+			? { headers: THeaders }
+			: EmptyObject);
 
 /** Defaults applied to routes created from a configured builder. */
 export type RouteBuilderOptions = {
@@ -97,9 +114,8 @@ type WithProcedureInput<
 	route: TState["route"];
 	request: TState["request"] & {
 		body: TSchema;
-	} & (TOptions extends BodyOptions
-			? { contentType: TOptions["contentType"] }
-			: EmptyObject);
+		contentType: ContentTypeFor<TOptions>;
+	};
 	responses: TState["responses"];
 	openApi: TState["openApi"];
 	used: TState["used"] | "input";
@@ -197,13 +213,7 @@ type ResponseMethods<
 		schema?: TSchema,
 		options?: TOptions,
 	): RouteBuilderView<
-		WithResponse<
-			TState,
-			TStatus,
-			{
-				body: TSchema extends StandardSchemaV1 ? TSchema : undefined;
-			} & (TOptions extends ResponseOptions ? TOptions : EmptyObject)
-		>,
+		WithResponse<TState, TStatus, ResponseFor<TSchema, TOptions>>,
 		TExtension,
 		TPath,
 		TMetadata
@@ -219,7 +229,11 @@ type ResponseMethods<
 		status: TStatus,
 		schema: TSchema,
 	): RouteBuilderView<
-		WithResponse<TState, TStatus, { body: Stream<TSchema> }>,
+		WithResponse<
+			TState,
+			TStatus,
+			{ body: TSchema; contentType: NdjsonContentType }
+		>,
 		TExtension,
 		TPath,
 		TMetadata
@@ -244,14 +258,12 @@ type BodyMethods<
 			schema: TSchema,
 			options?: TOptions,
 		): RouteBuilderView<
-			TOptions extends BodyOptions
-				? WithRequest<
-						WithRequest<TState, "body", TSchema, "body">,
-						"contentType",
-						TOptions["contentType"],
-						"body"
-					>
-				: WithRequest<TState, "body", TSchema, "body">,
+			WithRequest<
+				WithRequest<TState, "body", TSchema, "body">,
+				"contentType",
+				ContentTypeFor<TOptions>,
+				"body"
+			>,
 			TExtension,
 			TPath,
 			TMetadata
@@ -412,7 +424,11 @@ type ProcedureMethods<
 			output<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): RouteBuilderView<
-				WithResponse<UseMethod<TState, "output">, 200, { body: TSchema }>,
+				WithResponse<
+					UseMethod<TState, "output">,
+					200,
+					{ body: TSchema; contentType: JsonContentType }
+				>,
 				TExtension,
 				"",
 				never
@@ -470,7 +486,10 @@ type ResponsesFor<TOptions> = TOptions extends {
 	responses: infer TResponses extends Record<number, StandardSchemaV1>;
 }
 	? {
-			[TStatus in keyof TResponses]: { body: TResponses[TStatus] };
+			[TStatus in keyof TResponses]: {
+				body: TResponses[TStatus];
+				contentType: JsonContentType;
+			};
 		}
 	: EmptyObject;
 
@@ -549,9 +568,7 @@ type ProcedureRootMethods<TExtension extends BuilderExtension | never> = {
 		options?: TOptions,
 	): RouteBuilderView<
 		ProcedureState<
-			{ body: TInput } & (TOptions extends BodyOptions
-				? { contentType: TOptions["contentType"] }
-				: EmptyObject),
+			{ body: TInput; contentType: ContentTypeFor<TOptions> },
 			EmptyObject,
 			"input"
 		>,
@@ -563,7 +580,11 @@ type ProcedureRootMethods<TExtension extends BuilderExtension | never> = {
 	output<const TOutput extends StandardSchemaV1>(
 		schema: TOutput,
 	): RouteBuilderView<
-		ProcedureState<EmptyObject, { 200: { body: TOutput } }, "output">,
+		ProcedureState<
+			EmptyObject,
+			{ 200: { body: TOutput; contentType: JsonContentType } },
+			"output"
+		>,
 		TExtension,
 		"",
 		never

@@ -3,7 +3,7 @@ import type {
 	ResponseDeclaration,
 	RouteDeclaration,
 } from "@rest-rpc/core/contract";
-import { getRouteResponses, isStream } from "@rest-rpc/core/contract";
+import { getRouteResponses } from "@rest-rpc/core/contract";
 import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
 import { RequestValidationError } from "./validationErrors.ts";
@@ -156,7 +156,8 @@ const normalizeResponseResult = async (
 		};
 	}
 
-	if (bodySchema && isStream(bodySchema)) {
+	const declaredContentType = schema.contentType;
+	if (declaredContentType === "application/x-ndjson") {
 		return {
 			kind: "stream",
 			status: result.status,
@@ -168,8 +169,16 @@ const normalizeResponseResult = async (
 		};
 	}
 
-	const declaredContentType = schema.contentType;
-	if (bodySchema && declaredContentType !== undefined) {
+	if (declaredContentType === "application/json") {
+		return {
+			kind: "json",
+			status: result.status,
+			headers,
+			body: await validateResponseBody(bodySchema, result.body),
+		};
+	}
+
+	if (declaredContentType !== undefined) {
 		const customResult = await normalizeCustomBodyResult(
 			bodySchema,
 			declaredContentType,

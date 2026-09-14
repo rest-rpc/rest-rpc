@@ -45,7 +45,10 @@ const normalizeCommonResponses = (
 	responses: NonNullable<RouteBuilderOptions["responses"]>,
 ): RouteResponses =>
 	Object.fromEntries(
-		Object.entries(responses).map(([status, body]) => [status, { body }]),
+		Object.entries(responses).map(([status, body]) => [
+			status,
+			{ body, contentType: "application/json" },
+		]),
 	);
 
 const mergeUnique = (common: string[] = [], local: string[] = []) => [
@@ -179,7 +182,7 @@ export class RouteBuilder {
 			request: {
 				...state.request,
 				body: schema,
-				...options,
+				contentType: options?.contentType ?? "application/json",
 			},
 		});
 	}
@@ -191,7 +194,7 @@ export class RouteBuilder {
 			request: {
 				...state.request,
 				body: schema,
-				...options,
+				contentType: options?.contentType ?? "application/json",
 			},
 		});
 	}
@@ -248,16 +251,33 @@ export class RouteBuilder {
 		schema?: StandardSchemaV1,
 		options?: ResponseOptions,
 	): RouteBuilder {
-		return addResponse(this["~restrpc"], status, { ...options, body: schema });
+		return addResponse(
+			this["~restrpc"],
+			status,
+			schema
+				? {
+						...options,
+						body: schema,
+						contentType: options?.contentType ?? "application/json",
+					}
+				: {
+						body: undefined,
+						...(options?.headers ? { headers: options.headers } : {}),
+					},
+		);
 	}
 
 	output(schema: StandardSchemaV1): RouteBuilder {
-		return addResponse(procedureState(this["~restrpc"]), 200, { body: schema });
+		return addResponse(procedureState(this["~restrpc"]), 200, {
+			body: schema,
+			contentType: "application/json",
+		});
 	}
 
 	streamResponse(status: number, schema: StandardSchemaV1): RouteBuilder {
 		return addResponse(this["~restrpc"], status, {
-			body: { kind: "stream", schema },
+			body: schema,
+			contentType: "application/x-ndjson",
 		});
 	}
 }
