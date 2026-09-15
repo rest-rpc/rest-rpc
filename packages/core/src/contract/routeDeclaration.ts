@@ -66,6 +66,8 @@ export type RouteDeclaration = {
 	kind: "http" | "procedure";
 	path: string;
 	method: HttpMethod;
+	input?: "input" | "segments";
+	output?: "output" | "response";
 	request?: RouteRequestDeclaration;
 	responses: RouteResponses;
 	metadata?: RouteMetadata;
