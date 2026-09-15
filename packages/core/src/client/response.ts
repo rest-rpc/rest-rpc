@@ -33,6 +33,7 @@ export const getResponseSchema = (
 export const readUnvalidatedResponse = async (
 	rawResponse: Response,
 	bodyParser: ApiClientBodyParser = defaultBodyParser,
+	kind?: "stream",
 ) => {
 	const contentType = rawResponse.headers.get("content-type") ?? undefined;
 	const normalizedContentType = normalizeContentType(contentType ?? "");
@@ -42,7 +43,10 @@ export const readUnvalidatedResponse = async (
 		body = undefined;
 	} else if (isJsonContentType(normalizedContentType)) {
 		body = await rawResponse.json();
-	} else if (normalizedContentType === "application/x-ndjson") {
+	} else if (
+		kind === "stream" &&
+		normalizedContentType === "application/x-ndjson"
+	) {
 		if (!rawResponse.body) {
 			throw new Error("Server returned an empty stream response");
 		}
@@ -52,7 +56,7 @@ export const readUnvalidatedResponse = async (
 	}
 	const isCustomContentType =
 		contentType !== undefined &&
-		normalizedContentType !== "application/x-ndjson" &&
+		kind !== "stream" &&
 		!isJsonContentType(normalizedContentType);
 
 	return {
@@ -214,9 +218,11 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 		throw new Error("Request did not return a declared response");
 	}
 	if (!validateResponse) {
-		return readUnvalidatedResponse(rawResponse, bodyParser) as Promise<
-			FetchedRouteResponse<E>
-		>;
+		return readUnvalidatedResponse(
+			rawResponse,
+			bodyParser,
+			schema.kind,
+		) as Promise<FetchedRouteResponse<E>>;
 	}
 
 	return {
