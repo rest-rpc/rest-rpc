@@ -189,9 +189,7 @@ expectType<typeof transformedCustomText>(
 // Preserves query and streaming response inference.
 const search = route.get("/search").query(input).streamResponse(200, todo);
 expectType<typeof todo>(search["~restrpc"].responses[200].body);
-expectType<"application/x-ndjson">(
-	search["~restrpc"].responses[200].contentType,
-);
+expectType<"stream">(search["~restrpc"].responses[200].kind);
 
 // Ordinary params and query schemas accept scalar wire inputs.
 const scalarRequest = route
@@ -275,9 +273,7 @@ const mixedResponses = route
 expectType<typeof todo>(mixedResponses["~restrpc"].responses[200].body);
 expectType<typeof customText>(mixedResponses["~restrpc"].responses[201].body);
 expectType<typeof event>(mixedResponses["~restrpc"].responses[202].body);
-expectType<"application/x-ndjson">(
-	mixedResponses["~restrpc"].responses[202].contentType,
-);
+expectType<"stream">(mixedResponses["~restrpc"].responses[202].kind);
 expectAssignable<RouteDeclaration>(mixedResponses["~restrpc"]);
 
 // Keeps unused request and route configuration available after a response.

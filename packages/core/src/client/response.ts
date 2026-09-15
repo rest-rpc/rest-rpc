@@ -68,24 +68,25 @@ export const readDeclaredBody = async (
 	schema: ResponseBodySchema | undefined,
 	rawResponse: Response,
 	validate: boolean,
+	kind?: "stream",
 	customContentType?: string | readonly string[],
 	bodyParser: ApiClientBodyParser = defaultBodyParser,
 ) => {
 	if (schema === undefined) return undefined;
+	if (kind === "stream") {
+		if (!rawResponse.body) {
+			throw new Error("Server returned an empty stream response");
+		}
+		return parseNdjsonStream(schema, rawResponse.body, validate);
+	}
 
 	if (customContentType !== undefined) {
-		const contentType = resolveDeclaredContentType(
+		resolveDeclaredContentType(
 			Array.isArray(customContentType)
 				? customContentType
 				: [customContentType as string],
 			rawResponse,
 		);
-		if (normalizeContentType(contentType) === "application/x-ndjson") {
-			if (!rawResponse.body) {
-				throw new Error("Server returned an empty stream response");
-			}
-			return parseNdjsonStream(schema, rawResponse.body, validate);
-		}
 		const value = await bodyParser(rawResponse);
 		if (!validate) return value;
 
@@ -154,10 +155,7 @@ const declaredResponseMetadata = (
 ) => {
 	const { contentType } = schema;
 	if (contentType !== undefined) {
-		if (
-			contentType === "application/json" ||
-			contentType === "application/x-ndjson"
-		) {
+		if (contentType === "application/json") {
 			return {};
 		}
 		return {
@@ -227,6 +225,7 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 			schema.body,
 			rawResponse,
 			validateResponse,
+			schema.kind,
 			schema.contentType,
 			bodyParser,
 		),

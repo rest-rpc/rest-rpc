@@ -57,6 +57,14 @@ expectType<201>(
 	}).status,
 );
 
+const inferredStream = route.get("/events").handler(() => ({
+	status: 200 as const,
+	body: (async function* () {
+		yield { id: "event-1" };
+	})(),
+}));
+expectType<"stream">(inferredStream["~restrpc"].responses[200].kind);
+
 const declared = route
 	.post("/declared")
 	.body(input)

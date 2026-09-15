@@ -272,8 +272,8 @@ export class RouteBuilder {
 
 	streamResponse(status: number, schema: StandardSchemaV1): RouteBuilder {
 		return addResponse(this["~restrpc"], status, {
+			kind: "stream",
 			body: schema,
-			contentType: "application/x-ndjson",
 		});
 	}
 }

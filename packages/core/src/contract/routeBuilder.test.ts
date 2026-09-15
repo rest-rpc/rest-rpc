@@ -100,8 +100,8 @@ describe("route builder runtime", () => {
 
 		const stream = route.get("/events").streamResponse(200, bodySchema);
 		assert.deepEqual(stream["~restrpc"].responses[200], {
+			kind: "stream",
 			body: bodySchema,
-			contentType: "application/x-ndjson",
 		});
 	});
 

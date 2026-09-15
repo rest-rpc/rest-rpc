@@ -121,11 +121,11 @@ export type ImplicitResponseEnvelope =
  *
  * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#use-the-ordinary-client-apis}
  */
-export type ServerFirstResponseKind = "empty" | "json" | "ndjson" | "custom";
+export type ServerFirstResponseKind = "empty" | "json" | "stream" | "custom";
 
 type BodyResponseKind<TResponse, TBody> =
 	TBody extends AsyncIterable<unknown>
-		? "ndjson"
+		? "stream"
 		: TResponse extends { contentType: string }
 			? "custom"
 			: "json";
@@ -169,7 +169,7 @@ type ImplicitResponseContentType<TResponse> = TResponse extends {
 	body: infer TBody;
 }
 	? TBody extends AsyncIterable<unknown>
-		? "application/x-ndjson"
+		? never
 		: TResponse extends { contentType: infer TContentType extends string }
 			? TContentType
 			: "application/json"
@@ -180,12 +180,14 @@ type ImplicitResponseDeclaration<TResponse> = TResponse extends {
 }
 	? {
 			body: ImplicitResponseBodyDeclaration<TResponse>;
-			contentType: ImplicitResponseContentType<TResponse>;
-		} & (TResponse extends { responseHeaders: infer THeaders }
-			? {
-					headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
-				}
-			: unknown)
+		} & (TResponse extends { body: AsyncIterable<unknown> }
+			? { kind: "stream" }
+			: { contentType: ImplicitResponseContentType<TResponse> }) &
+			(TResponse extends { responseHeaders: infer THeaders }
+				? {
+						headers: ClientSchema<SerializedResponseHeaders<THeaders>>;
+					}
+				: unknown)
 	: { body: undefined } & (TResponse extends {
 			responseHeaders: infer THeaders;
 		}

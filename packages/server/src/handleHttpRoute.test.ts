@@ -413,4 +413,22 @@ describe("handleHttpRoute custom responses", () => {
 		assert.equal(result.contentType, "image/jpeg");
 		assert.equal(result.body, "jpeg bytes");
 	});
+
+	it("treats an ordinary NDJSON content type as custom content", async () => {
+		const result = await handleHttpRoute(
+			coreRoute.get("/events").response(200, z.string(), {
+				contentType: "application/x-ndjson",
+			})["~restrpc"],
+			() => ({ status: 200, body: "event data" }),
+			{
+				request: {},
+				handlerFields: {},
+				context: {},
+			},
+		);
+
+		assert.equal(result.kind, "custom");
+		assert.equal(result.contentType, "application/x-ndjson");
+		assert.equal(result.body, "event data");
+	});
 });

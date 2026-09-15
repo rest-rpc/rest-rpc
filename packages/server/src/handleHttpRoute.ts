@@ -155,8 +155,7 @@ const normalizeResponseResult = async (
 		};
 	}
 
-	const declaredContentType = schema.contentType;
-	if (declaredContentType === "application/x-ndjson") {
+	if (schema.kind === "stream") {
 		return {
 			kind: "stream",
 			status: result.status,
@@ -168,6 +167,7 @@ const normalizeResponseResult = async (
 		};
 	}
 
+	const declaredContentType = schema.contentType;
 	if (declaredContentType === "application/json") {
 		return {
 			kind: "json",

@@ -17,7 +17,6 @@ import type { ResponseOptions } from "./response.ts";
 
 type EmptyObject = Record<never, never>;
 type JsonContentType = "application/json";
-type NdjsonContentType = "application/x-ndjson";
 
 type ContentTypeFor<TOptions> = TOptions extends BodyOptions
 	? TOptions["contentType"]
@@ -218,7 +217,7 @@ type ResponseMethods<
 		TPath,
 		TMetadata
 	>;
-	/** Declares an NDJSON response stream. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-ndjson-responses} */
+	/** Declares a streaming response. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-ndjson-responses} */
 	streamResponse<
 		const TStatus extends number,
 		const TSchema extends StandardSchemaV1,
@@ -229,11 +228,7 @@ type ResponseMethods<
 		status: TStatus,
 		schema: TSchema,
 	): RouteBuilderView<
-		WithResponse<
-			TState,
-			TStatus,
-			{ body: TSchema; contentType: NdjsonContentType }
-		>,
+		WithResponse<TState, TStatus, { kind: "stream"; body: TSchema }>,
 		TExtension,
 		TPath,
 		TMetadata
