@@ -62,6 +62,7 @@ export type RouteRequestDeclaration = {
  * @see {@link https://rest-rpc.dev/docs/contract/declaration}
  */
 export type RouteDeclaration = {
+	source?: "generated";
 	kind: "http" | "procedure";
 	path: string;
 	method: HttpMethod;

@@ -1,4 +1,4 @@
-import { initClient, route } from "@rest-rpc/core";
+import { route } from "@rest-rpc/core";
 import { implement } from "@rest-rpc/server";
 import { expectError, expectType } from "tsd";
 import { z } from "zod";
@@ -43,13 +43,13 @@ expectError(
 	})),
 );
 
-const upload = implementor.todos.upload.handler(({ body, contentType }) => {
+const _upload = implementor.todos.upload.handler(({ body, contentType }) => {
 	expectType<Uint8Array<ArrayBuffer>>(body);
 	expectType<"image/png" | "image/jpeg">(contentType);
 	return { status: 204 };
 });
 
-const importCsv = implementor.todos.importCsv.handler(
+const _importCsv = implementor.todos.importCsv.handler(
 	({ body, contentType }) => {
 		expectType<string>(body);
 		expectType<"text/csv">(contentType);
@@ -57,24 +57,6 @@ const importCsv = implementor.todos.importCsv.handler(
 	},
 );
 
-const serverFirstClient = initClient<{
-	upload: typeof upload;
-	importCsv: typeof importCsv;
-}>({ baseUrl: "https://example.test" });
-serverFirstClient.$post(
-	"/images",
-	{ body: new Uint8Array() },
-	{ contentType: "image/png" },
-);
-expectError(serverFirstClient.$post("/images", { body: new Uint8Array() }));
-serverFirstClient.$post(
-	"/imports.csv",
-	{ body: "id,title\n1,Todo\n" },
-	{ contentType: "text/csv" },
-);
-expectError(
-	serverFirstClient.$post("/imports.csv", { body: "id,title\n1,Todo\n" }),
-);
 implementor.todos.download.handler(() => ({
 	status: 200,
 	body: new Uint8Array(),
@@ -96,8 +78,3 @@ const create = implementor.todos.create.handler(({ input, contentType }) => {
 	};
 });
 expectType<"procedure">(create["~restrpc"].kind);
-const procedureClient = initClient<{ create: typeof create }>({
-	baseUrl: "https://example.test",
-});
-procedureClient.create({ title: "Todo" }, { contentType: "text/plain" });
-expectError(procedureClient.create({ title: "Todo" }));

@@ -2,13 +2,6 @@ export { initClient } from "./initClient.ts";
 export { getNextFetchTags } from "./nextFetchTags.ts";
 export { constructBaseRequest } from "./request.ts";
 export type {
-	ServerFirstClientFor,
-	ServerFirstClientOptions,
-	ServerFirstClientPath,
-	ServerFirstClientRouteFor,
-	ServerFirstClientSelector,
-} from "./serverFirstClient.ts";
-export type {
 	ApiClientFetchOptions,
 	ApiClientBodyParser,
 	ApiClientFor,

@@ -66,6 +66,7 @@ describe("ApiClient responses", () => {
 			status: 404,
 			headers: new Headers(),
 			body: { code: "not_found" },
+			responseHeaders: { "content-type": "application/json" },
 		});
 	});
 
@@ -498,11 +499,11 @@ describe("ApiClient responses", () => {
 		const response = await client.reports.image();
 
 		assert.equal(response.status, 200);
-		assert.equal(response.contentType, "image/jpeg");
+		assert.equal(response.contentType, "image/jpeg; charset=binary");
 		assert.deepEqual(response.body, new TextEncoder().encode("jpeg bytes"));
 	});
 
-	it("rejects custom response bodies with mismatched content types", async () => {
+	it("uses the received content type when validation is disabled", async () => {
 		const apiContract = {
 			reports: {
 				csv: route
@@ -520,9 +521,12 @@ describe("ApiClient responses", () => {
 			baseUrl: "https://api.test",
 		});
 
-		await assert.rejects(
-			() => client.reports.csv(),
-			/unsupported custom response content-type/,
-		);
+		const response = await client.reports.csv();
+
+		assert.equal(response.status, 200);
+		assert.deepEqual(response.body, {});
+		assert.deepEqual(response.responseHeaders, {
+			"content-type": "application/json",
+		});
 	});
 });

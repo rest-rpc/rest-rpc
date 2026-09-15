@@ -95,13 +95,31 @@ expectError(route.output(output).handler(() => ({ id: 1, title: "Todo" })));
 
 expectError(serverFirstRoute.with({ pathPrefix: "/v1" }).handler(() => null));
 
-const client = initClient<{
-	create: typeof inferred;
-	get: typeof procedure;
-}>({ baseUrl: "https://example.test" });
-expectType<Promise<{ readonly id: "todo-1"; readonly title: string }>>(
-	client.get({ title: "Todo" }),
-);
+const generatedContract = {
+	create: {
+		"~restrpc": {
+			source: "generated",
+			kind: "http",
+			method: "POST",
+			path: "/todos/:id",
+			request: { contentType: "application/json" },
+			responses: { 201: {} },
+		},
+	},
+	get: {
+		"~restrpc": {
+			source: "generated",
+			kind: "procedure",
+			method: "POST",
+			path: "",
+			request: { contentType: "application/json" },
+			responses: { 200: {} },
+		},
+	},
+} as unknown as { create: typeof inferred; get: typeof procedure };
+const generatedClient = initClient(generatedContract, {
+	baseUrl: "https://example.test",
+});
 expectType<
 	Promise<{
 		status: 201;
@@ -109,8 +127,11 @@ expectType<
 		headers: Headers;
 	}>
 >(
-	client.$post("/todos/:id", {
+	generatedClient.create({
 		params: { id: "todo-1" },
 		body: { title: "Todo" },
 	}),
+);
+expectType<Promise<{ readonly id: "todo-1"; readonly title: string }>>(
+	generatedClient.get({ title: "Todo" }),
 );

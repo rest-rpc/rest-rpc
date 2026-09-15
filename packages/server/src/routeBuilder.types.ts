@@ -100,7 +100,7 @@ type Merge<T> = { [TKey in keyof T]: T[TKey] };
  * `contentType` selects a custom-content response for non-stream bodies;
  * otherwise bodies use JSON.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first/server#infer-responses-from-the-handler}
+ * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#infer-responses-from-the-handler}
  */
 export type ImplicitResponseEnvelope =
 	| {
@@ -117,9 +117,9 @@ export type ImplicitResponseEnvelope =
 	  };
 
 /**
- * Body encodings a server-first client can receive from an inferred route.
+ * Body encodings inferred from a server-first response.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first/client#expose-response-metadata-through-cors}
+ * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#use-the-ordinary-client-apis}
  */
 export type ServerFirstResponseKind = "empty" | "json" | "ndjson" | "custom";
 
@@ -133,7 +133,7 @@ type BodyResponseKind<TResponse, TBody> =
 /**
  * Infers the body encoding selected by a server-first response shape.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first/server#infer-responses-from-the-handler}
+ * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#infer-responses-from-the-handler}
  */
 export type ImplicitResponseKind<TResponse> = TResponse extends unknown
 	? "body" extends keyof TResponse
@@ -246,7 +246,7 @@ type HandlerImplementation<
 	TAdditionalHandlerFields extends object,
 	TContext extends object,
 	TResult,
-	TPublicRoute = TRoute,
+	TPublicRoute extends RouteDeclaration = TRoute,
 > = CompletedRoute<
 	TPublicRoute,
 	HandlerFor<TRoute, TAdditionalHandlerFields, TContext, TResult>
@@ -376,7 +376,7 @@ type ImplementationParts<TImplementation> = TImplementation extends {
 /**
  * Infers the handler response union retained by a server-first implementation.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first/server#infer-responses-from-the-handler}
+ * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#infer-responses-from-the-handler}
  */
 export type InferredRouteResponse<TImplementation> =
 	ImplementationParts<TImplementation> extends { handler: infer THandler }
@@ -388,7 +388,7 @@ export type InferredRouteResponse<TImplementation> =
 /**
  * Infers the body encodings represented by a server-first implementation.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first/client#expose-response-metadata-through-cors}
+ * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#use-the-ordinary-client-apis}
  */
 export type ServerFirstRouteResponseKind<TImplementation> =
 	ImplementationParts<TImplementation> extends {
@@ -403,7 +403,7 @@ export type ServerFirstRouteResponseKind<TImplementation> =
 /**
  * Route builder that finishes declarations by attaching a server handler.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first/server}
+ * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#define-routes-and-handlers}
  */
 export type ServerRouteBuilder<
 	TAdditionalHandlerFields extends object = EmptyObject,

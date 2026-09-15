@@ -29,8 +29,8 @@ export const getResponseSchema = (
 	return entry?.[1];
 };
 
-/** Reads a server-first response according to its Content-Type header. */
-export const readServerFirstResponse = async (
+/** Reads an unvalidated response according to its Content-Type header. */
+export const readUnvalidatedResponse = async (
 	rawResponse: Response,
 	bodyParser: ApiClientBodyParser = defaultBodyParser,
 ) => {
@@ -214,6 +214,11 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 	const schema = getResponseSchema(route, rawResponse.status);
 	if (!schema) {
 		throw new Error("Request did not return a declared response");
+	}
+	if (!validateResponse) {
+		return readUnvalidatedResponse(rawResponse, bodyParser) as Promise<
+			FetchedRouteResponse<E>
+		>;
 	}
 
 	return {

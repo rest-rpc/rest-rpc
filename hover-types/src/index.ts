@@ -283,23 +283,8 @@ export const nodeServerFirstHandler = createNodeRouteHandler(
 	nodeServerFirstRoutes,
 );
 
-export const serverFirstClient = initClient<typeof fetchServerFirstRoutes>({
-	baseUrl: "https://example.test",
-});
-
-export const serverFirstCreatePromise = serverFirstClient.$post(
-	"/server-first/todos",
-	{
-		body: {
-			title: "Write hover tests",
-		},
-	},
-);
-
 type ServerFirstCreateImplementation =
 	typeof fetchServerFirstRoutes.todos.create;
-type ServerFirstCreateClientRoute =
-	typeof serverFirstClient.$post<"/server-first/todos">;
 
 export type ServerFirstHandlerRequest = Parameters<
 	ServerFirstCreateImplementation["~restrpc"]["handler"]
@@ -307,12 +292,6 @@ export type ServerFirstHandlerRequest = Parameters<
 export type ServerFirstHandlerResponse = ReturnType<
 	ServerFirstCreateImplementation["~restrpc"]["handler"]
 >;
-export type ServerFirstClientFetchParameters =
-	Parameters<ServerFirstCreateClientRoute>;
-export type ServerFirstClientFetchReturn =
-	ReturnType<ServerFirstCreateClientRoute>;
-export type ServerFirstClientFetchResponseReturn =
-	ReturnType<ServerFirstCreateClientRoute>;
 export type FetchServerFirstHandler = typeof fetchServerFirstHandler;
 export type NodeServerFirstHandler = typeof nodeServerFirstHandler;
 
@@ -367,49 +346,3 @@ export type ShorthandQueryOptionsParameters = Parameters<
 export type ShorthandMutationOptionsParameters = Parameters<
 	typeof shorthandHoverQuery.todos.create.mutationOptions
 >;
-
-export const shorthandServerFirstRoutes = {
-	todos: {
-		inferred: fetchRoute.handler(() => ({
-			id: "todo-1" as const,
-			title: "Todo" as const,
-		})),
-		declared: fetchRoute
-			.output(schemaType<{ id: string; title: string }>())
-			.handler(() => ({ id: "todo-1", title: "Todo" })),
-		explicit: fetchRoute
-			.get("/server-first/explicit")
-			.handler(() => ({ status: 204 as const })),
-	},
-	explicitOnly: {
-		health: fetchRoute
-			.get("/server-first/health")
-			.handler(() => ({ status: 204 as const })),
-	},
-};
-
-export const shorthandServerFirstClient = initClient<
-	typeof shorthandServerFirstRoutes
->({
-	baseUrl: "https://example.test",
-});
-export const shorthandServerFirstQuery = createTanstackQueryHelpers<
-	typeof shorthandServerFirstRoutes
->({
-	baseUrl: "https://example.test",
-});
-
-export type ServerFirstInferredShorthandReturn = ReturnType<
-	typeof shorthandServerFirstClient.todos.inferred
->;
-export type ServerFirstDeclaredShorthandReturn = ReturnType<
-	typeof shorthandServerFirstClient.todos.declared
->;
-export type ServerFirstShorthandNamespaceKeys =
-	keyof typeof shorthandServerFirstClient.todos;
-export type ServerFirstHasExplicitOnlyNamespace =
-	"explicitOnly" extends keyof typeof shorthandServerFirstClient ? true : false;
-export type ServerFirstTanstackShorthandNamespaceKeys =
-	keyof typeof shorthandServerFirstQuery.todos;
-export type ServerFirstTanstackHasExplicitOnlyNamespace =
-	"explicitOnly" extends keyof typeof shorthandServerFirstQuery ? true : false;

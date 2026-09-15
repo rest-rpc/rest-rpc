@@ -5,8 +5,6 @@ export type {
 	ClientResponse,
 	FetchLike,
 	NextFetchTagsOptions,
-	ServerFirstClientFor,
-	ServerFirstClientOptions,
 } from "./client/index.ts";
 export { getNextFetchTags, initClient } from "./client/index.ts";
 export type { Contract, RouteDeclaration } from "./contract/index.ts";
@@ -24,5 +22,4 @@ export type {
 } from "./openapi/index.ts";
 export { createOpenApiDocument } from "./openapi/index.ts";
 export { type } from "./standard-schema/type.ts";
-
 export type { ApiClientRouteValue } from "./client/types.ts";

@@ -10,6 +10,8 @@ import {
 import { expectError, expectType } from "tsd";
 import { z } from "zod";
 
+expectError(initClient({ baseUrl: "https://example.test" }));
+
 const todoSchema = z.object({
 	id: z.string(),
 	title: z.string(),
