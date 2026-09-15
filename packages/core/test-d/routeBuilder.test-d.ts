@@ -56,6 +56,14 @@ expectType<typeof todo>(shorthandWithInput["~restrpc"].responses[200].body);
 expectAssignable<RouteDeclaration>(shorthandWithInput["~restrpc"]);
 expectAssignable<Contract>(shorthandWithInput);
 
+const customOutput = route.output(customText, { contentType: "text/plain" });
+expectType<"text/plain">(customOutput["~restrpc"].responses[200].contentType);
+const streamOutput = route.input(input).streamOutput(event);
+expectType<"stream">(streamOutput["~restrpc"].responses[200].kind);
+expectType<typeof event>(streamOutput["~restrpc"].responses[200].body);
+const streamOutputFirst = route.streamOutput(event).input(input);
+expectType<typeof input>(streamOutputFirst["~restrpc"].request.body);
+
 const formInput = route
 	.input(input, { contentType: "application/x-www-form-urlencoded" })
 	.output(todo);
@@ -74,8 +82,11 @@ expectError(
 );
 expectError(shorthandInput.input(input));
 expectError(shorthandWithInput.output(todo));
+expectError(shorthandWithInput.streamOutput(event));
 expectError(shorthandOutputFirst.input(input));
 expectError(shorthandOutputFirst.output(todo));
+expectError(streamOutput.output(todo));
+expectError(streamOutput.streamOutput(event));
 expectError(shorthandWithInput.response(200, todo));
 expectError(route.post("/todos").input(input));
 expectError(apiRoute.input(input));

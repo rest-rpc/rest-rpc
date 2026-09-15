@@ -406,14 +406,31 @@ type ProcedureMethods<
 		TState,
 		"output",
 		{
-			/** Declares the procedure's JSON output schema. */
-			output<const TSchema extends StandardSchemaV1>(
+			/** Declares the procedure's output schema and optional body media type. */
+			output<
+				const TSchema extends StandardSchemaV1,
+				const TOptions extends BodyOptions | undefined = undefined,
+			>(
+				schema: TSchema,
+				options?: TOptions,
+			): RouteBuilderView<
+				WithResponse<
+					UseMethod<TState, "output">,
+					200,
+					ResponseFor<TSchema, TOptions>
+				>,
+				TExtension,
+				"",
+				never
+			>;
+			/** Declares the procedure's streaming output schema. */
+			streamOutput<const TSchema extends StandardSchemaV1>(
 				schema: TSchema,
 			): RouteBuilderView<
 				WithResponse<
 					UseMethod<TState, "output">,
 					200,
-					{ body: TSchema; contentType: JsonContentType }
+					{ kind: "stream"; body: TSchema }
 				>,
 				TExtension,
 				"",
@@ -562,13 +579,30 @@ type ProcedureRootMethods<TExtension extends BuilderExtension | never> = {
 		"",
 		never
 	>;
-	/** Declares a no-input procedure with a `200` JSON response. */
-	output<const TOutput extends StandardSchemaV1>(
+	/** Declares a no-input procedure with a `200` response. */
+	output<
+		const TOutput extends StandardSchemaV1,
+		const TOptions extends BodyOptions | undefined = undefined,
+	>(
+		schema: TOutput,
+		options?: TOptions,
+	): RouteBuilderView<
+		ProcedureState<
+			EmptyObject,
+			{ 200: ResponseFor<TOutput, TOptions> },
+			"output"
+		>,
+		TExtension,
+		"",
+		never
+	>;
+	/** Declares a no-input procedure with a streaming `200` response. */
+	streamOutput<const TOutput extends StandardSchemaV1>(
 		schema: TOutput,
 	): RouteBuilderView<
 		ProcedureState<
 			EmptyObject,
-			{ 200: { body: TOutput; contentType: JsonContentType } },
+			{ 200: { kind: "stream"; body: TOutput } },
 			"output"
 		>,
 		TExtension,
