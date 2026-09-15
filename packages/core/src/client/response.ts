@@ -60,7 +60,7 @@ export const readUnvalidatedResponse = async (
 		body,
 		headers: rawResponse.headers,
 		responseHeaders: Object.fromEntries(rawResponse.headers.entries()),
-		...(isCustomContentType ? { contentType } : {}),
+		...(isCustomContentType ? { contentType: normalizedContentType } : {}),
 	};
 };
 

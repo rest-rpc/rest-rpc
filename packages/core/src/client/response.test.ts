@@ -476,7 +476,7 @@ describe("ApiClient responses", () => {
 		assert.equal(response.body, "custom value");
 	});
 
-	it("returns selected content type metadata for custom response bodies", async () => {
+	it("returns normalized content type metadata for custom response bodies", async () => {
 		const apiContract = {
 			reports: {
 				image: route
@@ -499,7 +499,7 @@ describe("ApiClient responses", () => {
 		const response = await client.reports.image();
 
 		assert.equal(response.status, 200);
-		assert.equal(response.contentType, "image/jpeg; charset=binary");
+		assert.equal(response.contentType, "image/jpeg");
 		assert.deepEqual(response.body, new TextEncoder().encode("jpeg bytes"));
 	});
 
