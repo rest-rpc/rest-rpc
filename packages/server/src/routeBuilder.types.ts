@@ -463,7 +463,7 @@ export type ServerFirstRouteResponseKind<TImplementation> =
 		handler: infer THandler extends AnyRouteHandler;
 	}
 		? TRoute extends {
-				kind: "procedure";
+				output: "output";
 				responses: { 200: infer TResponse };
 			}
 			? TResponse extends { kind: "stream" }
@@ -473,7 +473,20 @@ export type ServerFirstRouteResponseKind<TImplementation> =
 						? "json"
 						: "custom"
 					: "json"
-			: ImplicitResponseKind<Awaited<ReturnType<THandler>>>
+			: TRoute extends { output: "response" }
+				? ImplicitResponseKind<Awaited<ReturnType<THandler>>>
+				: TRoute extends {
+							kind: "procedure";
+							responses: { 200: infer TLegacyResponse };
+					  }
+					? TLegacyResponse extends { kind: "stream" }
+						? "stream"
+						: TLegacyResponse extends { contentType: infer TContentType }
+							? TContentType extends "application/json"
+								? "json"
+								: "custom"
+							: "json"
+					: ImplicitResponseKind<Awaited<ReturnType<THandler>>>
 		: never;
 
 /**

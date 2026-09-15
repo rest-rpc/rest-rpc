@@ -47,22 +47,29 @@ export function initClient<
 		);
 
 	return mapContractRoutes(contract, (node, routePath) => {
-		if (node.kind === "procedure") {
-			const resolvedRoute: RouteDeclaration = {
-				...node,
-				path: `/${routePath.join("/")}`,
-			};
-			return (...args: FetchArgs) => {
-				return fetchSuccess(
-					fetchResponse,
-					resolvedRoute,
-					routePath,
-					{ body: args[0] } as never,
-					args[1],
-				);
-			};
-		}
-
-		return (...args: FetchArgs) => fetchResponse(node, routePath, ...args);
+		const resolvedRoute: RouteDeclaration =
+			node.kind === "procedure"
+				? { ...node, path: `/${routePath.join("/")}` }
+				: node;
+		const flatInput =
+			node.input === "input" ||
+			(node.input === undefined && node.kind === "procedure");
+		const plainOutput =
+			node.output === "output" ||
+			(node.output === undefined && node.kind === "procedure");
+		return (...args: FetchArgs) => {
+			const request = flatInput
+				? { [node.method === "GET" ? "query" : "body"]: args[0] }
+				: args[0];
+			return plainOutput
+				? fetchSuccess(
+						fetchResponse,
+						resolvedRoute,
+						routePath,
+						request as never,
+						args[1],
+					)
+				: fetchResponse(resolvedRoute, routePath, request as never, args[1]);
+		};
 	}) as ApiClientFor<TContract, TGlobalHeaders>;
 }

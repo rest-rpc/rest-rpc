@@ -66,6 +66,17 @@ const isCustomProcedureOutput = (
 	"contentType" in value &&
 	typeof value.contentType === "string";
 
+const usesFlatInput = (route: RouteDeclaration) =>
+	route.input === "input" ||
+	(route.input === undefined && route.kind === "procedure");
+
+const usesPlainOutput = (route: RouteDeclaration) =>
+	route.output === "output" ||
+	(route.output === undefined && route.kind === "procedure");
+
+const hasStatus = (value: unknown): value is ImplicitResponseEnvelope =>
+	typeof value === "object" && value !== null && "status" in value;
+
 const classifyImplicitProcedureResponse = (
 	output: unknown,
 ): HttpRouteResult => {
@@ -259,10 +270,13 @@ export async function handleHttpRoute<
 	try {
 		handlerResult = await handler({
 			...options.handlerFields,
-			...(route.kind === "procedure"
-				? route.request?.body
+			...(usesFlatInput(route)
+				? route.request?.body || route.request?.query
 					? {
-							input: requestValidation.data.body,
+							input:
+								route.method === "GET"
+									? requestValidation.data.query
+									: requestValidation.data.body,
 							...("contentType" in requestValidation.data
 								? { contentType: requestValidation.data.contentType }
 								: {}),
@@ -280,11 +294,13 @@ export async function handleHttpRoute<
 	}
 
 	const hasDeclaredResponses = Object.keys(route.responses).length > 0;
-	if (route.kind === "procedure") {
-		if (!hasDeclaredResponses) {
-			return classifyImplicitProcedureResponse(handlerResult);
-		}
+	if (!hasDeclaredResponses) {
+		return hasStatus(handlerResult)
+			? classifyImplicitHttpResponse(handlerResult)
+			: classifyImplicitProcedureResponse(handlerResult);
+	}
 
+	if (usesPlainOutput(route)) {
 		const response = getResponseSchema(route, 200);
 		if (
 			response.kind !== "stream" &&
@@ -305,7 +321,8 @@ export async function handleHttpRoute<
 		return normalizeResponseResult(route, { status: 200, body: handlerResult });
 	}
 
-	return hasDeclaredResponses
-		? normalizeResponseResult(route, handlerResult as DeclaredResponseEnvelope)
-		: classifyImplicitHttpResponse(handlerResult as ImplicitResponseEnvelope);
+	return normalizeResponseResult(
+		route,
+		handlerResult as DeclaredResponseEnvelope,
+	);
 }

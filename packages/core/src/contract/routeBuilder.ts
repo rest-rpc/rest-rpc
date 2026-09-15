@@ -176,9 +176,10 @@ export class RouteBuilder {
 	}
 
 	body(schema: StandardSchemaV1, options?: BodyOptions): RouteBuilder {
-		const state = this["~restrpc"];
+		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
+			input: "segments",
 			request: {
 				...state.request,
 				body: schema,
@@ -191,18 +192,24 @@ export class RouteBuilder {
 		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
+			input: "input",
 			request: {
 				...state.request,
-				body: schema,
-				contentType: options?.contentType ?? "application/json",
+				...(state.method === "GET"
+					? { query: schema as RequestQuerySchema }
+					: {
+							body: schema,
+							contentType: options?.contentType ?? "application/json",
+						}),
 			},
 		});
 	}
 
 	headers(schema: RequestHeadersSchema): RouteBuilder {
-		const state = this["~restrpc"];
+		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
+			input: "segments",
 			request: {
 				...state.request,
 				headers: { ...state.request?.headers, local: schema },
@@ -211,23 +218,25 @@ export class RouteBuilder {
 	}
 
 	query(schema: RequestQuerySchema): RouteBuilder {
-		const state = this["~restrpc"];
+		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
+			input: "segments",
 			request: { ...state.request, query: schema },
 		});
 	}
 
 	params(schema: RequestParamsSchema): RouteBuilder {
-		const state = this["~restrpc"];
+		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
+			input: "segments",
 			request: { ...state.request, params: schema },
 		});
 	}
 
 	metadata(metadata: RouteMetadata): RouteBuilder {
-		const state = this["~restrpc"];
+		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
 			metadata: { ...state.metadata, ...metadata },
@@ -235,7 +244,7 @@ export class RouteBuilder {
 	}
 
 	openAPI(openApi: OpenApiRouteOptions): RouteBuilder {
-		const state = this["~restrpc"];
+		const state = procedureState(this["~restrpc"]);
 		return new RouteBuilder({
 			...state,
 			openApi: mergeOpenApi(state.openApi, openApi),
@@ -248,7 +257,7 @@ export class RouteBuilder {
 		options?: ResponseOptions,
 	): RouteBuilder {
 		return addResponse(
-			this["~restrpc"],
+			{ ...procedureState(this["~restrpc"]), output: "response" },
 			status,
 			schema
 				? {
@@ -264,24 +273,36 @@ export class RouteBuilder {
 	}
 
 	output(schema: StandardSchemaV1, options?: BodyOptions): RouteBuilder {
-		return addResponse(procedureState(this["~restrpc"]), 200, {
-			body: schema,
-			contentType: options?.contentType ?? "application/json",
-		});
+		return addResponse(
+			{ ...procedureState(this["~restrpc"]), output: "output" },
+			200,
+			{
+				body: schema,
+				contentType: options?.contentType ?? "application/json",
+			},
+		);
 	}
 
 	streamOutput(schema: StandardSchemaV1): RouteBuilder {
-		return addResponse(procedureState(this["~restrpc"]), 200, {
-			kind: "stream",
-			body: schema,
-		});
+		return addResponse(
+			{ ...procedureState(this["~restrpc"]), output: "output" },
+			200,
+			{
+				kind: "stream",
+				body: schema,
+			},
+		);
 	}
 
 	streamResponse(status: number, schema: StandardSchemaV1): RouteBuilder {
-		return addResponse(this["~restrpc"], status, {
-			kind: "stream",
-			body: schema,
-		});
+		return addResponse(
+			{ ...procedureState(this["~restrpc"]), output: "response" },
+			status,
+			{
+				kind: "stream",
+				body: schema,
+			},
+		);
 	}
 }
 
