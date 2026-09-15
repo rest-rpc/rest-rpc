@@ -452,6 +452,18 @@ export type InferredRouteResponse<TImplementation> =
 			: never
 		: never;
 
+type PlainResponseKind<TRoute> = TRoute extends {
+	responses: { 200: infer TResponse };
+}
+	? TResponse extends { kind: "stream" }
+		? "stream"
+		: TResponse extends { contentType: infer TContentType }
+			? TContentType extends "application/json"
+				? "json"
+				: "custom"
+			: "json"
+	: never;
+
 /**
  * Infers the body encodings represented by a server-first implementation.
  *
@@ -462,31 +474,9 @@ export type ServerFirstRouteResponseKind<TImplementation> =
 		route: infer TRoute;
 		handler: infer THandler extends AnyRouteHandler;
 	}
-		? TRoute extends {
-				output: "output";
-				responses: { 200: infer TResponse };
-			}
-			? TResponse extends { kind: "stream" }
-				? "stream"
-				: TResponse extends { contentType: infer TContentType }
-					? TContentType extends "application/json"
-						? "json"
-						: "custom"
-					: "json"
-			: TRoute extends { output: "response" }
-				? ImplicitResponseKind<Awaited<ReturnType<THandler>>>
-				: TRoute extends {
-							kind: "procedure";
-							responses: { 200: infer TLegacyResponse };
-					  }
-					? TLegacyResponse extends { kind: "stream" }
-						? "stream"
-						: TLegacyResponse extends { contentType: infer TContentType }
-							? TContentType extends "application/json"
-								? "json"
-								: "custom"
-							: "json"
-					: ImplicitResponseKind<Awaited<ReturnType<THandler>>>
+		? UsesPlainOutput<Extract<TRoute, RouteDeclaration>> extends true
+			? PlainResponseKind<TRoute>
+			: ImplicitResponseKind<Awaited<ReturnType<THandler>>>
 		: never;
 
 /**

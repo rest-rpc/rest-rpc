@@ -54,7 +54,7 @@ export type RouteRequestDeclaration = {
 };
 
 /**
- * The contract information retained for one declared HTTP or procedure route.
+ * The contract information retained for one declared route.
  *
  * @remarks Applications normally create route declarations with `route`
  * instead of constructing this representation directly.

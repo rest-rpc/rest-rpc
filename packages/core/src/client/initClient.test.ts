@@ -110,6 +110,10 @@ describe("initClient", () => {
 			3,
 		);
 		assert.equal(await client.todos.search({ term: "open" }), 4);
+		await assert.rejects(
+			client.todos.search("wrong" as never),
+			/GET flat input must be an object/,
+		);
 		assert.equal(
 			(await client.todos.sync({ query: { id: "todo-1" } })).body,
 			"5",

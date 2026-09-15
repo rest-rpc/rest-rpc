@@ -100,8 +100,8 @@ type RouteDeclaredResponse<E extends RouteDeclaration> = WithResponseMetadata<
 /**
  * Infers a route's client result.
  *
- * @remarks Explicit HTTP routes produce a status-discriminated response
- * envelope. Procedure routes produce their output value directly.
+ * @remarks Routes declared with `.response()` produce status-discriminated
+ * envelopes. Routes declared with `.output()` produce their output directly.
  *
  * @see {@link https://rest-rpc.dev/docs/client/fetch-client#call-an-http-route}
  * @see {@link https://rest-rpc.dev/docs/procedures#call-procedures}

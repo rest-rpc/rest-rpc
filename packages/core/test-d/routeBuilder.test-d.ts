@@ -123,6 +123,9 @@ expectError(flatGet.query(scalarQuery));
 expectError(flatGet.response(200, todo));
 expectError(route.get("/search").body(input));
 expectError(
+	route.get("/search").input(scalarQuery, { contentType: "text/plain" }),
+);
+expectError(
 	route.get("/search").input(schemaType<{ nested: { value: string } }>()),
 );
 

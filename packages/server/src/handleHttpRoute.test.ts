@@ -142,6 +142,14 @@ describe("handleHttpRoute", () => {
 			body: { id: "todo-1" },
 			headers: undefined,
 		});
+		await assert.rejects(
+			handleHttpRoute(route, () => ({ status: "bad" }), {
+				request: {},
+				handlerFields: {},
+				context: {},
+			}),
+			/Invalid inferred HTTP response status "bad"/,
+		);
 	});
 
 	it("normalizes declared procedure outputs directly", async () => {

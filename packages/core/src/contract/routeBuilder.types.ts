@@ -1,7 +1,6 @@
 import type { StandardSchemaV1 } from "../standard-schema/index.ts";
 import type { BodyOptions } from "./body.ts";
 import type {
-	CommonOpenApiRouteOptions,
 	HttpMethod,
 	OpenApiRouteOptions,
 	RouteMetadata,
@@ -32,15 +31,6 @@ type ResponseFor<TSchema, TOptions> = TSchema extends StandardSchemaV1
 	: { body: undefined } & (TOptions extends { headers: infer THeaders }
 			? { headers: THeaders }
 			: EmptyObject);
-
-/** Defaults applied to routes created from a configured builder. */
-export type RouteBuilderOptions = {
-	pathPrefix?: string;
-	metadata?: RouteMetadata;
-	responses?: Record<number, StandardSchemaV1>;
-	headers?: RequestHeadersSchema;
-	openApi?: CommonOpenApiRouteOptions;
-};
 
 type BuilderMethod =
 	| "body"
@@ -445,7 +435,7 @@ type FlatMethods<
 		>(
 			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
-			options?: TOptions,
+			options?: TState["route"]["method"] extends "GET" ? never : TOptions,
 		): RouteBuilderView<
 			WithFlatInput<TState, TSchema, TOptions>,
 			TExtension,

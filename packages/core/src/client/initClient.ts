@@ -58,6 +58,17 @@ export function initClient<
 			node.output === "output" ||
 			(node.output === undefined && node.kind === "procedure");
 		return (...args: FetchArgs) => {
+			if (
+				node.input === "input" &&
+				node.method === "GET" &&
+				(typeof args[0] !== "object" ||
+					args[0] === null ||
+					Array.isArray(args[0]))
+			) {
+				return Promise.reject(
+					new Error("GET flat input must be an object of query values."),
+				);
+			}
 			const request = flatInput
 				? { [node.method === "GET" ? "query" : "body"]: args[0] }
 				: args[0];

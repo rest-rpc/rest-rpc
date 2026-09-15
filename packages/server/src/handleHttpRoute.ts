@@ -97,6 +97,15 @@ const classifyImplicitProcedureResponse = (
 const classifyImplicitHttpResponse = (
 	response: ImplicitResponseEnvelope,
 ): HttpRouteResult => {
+	if (
+		!Number.isInteger(response.status) ||
+		response.status < 100 ||
+		response.status > 599
+	) {
+		throw new Error(
+			`Invalid inferred HTTP response status "${response.status}".`,
+		);
+	}
 	const headers = response.responseHeaders;
 	if (!("body" in response)) {
 		return {
