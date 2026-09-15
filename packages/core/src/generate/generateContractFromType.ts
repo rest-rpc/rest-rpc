@@ -1,5 +1,5 @@
 import { dirname, resolve } from "node:path";
-import ts from "@typescript/typescript6";
+import ts from "typescript";
 import type { Contract } from "../contract/contract.ts";
 
 type GeneratedRoute = {

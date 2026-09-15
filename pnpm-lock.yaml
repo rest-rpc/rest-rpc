@@ -256,15 +256,15 @@ importers:
       '@types/node':
         specifier: 26.3.0
         version: 26.3.0
-      '@typescript/typescript6':
-        specifier: 6.0.2
-        version: 6.0.2
       arktype:
         specifier: ^2.2.3
         version: 2.2.3
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
       valibot:
         specifier: ^1.4.2
-        version: 1.4.2(typescript@7.0.2)
+        version: 1.4.2(typescript@5.9.3)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -2513,10 +2513,6 @@ packages:
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
-
-  '@typescript/typescript6@6.0.2':
-    resolution: {integrity: sha512-mbCddXd+jm7hfx7w2YU64/Av4/NqqeG3GoRZgxPcgoTxYjhrcfJRw9ULch71SS4G+Q3bOXFhRvPqjguN0Hyp5w==}
-    hasBin: true
 
   '@typescript/vfs@1.6.4':
     resolution: {integrity: sha512-PJFXFS4ZJKiJ9Qiuix6Dz/OwEIqHD7Dme1UwZhTK11vR+5dqW2ACbdndWQexBzCx+CPuMe5WBYQWCsFyGlQLlQ==}
@@ -8455,10 +8451,6 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@typescript/typescript6@6.0.2':
-    dependencies:
-      '@typescript/old': typescript@6.0.3
-
   '@typescript/vfs@1.6.4(typescript@6.0.3)':
     dependencies:
       debug: 4.4.3
@@ -12806,6 +12798,10 @@ snapshots:
   uuid@14.0.1: {}
 
   vali-date@1.0.0: {}
+
+  valibot@1.4.2(typescript@5.9.3):
+    optionalDependencies:
+      typescript: 5.9.3
 
   valibot@1.4.2(typescript@7.0.2):
     optionalDependencies:
