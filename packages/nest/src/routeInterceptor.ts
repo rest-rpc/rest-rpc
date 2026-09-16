@@ -1,3 +1,4 @@
+import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
 import {
 	type CallHandler,
 	type ExecutionContext,
@@ -6,7 +7,6 @@ import {
 	StreamableFile,
 } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
-import type { IncomingMessage, ServerResponse } from "node:http";
 import type { RouteDeclaration } from "@rest-rpc/core/contract";
 import {
 	createNodeResponseStream,
@@ -28,20 +28,6 @@ import {
 	RequestValidationException,
 	ResponseValidationException,
 } from "./validationExceptions.ts";
-
-type NestHttpRequestFields = {
-	body?: unknown;
-	query?: unknown;
-	params?: unknown;
-	headers?: unknown;
-};
-
-type NestHttpRequest = NestHttpRequestFields &
-	((IncomingMessage & { raw?: never }) | { raw: IncomingMessage });
-
-type NestHttpResponse =
-	| (ServerResponse & { raw?: never })
-	| { raw: ServerResponse };
 
 type NestRouteImplementation = {
 	readonly "~restrpc": RouteDeclaration & {
@@ -108,8 +94,8 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 		metadata: RouteMetadata,
 	) {
 		const http = context.switchToHttp();
-		const req = http.getRequest<NestHttpRequest>();
-		const res = http.getResponse<NestHttpResponse>();
+		const req = http.getRequest();
+		const res = http.getResponse();
 		const adapter = this.httpAdapterHost.httpAdapter;
 		const rawRequest = req.raw ?? req;
 		const rawResponse = res.raw ?? res;
@@ -123,6 +109,11 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 		}
 
 		const signal = createRequestSignal(rawRequest, rawResponse);
+		const mediaType = normalizeMediaType(rawRequest.headers["content-type"]);
+		const codec = resolveBodyCodecs(mediaType, this.options?.bodyCodecs ?? []);
+		const body = codec?.deserialize
+			? await codec.deserialize(http.getRequest())
+			: req.body;
 		const userContext = await this.options?.createContext?.(context);
 		const implementation = assertRouteImplementation(
 			await lastValueFrom(next.handle()),
@@ -136,7 +127,7 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 			},
 			{
 				request: {
-					body: req.body,
+					body,
 					query: new URL(rawRequest.url ?? "/", "http://localhost")
 						.searchParams,
 					params: req.params,

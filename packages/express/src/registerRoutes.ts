@@ -1,3 +1,5 @@
+import type { BodyCodec } from "@rest-rpc/core";
+import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
 import { createRequestSignal, writeNodeResponse } from "@rest-rpc/node";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
@@ -58,6 +60,7 @@ export type ExtendedExpressMiddleware = (
  * @see {@link https://rest-rpc.dev/docs/server/express#options}
  */
 export type RegisterRoutesOptions = {
+	bodyCodecs?: readonly BodyCodec<Request>[];
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 	middleware?: ExtendedExpressMiddleware[];
@@ -75,6 +78,7 @@ export function registerRoutes(
 ) {
 	const {
 		middleware = [],
+		bodyCodecs = [],
 		requestValidationErrorHandler,
 		responseValidationErrorHandler,
 	} = options;
@@ -101,9 +105,16 @@ export function registerRoutes(
 			let result;
 			try {
 				const signal = createRequestSignal(req, res);
+				const codec = resolveBodyCodecs(
+					normalizeMediaType(req.headers["content-type"]),
+					bodyCodecs,
+				);
+				const body = codec?.deserialize
+					? await codec.deserialize(req)
+					: req.body;
 				result = await handleHttpRoute(implementation, {
 					request: {
-						body: req.body,
+						body,
 						query: new URL(req.originalUrl, "http://localhost").searchParams,
 						params: req.params,
 						headers: req.headers,

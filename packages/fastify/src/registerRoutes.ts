@@ -1,3 +1,5 @@
+import type { BodyCodec } from "@rest-rpc/core";
+import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
 import { createNodeResponseStream, createRequestSignal } from "@rest-rpc/node";
@@ -51,6 +53,7 @@ export type ExtendedFastifyPreHandler = (
  * @see {@link https://rest-rpc.dev/docs/server/fastify#options}
  */
 export type RegisterRoutesOptions = {
+	bodyCodecs?: readonly BodyCodec<FastifyRequest>[];
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 	preHandler?: ExtendedFastifyPreHandler[];
@@ -68,6 +71,7 @@ export function registerRoutes(
 ) {
 	const {
 		preHandler = [],
+		bodyCodecs = [],
 		requestValidationErrorHandler,
 		responseValidationErrorHandler,
 	} = options;
@@ -97,9 +101,16 @@ export function registerRoutes(
 				}
 
 				const signal = createRequestSignal(req.raw, reply.raw);
+				const codec = resolveBodyCodecs(
+					normalizeMediaType(req.headers["content-type"]),
+					bodyCodecs,
+				);
+				const body = codec?.deserialize
+					? await codec.deserialize(req)
+					: req.body;
 				const result = await handleHttpRoute(implementation, {
 					request: {
-						body: req.body,
+						body,
 						query: new URL(req.raw.url ?? "/", "http://localhost").searchParams,
 						params: req.params,
 						headers: req.headers,
