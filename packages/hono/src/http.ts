@@ -95,20 +95,16 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 				}
 
 				try {
-					const result = await handleHttpRoute(
-						route,
-						implementation.handler as (request: unknown) => unknown,
-						{
-							request: {
-								body,
-								query: new URL(c.req.raw.url).searchParams,
-								params: c.req.param(),
-								headers: c.req.header(),
-							},
-							context: {},
-							handlerFields: { c, signal: c.req.raw.signal },
+					const result = await handleHttpRoute(implementation, {
+						request: {
+							body,
+							query: new URL(c.req.raw.url).searchParams,
+							params: c.req.param(),
+							headers: c.req.header(),
 						},
-					);
+						context: {},
+						handlerFields: { c, signal: c.req.raw.signal },
+					});
 
 					return createFetchResponse(result);
 				} catch (error) {

@@ -115,15 +115,11 @@ export function createRouteHandler(
 
 		try {
 			const implementation = matched.implementation;
-			const result = await handleHttpRoute(
-				implementation.route,
-				implementation.handler as (request: unknown) => unknown,
-				{
-					request: parsedRequest,
-					context: contextArguments[0] ?? {},
-					handlerFields: { req: request, res: response, signal },
-				},
-			);
+			const result = await handleHttpRoute(implementation, {
+				request: parsedRequest,
+				context: contextArguments[0] ?? {},
+				handlerFields: { req: request, res: response, signal },
+			});
 			if (!response.destroyed) await writeNodeResponse(result, response);
 			return { matched: true };
 		} catch (error) {

@@ -62,7 +62,6 @@ export const registerExpressHttpRoutes = (
 	for (const implementation of routes) {
 		const route = implementation.route;
 		const method = route.method.toLowerCase() as Lowercase<HttpMethod>;
-		const handler = implementation.handler;
 
 		const routeHandler = async (
 			req: Request,
@@ -81,20 +80,16 @@ export const registerExpressHttpRoutes = (
 
 			try {
 				const signal = createRequestSignal(req, res);
-				const result = await handleHttpRoute(
-					route,
-					handler as (request: unknown) => unknown,
-					{
-						request: {
-							body: req.body,
-							query: new URL(req.originalUrl, "http://localhost").searchParams,
-							params: req.params,
-							headers: req.headers,
-						},
-						context: {},
-						handlerFields: { req, res, signal },
+				const result = await handleHttpRoute(implementation, {
+					request: {
+						body: req.body,
+						query: new URL(req.originalUrl, "http://localhost").searchParams,
+						params: req.params,
+						headers: req.headers,
 					},
-				);
+					context: {},
+					handlerFields: { req, res, signal },
+				});
 
 				return await writeNodeResponse(result, res);
 			} catch (error) {

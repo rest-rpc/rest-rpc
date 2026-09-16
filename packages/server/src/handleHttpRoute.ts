@@ -7,6 +7,7 @@ import { getRouteResponses } from "@rest-rpc/core/contract";
 import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
 import type { RuntimeRouteHandler } from "./routeBuilder.types.ts";
+import type { RuntimeImplementation } from "./match.ts";
 import type { ImplicitResponseEnvelope } from "./routeBuilder.types.ts";
 import {
 	resolveCustomResponseBody,
@@ -64,10 +65,6 @@ const isCustomProcedureOutput = (
 	"data" in value &&
 	"contentType" in value &&
 	typeof value.contentType === "string";
-
-const usesFlatInput = (route: RouteDeclaration) =>
-	route.input === "input" ||
-	(route.input === undefined && route.kind === "procedure");
 
 const usesPlainOutput = (route: RouteDeclaration) =>
 	route.output === "output" ||
@@ -258,6 +255,14 @@ const normalizeRouteResponseError = async (
 	});
 };
 
+const getHandlerRequestFields = (
+	route: RouteDeclaration,
+	segments: Omit<RequestSegments, "query"> & { query: unknown },
+) => {
+	if (route.input !== "input") return segments;
+	return { input: route.method === "GET" ? segments.query : segments.body };
+};
+
 /**
  * Validates an HTTP request, invokes a route handler, and normalizes its result.
  */
@@ -265,10 +270,11 @@ export async function handleHttpRoute<
 	TAdditionalHandlerFields extends object = Record<never, never>,
 	TContext extends object = Record<never, never>,
 >(
-	route: RouteDeclaration,
-	handler: RuntimeRouteHandler,
+	implementation: RuntimeImplementation,
 	options: HandleHttpRouteOptions<TAdditionalHandlerFields, TContext>,
 ): Promise<HttpRouteResult> {
+	const { route } = implementation;
+	const handler = implementation.handler as RuntimeRouteHandler;
 	const validatedRequest = await validateRequestSegments(
 		route,
 		options.request,
@@ -277,17 +283,8 @@ export async function handleHttpRoute<
 	let handlerResult: unknown;
 	try {
 		handlerResult = await handler({
+			...getHandlerRequestFields(route, validatedRequest),
 			...options.handlerFields,
-			...(usesFlatInput(route)
-				? route.request?.body || route.request?.query
-					? {
-							input:
-								route.method === "GET"
-									? validatedRequest.query
-									: validatedRequest.body,
-						}
-					: {}
-				: validatedRequest),
 			context: options.context,
 			route,
 		});

@@ -131,8 +131,10 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 
 		try {
 			const result = await handleHttpRoute(
-				metadata.route,
-				implementation["~restrpc"].handler,
+				{
+					route: metadata.route,
+					handler: implementation["~restrpc"].handler,
+				},
 				{
 					request: {
 						body: req.body,

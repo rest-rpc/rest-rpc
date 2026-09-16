@@ -21,19 +21,21 @@ describe("handleHttpRoute", () => {
 			.params(z.object({ id: z.coerce.number<number>() }))
 			.response(200, z.object({ id: z.number() }))["~restrpc"];
 		const result = await handleHttpRoute(
-			route,
-			(request) => {
-				assert.deepEqual(request, {
-					body: undefined,
-					query: undefined,
-					headers: undefined,
-					params: { id: 123 },
-					frameworkValue: "framework-1",
-					context: { requestId: "request-1" },
-					route,
-				});
+			{
+				route: route,
+				handler: (request) => {
+					assert.deepEqual(request, {
+						body: undefined,
+						query: undefined,
+						headers: undefined,
+						params: { id: 123 },
+						frameworkValue: "framework-1",
+						context: { requestId: "request-1" },
+						route,
+					});
 
-				return { status: 200, body: { id: request.params.id } };
+					return { status: 200, body: { id: request.params.id } };
+				},
 			},
 			{
 				request: {
@@ -58,17 +60,19 @@ describe("handleHttpRoute", () => {
 			.query(z.object({ q: z.string() }).transform(() => ["todo"]))
 			.response(204)["~restrpc"];
 		const result = await handleHttpRoute(
-			route,
-			(request) => {
-				assert.deepEqual(request, {
-					body: undefined,
-					params: undefined,
-					headers: undefined,
-					query: ["todo"],
-					context: {},
-					route,
-				});
-				return { status: 204 };
+			{
+				route: route,
+				handler: (request) => {
+					assert.deepEqual(request, {
+						body: undefined,
+						params: undefined,
+						headers: undefined,
+						query: ["todo"],
+						context: {},
+						route,
+					});
+					return { status: 204 };
+				},
 			},
 			{
 				request: {
@@ -91,12 +95,14 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					coreRoute
-						.get("/todos/:id")
-						.params(z.object({ id: z.number() }))
-						.response(204)["~restrpc"],
-					() => {
-						called = true;
+					{
+						route: coreRoute
+							.get("/todos/:id")
+							.params(z.object({ id: z.number() }))
+							.response(204)["~restrpc"],
+						handler: () => {
+							called = true;
+						},
 					},
 					{
 						request: {
@@ -126,11 +132,14 @@ describe("handleHttpRoute", () => {
 			path: "/todos/get",
 			responses: {},
 		};
-		const result = await handleHttpRoute(route, () => ({ id: "todo-1" }), {
-			request: {},
-			handlerFields: {},
-			context: {},
-		});
+		const result = await handleHttpRoute(
+			{ route: route, handler: () => ({ id: "todo-1" }) },
+			{
+				request: {},
+				handlerFields: {},
+				context: {},
+			},
+		);
 
 		assert.deepEqual(result, {
 			kind: "json",
@@ -138,8 +147,10 @@ describe("handleHttpRoute", () => {
 			body: { id: "todo-1" },
 		});
 		const enveloped = await handleHttpRoute(
-			route,
-			() => ({ status: 201, body: { id: "todo-1" } }),
+			{
+				route: route,
+				handler: () => ({ status: 201, body: { id: "todo-1" } }),
+			},
 			{ request: {}, handlerFields: {}, context: {} },
 		);
 		assert.deepEqual(enveloped, {
@@ -149,11 +160,14 @@ describe("handleHttpRoute", () => {
 			headers: undefined,
 		});
 		await assert.rejects(
-			handleHttpRoute(route, () => ({ status: "bad" }), {
-				request: {},
-				handlerFields: {},
-				context: {},
-			}),
+			handleHttpRoute(
+				{ route: route, handler: () => ({ status: "bad" }) },
+				{
+					request: {},
+					handlerFields: {},
+					context: {},
+				},
+			),
 			/Invalid inferred HTTP response status "bad"/,
 		);
 	});
@@ -165,10 +179,12 @@ describe("handleHttpRoute", () => {
 			.output(z.object({ status: z.literal("ready") }))["~restrpc"];
 		let input: unknown;
 		const result = await handleHttpRoute(
-			route,
-			(request: { input: unknown }) => {
-				input = request.input;
-				return { status: "ready" };
+			{
+				route: route,
+				handler: (request: { input: unknown }) => {
+					input = request.input;
+					return { status: "ready" };
+				},
 			},
 			{
 				request: { query: new URLSearchParams({ term: "go" }) },
@@ -191,8 +207,10 @@ describe("handleHttpRoute", () => {
 			"~restrpc"
 		];
 		const result = await handleHttpRoute(
-			route,
-			() => ({ contentType: "text/plain", data: "todo data" }),
+			{
+				route: route,
+				handler: () => ({ contentType: "text/plain", data: "todo data" }),
+			},
 			{
 				request: {},
 				handlerFields: {},
@@ -216,11 +234,14 @@ describe("handleHttpRoute", () => {
 
 		await assert.rejects(
 			() =>
-				handleHttpRoute(route, () => "todo data", {
-					request: {},
-					handlerFields: {},
-					context: {},
-				}),
+				handleHttpRoute(
+					{ route: route, handler: () => "todo data" },
+					{
+						request: {},
+						handlerFields: {},
+						context: {},
+					},
+				),
 			/Custom procedure output must return/,
 		);
 	});
@@ -230,11 +251,13 @@ describe("handleHttpRoute", () => {
 			"~restrpc"
 		];
 		const result = await handleHttpRoute(
-			route,
-			() =>
-				(async function* () {
-					yield { id: "event-1" };
-				})(),
+			{
+				route: route,
+				handler: () =>
+					(async function* () {
+						yield { id: "event-1" };
+					})(),
+			},
 			{
 				request: {},
 				handlerFields: {},
@@ -257,16 +280,20 @@ describe("handleHttpRoute", () => {
 			responses: {},
 		};
 		const custom = await handleHttpRoute(
-			route,
-			() => ({ contentType: "text/plain", data: "event data" }),
+			{
+				route: route,
+				handler: () => ({ contentType: "text/plain", data: "event data" }),
+			},
 			{ request: {}, handlerFields: {}, context: {} },
 		);
 		const stream = await handleHttpRoute(
-			route,
-			() =>
-				(async function* () {
-					yield { id: "event-1" };
-				})(),
+			{
+				route: route,
+				handler: () =>
+					(async function* () {
+						yield { id: "event-1" };
+					})(),
+			},
 			{ request: {}, handlerFields: {}, context: {} },
 		);
 
@@ -286,14 +313,16 @@ describe("handleHttpRoute", () => {
 			})
 			.output(z.object({ title: z.string() }))["~restrpc"];
 		const result = await handleHttpRoute(
-			declaration,
-			(request) => {
-				assert.deepEqual(request, {
-					input: { title: "Write docs" },
-					context: {},
-					route: declaration,
-				});
-				return { title: "Write docs" };
+			{
+				route: declaration,
+				handler: (request) => {
+					assert.deepEqual(request, {
+						input: { title: "Write docs" },
+						context: {},
+						route: declaration,
+					});
+					return { title: "Write docs" };
+				},
 			},
 			{
 				request: {
@@ -315,11 +344,13 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					coreRoute.get("/todos").response(200, z.object({ id: z.string() }))[
-						"~restrpc"
-					],
-					() => {
-						throw expected;
+					{
+						route: coreRoute
+							.get("/todos")
+							.response(200, z.object({ id: z.string() }))["~restrpc"],
+						handler: () => {
+							throw expected;
+						},
 					},
 					{
 						request: {},
@@ -335,10 +366,12 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					coreRoute.get("/todos").response(200, z.object({ id: z.string() }))[
-						"~restrpc"
-					],
-					() => ({ status: 200, body: { id: 123 } }),
+					{
+						route: coreRoute
+							.get("/todos")
+							.response(200, z.object({ id: z.string() }))["~restrpc"],
+						handler: () => ({ status: 200, body: { id: 123 } }),
+					},
 					{
 						request: {},
 						handlerFields: {},
@@ -358,14 +391,16 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					coreRoute.get("/jobs/:id").response(
-						200,
-						z.object({
-							status: z.number(),
-							body: z.string(),
-						}),
-					)["~restrpc"],
-					() => ({ status: 123, body: "running" }),
+					{
+						route: coreRoute.get("/jobs/:id").response(
+							200,
+							z.object({
+								status: z.number(),
+								body: z.string(),
+							}),
+						)["~restrpc"],
+						handler: () => ({ status: 123, body: "running" }),
+					},
 					{
 						request: {},
 						handlerFields: {},
@@ -381,20 +416,24 @@ describe("handleHttpRoute", () => {
 
 	it("normalizes declared response headers", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/todos").response(200, z.object({ id: z.string() }), {
-				headers: z.object({
-					etag: z.string(),
-					"x-optional": z.string().optional(),
+			{
+				route: coreRoute
+					.get("/todos")
+					.response(200, z.object({ id: z.string() }), {
+						headers: z.object({
+							etag: z.string(),
+							"x-optional": z.string().optional(),
+						}),
+					})["~restrpc"],
+				handler: () => ({
+					status: 200 as const,
+					body: { id: "todo-1" },
+					responseHeaders: {
+						etag: "todo-etag",
+						"x-optional": undefined,
+					},
 				}),
-			})["~restrpc"],
-			() => ({
-				status: 200 as const,
-				body: { id: "todo-1" },
-				responseHeaders: {
-					etag: "todo-etag",
-					"x-optional": undefined,
-				},
-			}),
+			},
 			{
 				request: {},
 				handlerFields: {},
@@ -414,12 +453,14 @@ describe("handleHttpRoute", () => {
 
 	it("normalizes declared RouteResponseError responses", async () => {
 		const result = await handleHttpRoute(
-			routeWithDeclaredErrorResponse,
-			() => {
-				throw new RouteResponseError(routeWithDeclaredErrorResponse, {
-					status: 404,
-					body: { code: "not_found" },
-				});
+			{
+				route: routeWithDeclaredErrorResponse,
+				handler: () => {
+					throw new RouteResponseError(routeWithDeclaredErrorResponse, {
+						status: 404,
+						body: { code: "not_found" },
+					});
+				},
 			},
 			{
 				request: {},
@@ -440,12 +481,14 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					routeWithDeclaredErrorResponse,
-					() => {
-						throw new RouteResponseError(routeWithDeclaredErrorResponse, {
-							status: 404,
-							body: { code: "gone" },
-						} as never);
+					{
+						route: routeWithDeclaredErrorResponse,
+						handler: () => {
+							throw new RouteResponseError(routeWithDeclaredErrorResponse, {
+								status: 404,
+								body: { code: "gone" },
+							} as never);
+						},
 					},
 					{
 						request: {},
@@ -477,12 +520,14 @@ describe("handleHttpRoute", () => {
 		await assert.rejects(
 			() =>
 				handleHttpRoute(
-					routes.todos.get,
-					() => {
-						throw new RouteResponseError(routes.todos, {
-							status: 409,
-							body: { code: "already_exists" },
-						});
+					{
+						route: routes.todos.get,
+						handler: () => {
+							throw new RouteResponseError(routes.todos, {
+								status: 409,
+								body: { code: "already_exists" },
+							});
+						},
 					},
 					{
 						request: {},
@@ -501,10 +546,12 @@ describe("handleHttpRoute", () => {
 describe("handleHttpRoute custom responses", () => {
 	it("normalizes custom single bodies after validating without serializing them", async () => {
 		const result = await handleHttpRoute(
-			coreRoute
-				.get("/report.csv")
-				.response(200, z.string(), { contentType: "text/csv" })["~restrpc"],
-			() => ({ status: 200, body: "id,title\n1,First\n" }),
+			{
+				route: coreRoute
+					.get("/report.csv")
+					.response(200, z.string(), { contentType: "text/csv" })["~restrpc"],
+				handler: () => ({ status: 200, body: "id,title\n1,First\n" }),
+			},
 			{
 				request: {},
 				handlerFields: {},
@@ -520,14 +567,16 @@ describe("handleHttpRoute custom responses", () => {
 
 	it("normalizes custom response bodies with selected content types", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/images/:id").response(200, z.string(), {
-				contentType: ["image/png", "image/jpeg"],
-			})["~restrpc"],
-			() => ({
-				status: 200,
-				body: "jpeg bytes",
-				contentType: "image/jpeg",
-			}),
+			{
+				route: coreRoute.get("/images/:id").response(200, z.string(), {
+					contentType: ["image/png", "image/jpeg"],
+				})["~restrpc"],
+				handler: () => ({
+					status: 200,
+					body: "jpeg bytes",
+					contentType: "image/jpeg",
+				}),
+			},
 			{
 				request: {},
 				handlerFields: {},
@@ -543,10 +592,12 @@ describe("handleHttpRoute custom responses", () => {
 
 	it("treats an ordinary NDJSON content type as custom content", async () => {
 		const result = await handleHttpRoute(
-			coreRoute.get("/events").response(200, z.string(), {
-				contentType: "application/x-ndjson",
-			})["~restrpc"],
-			() => ({ status: 200, body: "event data" }),
+			{
+				route: coreRoute.get("/events").response(200, z.string(), {
+					contentType: "application/x-ndjson",
+				})["~restrpc"],
+				handler: () => ({ status: 200, body: "event data" }),
+			},
 			{
 				request: {},
 				handlerFields: {},

@@ -55,7 +55,6 @@ export const registerFastifyHttpRoutes = (
 	for (const implementation of routes) {
 		const route = implementation.route;
 		const method = route.method.toLowerCase() as Lowercase<HttpMethod>;
-		const handler = implementation.handler;
 
 		app[method](
 			toColonPath(route.path),
@@ -79,21 +78,17 @@ export const registerFastifyHttpRoutes = (
 
 				try {
 					const signal = createRequestSignal(req.raw, reply.raw);
-					const result = await handleHttpRoute(
-						route,
-						handler as (request: unknown) => unknown,
-						{
-							request: {
-								body: req.body,
-								query: new URL(req.raw.url ?? "/", "http://localhost")
-									.searchParams,
-								params: req.params,
-								headers: req.headers,
-							},
-							context: {},
-							handlerFields: { req, reply, signal },
+					const result = await handleHttpRoute(implementation, {
+						request: {
+							body: req.body,
+							query: new URL(req.raw.url ?? "/", "http://localhost")
+								.searchParams,
+							params: req.params,
+							headers: req.headers,
 						},
-					);
+						context: {},
+						handlerFields: { req, reply, signal },
+					});
 
 					return handleHttpRouteResult(result, {
 						setHeader: (name, value) => reply.header(name, value),
