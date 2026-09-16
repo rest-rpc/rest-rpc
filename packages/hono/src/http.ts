@@ -94,45 +94,34 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 					return c.json({ message: "Invalid request body" }, 400);
 				}
 
-				try {
-					const result = await handleHttpRoute(implementation, {
-						request: {
-							body,
-							query: new URL(c.req.raw.url).searchParams,
-							params: c.req.param(),
-							headers: c.req.header(),
-						},
-						context: {},
-						handlerFields: { c, signal: c.req.raw.signal },
-					});
+				const result = await handleHttpRoute(implementation, {
+					request: {
+						body,
+						query: new URL(c.req.raw.url).searchParams,
+						params: c.req.param(),
+						headers: c.req.header(),
+					},
+					context: {},
+					handlerFields: { c, signal: c.req.raw.signal },
+				});
 
-					return createFetchResponse(result);
-				} catch (error) {
-					if (error instanceof RequestValidationError) {
-						if (requestValidationErrorHandler) {
-							return requestValidationErrorHandler(error, c);
-						}
-
-						return c.json(
-							{
-								message:
-									"Request validation failed. Check the validationErrors field for details.",
-								validationErrors: error.issues,
-							},
-							400,
-						);
+				if (result instanceof RequestValidationError) {
+					if (requestValidationErrorHandler) {
+						return requestValidationErrorHandler(result, c);
 					}
 
-					if (error instanceof ResponseValidationError) {
-						if (responseValidationErrorHandler) {
-							return responseValidationErrorHandler(error, c);
-						}
-
-						return c.json({ message: "Response validation failed." }, 500);
-					}
-
-					throw error;
+					return c.json(result.responseBody, result.status);
 				}
+
+				if (result instanceof ResponseValidationError) {
+					if (responseValidationErrorHandler) {
+						return responseValidationErrorHandler(result, c);
+					}
+
+					return c.json(result.responseBody, result.status);
+				}
+
+				return createFetchResponse(result);
 			},
 		);
 	}

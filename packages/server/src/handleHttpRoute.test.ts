@@ -90,37 +90,37 @@ describe("handleHttpRoute", () => {
 		});
 	});
 
-	it("throws grouped request validation errors without calling the handler", async () => {
+	it("returns grouped request validation errors without calling the handler", async () => {
 		let called = false;
-		await assert.rejects(
-			() =>
-				handleHttpRoute(
-					{
-						route: coreRoute
-							.get("/todos/:id")
-							.params(z.object({ id: z.number() }))
-							.response(204)["~restrpc"],
-						handler: () => {
-							called = true;
-						},
-					},
-					{
-						request: {
-							params: { id: "123" },
-						},
-						handlerFields: {},
-						context: {},
-					},
-				),
-			(error) => {
-				assert.ok(error instanceof RequestValidationError);
-				assert.equal(error.issues.body.length, 0);
-				assert.equal(error.issues.query.length, 0);
-				assert.equal(error.issues.params.length, 1);
-				assert.equal(error.issues.headers.length, 0);
-				return true;
+		const error = await handleHttpRoute(
+			{
+				route: coreRoute
+					.get("/todos/:id")
+					.params(z.object({ id: z.number() }))
+					.response(204)["~restrpc"],
+				handler: () => {
+					called = true;
+				},
+			},
+			{
+				request: {
+					params: { id: "123" },
+				},
+				handlerFields: {},
+				context: {},
 			},
 		);
+		assert.ok(error instanceof RequestValidationError);
+		assert.equal(error.status, 400);
+		assert.deepEqual(error.responseBody, {
+			message:
+				"Request validation failed. Check the validationErrors field for details.",
+			validationErrors: error.issues,
+		});
+		assert.equal(error.issues.body.length, 0);
+		assert.equal(error.issues.query.length, 0);
+		assert.equal(error.issues.params.length, 1);
+		assert.equal(error.issues.headers.length, 0);
 
 		assert.equal(called, false);
 	});
@@ -362,29 +362,27 @@ describe("handleHttpRoute", () => {
 		);
 	});
 
-	it("throws response body validation errors", async () => {
-		await assert.rejects(
-			() =>
-				handleHttpRoute(
-					{
-						route: coreRoute
-							.get("/todos")
-							.response(200, z.object({ id: z.string() }))["~restrpc"],
-						handler: () => ({ status: 200, body: { id: 123 } }),
-					},
-					{
-						request: {},
-						handlerFields: {},
-						context: {},
-					},
-				),
-			(error) => {
-				assert.ok(error instanceof ResponseValidationError);
-				assert.equal(error.location, "body");
-				assert.equal(error.issues.length, 1);
-				return true;
+	it("returns response body validation errors", async () => {
+		const error = await handleHttpRoute(
+			{
+				route: coreRoute
+					.get("/todos")
+					.response(200, z.object({ id: z.string() }))["~restrpc"],
+				handler: () => ({ status: 200, body: { id: 123 } }),
+			},
+			{
+				request: {},
+				handlerFields: {},
+				context: {},
 			},
 		);
+		assert.ok(error instanceof ResponseValidationError);
+		assert.equal(error.status, 500);
+		assert.deepEqual(error.responseBody, {
+			message: "Response validation failed.",
+		});
+		assert.equal(error.location, "body");
+		assert.equal(error.issues.length, 1);
 	});
 
 	it("treats returned status and body fields as an explicit response object", async () => {
@@ -478,30 +476,24 @@ describe("handleHttpRoute", () => {
 	});
 
 	it("validates RouteResponseError response bodies during normalization", async () => {
-		await assert.rejects(
-			() =>
-				handleHttpRoute(
-					{
-						route: routeWithDeclaredErrorResponse,
-						handler: () => {
-							throw new RouteResponseError(routeWithDeclaredErrorResponse, {
-								status: 404,
-								body: { code: "gone" },
-							} as never);
-						},
-					},
-					{
-						request: {},
-						handlerFields: {},
-						context: {},
-					},
-				),
-			(error) => {
-				assert.ok(error instanceof ResponseValidationError);
-				assert.equal(error.location, "body");
-				return true;
+		const error = await handleHttpRoute(
+			{
+				route: routeWithDeclaredErrorResponse,
+				handler: () => {
+					throw new RouteResponseError(routeWithDeclaredErrorResponse, {
+						status: 404,
+						body: { code: "gone" },
+					} as never);
+				},
+			},
+			{
+				request: {},
+				handlerFields: {},
+				context: {},
 			},
 		);
+		assert.ok(error instanceof ResponseValidationError);
+		assert.equal(error.location, "body");
 	});
 
 	it("throws an ordinary error when RouteResponseError targets an undeclared status", async () => {

@@ -129,71 +129,67 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 			metadata.route,
 		);
 
-		try {
-			const result = await handleHttpRoute(
-				{
-					route: metadata.route,
-					handler: implementation["~restrpc"].handler,
+		const result = await handleHttpRoute(
+			{
+				route: metadata.route,
+				handler: implementation["~restrpc"].handler,
+			},
+			{
+				request: {
+					body: req.body,
+					query: new URL(rawRequest.url ?? "/", "http://localhost")
+						.searchParams,
+					params: req.params,
+					headers: req.headers,
 				},
-				{
-					request: {
-						body: req.body,
-						query: new URL(rawRequest.url ?? "/", "http://localhost")
-							.searchParams,
-						params: req.params,
-						headers: req.headers,
-					},
-					context: userContext ?? {},
-					handlerFields: {
-						executionContext: context,
-						signal,
-					},
+				context: userContext ?? {},
+				handlerFields: {
+					executionContext: context,
+					signal,
 				},
-			);
+			},
+		);
 
-			return handleHttpRouteResult(result, {
-				setHeader: (name, value) => {
-					if (value !== undefined) {
-						const headerValue = Array.isArray(value)
-							? value.map(String)
-							: String(value);
-						adapter.setHeader(res, name, headerValue as string);
-					}
-				},
-				sendEmpty: (status) => {
-					adapter.status(res, status);
-					return undefined;
-				},
-				sendJson: (status, body) => {
-					adapter.status(res, status);
-					return body;
-				},
-				sendCustom: (status, body) => {
-					adapter.status(res, status);
-					if (body instanceof Uint8Array) return new StreamableFile(body);
-					return String(body);
-				},
-				sendStream: ({ body, status, contentType }) => {
-					adapter.status(res, status);
-					if (adapter.getType() === "express") {
-						return writeStreamResponse(body, rawResponse, status, contentType);
-					}
-
-					return new StreamableFile(createNodeResponseStream(body), {
-						type: contentType,
-					});
-				},
-			});
-		} catch (error) {
-			if (error instanceof RequestValidationError) {
-				throw new RequestValidationException(error);
-			}
-
-			if (error instanceof ResponseValidationError) {
-				throw new ResponseValidationException(error);
-			}
-
-			throw error;
+		if (result instanceof RequestValidationError) {
+			throw new RequestValidationException(result);
 		}
+
+		if (result instanceof ResponseValidationError) {
+			throw new ResponseValidationException(result);
+		}
+
+		return handleHttpRouteResult(result, {
+			setHeader: (name, value) => {
+				if (value !== undefined) {
+					const headerValue = Array.isArray(value)
+						? value.map(String)
+						: String(value);
+					adapter.setHeader(res, name, headerValue as string);
+				}
+			},
+			sendEmpty: (status) => {
+				adapter.status(res, status);
+				return undefined;
+			},
+			sendJson: (status, body) => {
+				adapter.status(res, status);
+				return body;
+			},
+			sendCustom: (status, body) => {
+				adapter.status(res, status);
+				if (body instanceof Uint8Array) return new StreamableFile(body);
+				return String(body);
+			},
+			sendStream: ({ body, status, contentType }) => {
+				adapter.status(res, status);
+				if (adapter.getType() === "express") {
+					return writeStreamResponse(body, rawResponse, status, contentType);
+				}
+
+				return new StreamableFile(createNodeResponseStream(body), {
+					type: contentType,
+				});
+			},
+		});
 	}
 }

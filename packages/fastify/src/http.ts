@@ -76,61 +76,49 @@ export const registerFastifyHttpRoutes = (
 						.send({ message: rejection.message });
 				}
 
-				try {
-					const signal = createRequestSignal(req.raw, reply.raw);
-					const result = await handleHttpRoute(implementation, {
-						request: {
-							body: req.body,
-							query: new URL(req.raw.url ?? "/", "http://localhost")
-								.searchParams,
-							params: req.params,
-							headers: req.headers,
-						},
-						context: {},
-						handlerFields: { req, reply, signal },
-					});
-
-					return handleHttpRouteResult(result, {
-						setHeader: (name, value) => reply.header(name, value),
-						sendEmpty: (status) => reply.status(status).send(),
-						sendJson: (status, body) => reply.status(status).send(body),
-						sendCustom: (status, body) =>
-							reply
-								.status(status)
-								.send(
-									body instanceof Uint8Array ? Buffer.from(body) : String(body),
-								),
-						sendStream: ({ body, status, contentType }) =>
-							reply
-								.status(status)
-								.type(contentType)
-								.send(createNodeResponseStream(body)),
-					});
-				} catch (error) {
-					if (error instanceof RequestValidationError) {
-						if (requestValidationErrorHandler) {
-							return requestValidationErrorHandler(error, req, reply);
-						}
-
-						return reply.status(400).send({
-							message:
-								"Request validation failed. Check the validationErrors field for details.",
-							validationErrors: error.issues,
-						});
+				const signal = createRequestSignal(req.raw, reply.raw);
+				const result = await handleHttpRoute(implementation, {
+					request: {
+						body: req.body,
+						query: new URL(req.raw.url ?? "/", "http://localhost").searchParams,
+						params: req.params,
+						headers: req.headers,
+					},
+					context: {},
+					handlerFields: { req, reply, signal },
+				});
+				if (result instanceof RequestValidationError) {
+					if (requestValidationErrorHandler) {
+						return requestValidationErrorHandler(result, req, reply);
 					}
 
-					if (error instanceof ResponseValidationError) {
-						if (responseValidationErrorHandler) {
-							return responseValidationErrorHandler(error, req, reply);
-						}
-
-						return reply.status(500).send({
-							message: "Response validation failed.",
-						});
-					}
-
-					throw error;
+					return reply.status(result.status).send(result.responseBody);
 				}
+
+				if (result instanceof ResponseValidationError) {
+					if (responseValidationErrorHandler) {
+						return responseValidationErrorHandler(result, req, reply);
+					}
+
+					return reply.status(result.status).send(result.responseBody);
+				}
+
+				return handleHttpRouteResult(result, {
+					setHeader: (name, value) => reply.header(name, value),
+					sendEmpty: (status) => reply.status(status).send(),
+					sendJson: (status, body) => reply.status(status).send(body),
+					sendCustom: (status, body) =>
+						reply
+							.status(status)
+							.send(
+								body instanceof Uint8Array ? Buffer.from(body) : String(body),
+							),
+					sendStream: ({ body, status, contentType }) =>
+						reply
+							.status(status)
+							.type(contentType)
+							.send(createNodeResponseStream(body)),
+				});
 			},
 		);
 	}

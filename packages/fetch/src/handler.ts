@@ -113,41 +113,50 @@ export function createRouteHandler(
 			body,
 		};
 
-		try {
-			const implementation = matched.implementation;
-			const result = await handleHttpRoute(implementation, {
-				request: parsedRequest,
-				context: contextArguments[0] ?? {},
-				handlerFields: { request, signal: request.signal },
-			});
-
-			return { matched: true, response: await createFetchResponse(result) };
-		} catch (error) {
-			if (error instanceof RequestValidationError) {
-				const response = options.requestValidationErrorHandler
-					? await options.requestValidationErrorHandler(error, request)
-					: Response.json(
-							{
-								message:
-									"Request validation failed. Check the validationErrors field for details.",
-								validationErrors: error.issues,
-							},
-							{ status: 400 },
-						);
-				return { matched: true, response };
+		const implementation = matched.implementation;
+		const result = await handleHttpRoute(implementation, {
+			request: parsedRequest,
+			context: contextArguments[0] ?? {},
+			handlerFields: { request, signal: request.signal },
+		});
+		if (result instanceof RequestValidationError) {
+			if (options.requestValidationErrorHandler) {
+				return {
+					matched: true,
+					response: await options.requestValidationErrorHandler(
+						result,
+						request,
+					),
+				};
 			}
 
-			if (error instanceof ResponseValidationError) {
-				const response = options.responseValidationErrorHandler
-					? await options.responseValidationErrorHandler(error, request)
-					: Response.json(
-							{ message: "Response validation failed." },
-							{ status: 500 },
-						);
-				return { matched: true, response };
-			}
-
-			throw error;
+			return {
+				matched: true,
+				response: Response.json(result.responseBody, {
+					status: result.status,
+				}),
+			};
 		}
+
+		if (result instanceof ResponseValidationError) {
+			if (options.responseValidationErrorHandler) {
+				return {
+					matched: true,
+					response: await options.responseValidationErrorHandler(
+						result,
+						request,
+					),
+				};
+			}
+
+			return {
+				matched: true,
+				response: Response.json(result.responseBody, {
+					status: result.status,
+				}),
+			};
+		}
+
+		return { matched: true, response: await createFetchResponse(result) };
 	};
 }

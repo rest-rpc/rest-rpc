@@ -1,3 +1,7 @@
+import {
+	RequestValidationError,
+	ResponseValidationError,
+} from "./validationErrors.ts";
 import type {
 	ResponseBodySchema,
 	ResponseDeclaration,
@@ -265,6 +269,7 @@ const getHandlerRequestFields = (
 
 /**
  * Validates an HTTP request, invokes a route handler, and normalizes its result.
+ * Returns validation errors for adapter handling; other failures propagate.
  */
 export async function handleHttpRoute<
 	TAdditionalHandlerFields extends object = Record<never, never>,
@@ -272,59 +277,72 @@ export async function handleHttpRoute<
 >(
 	implementation: RuntimeImplementation,
 	options: HandleHttpRouteOptions<TAdditionalHandlerFields, TContext>,
-): Promise<HttpRouteResult> {
-	const { route } = implementation;
-	const handler = implementation.handler as RuntimeRouteHandler;
-	const validatedRequest = await validateRequestSegments(
-		route,
-		options.request,
-	);
-
-	let handlerResult: unknown;
+): Promise<HttpRouteResult | RequestValidationError | ResponseValidationError> {
 	try {
-		handlerResult = await handler({
-			...getHandlerRequestFields(route, validatedRequest),
-			...options.handlerFields,
-			context: options.context,
+		const { route } = implementation;
+		const handler = implementation.handler as RuntimeRouteHandler;
+		const validatedRequest = await validateRequestSegments(
 			route,
-		});
-	} catch (error) {
-		if (error instanceof RouteResponseError) {
-			return normalizeRouteResponseError(route, error);
-		}
-		throw error;
-	}
+			options.request,
+		);
 
-	const hasDeclaredResponses = Object.keys(route.responses).length > 0;
-	if (!hasDeclaredResponses) {
-		return hasStatus(handlerResult)
-			? classifyImplicitHttpResponse(handlerResult)
-			: classifyImplicitProcedureResponse(handlerResult);
-	}
-
-	if (usesPlainOutput(route)) {
-		const response = getResponseSchema(route, 200);
-		if (
-			response.kind !== "stream" &&
-			response.contentType !== "application/json"
-		) {
-			if (!isCustomProcedureOutput(handlerResult)) {
-				throw new Error(
-					"Custom procedure output must return { contentType, data }.",
-				);
+		let handlerResult: unknown;
+		try {
+			handlerResult = await handler({
+				...getHandlerRequestFields(route, validatedRequest),
+				...options.handlerFields,
+				context: options.context,
+				route,
+			});
+		} catch (error) {
+			if (error instanceof RouteResponseError) {
+				return await normalizeRouteResponseError(route, error);
 			}
-			return normalizeResponseResult(route, {
+			throw error;
+		}
+
+		const hasDeclaredResponses = Object.keys(route.responses).length > 0;
+		if (!hasDeclaredResponses) {
+			return hasStatus(handlerResult)
+				? classifyImplicitHttpResponse(handlerResult)
+				: classifyImplicitProcedureResponse(handlerResult);
+		}
+
+		if (usesPlainOutput(route)) {
+			const response = getResponseSchema(route, 200);
+			if (
+				response.kind !== "stream" &&
+				response.contentType !== "application/json"
+			) {
+				if (!isCustomProcedureOutput(handlerResult)) {
+					throw new Error(
+						"Custom procedure output must return { contentType, data }.",
+					);
+				}
+				return await normalizeResponseResult(route, {
+					status: 200,
+					body: handlerResult.data,
+					contentType: handlerResult.contentType,
+				});
+			}
+
+			return await normalizeResponseResult(route, {
 				status: 200,
-				body: handlerResult.data,
-				contentType: handlerResult.contentType,
+				body: handlerResult,
 			});
 		}
 
-		return normalizeResponseResult(route, { status: 200, body: handlerResult });
+		return await normalizeResponseResult(
+			route,
+			handlerResult as DeclaredResponseEnvelope,
+		);
+	} catch (error) {
+		if (
+			error instanceof RequestValidationError ||
+			error instanceof ResponseValidationError
+		) {
+			return error;
+		}
+		throw error;
 	}
-
-	return normalizeResponseResult(
-		route,
-		handlerResult as DeclaredResponseEnvelope,
-	);
 }

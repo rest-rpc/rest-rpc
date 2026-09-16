@@ -78,9 +78,10 @@ export const registerExpressHttpRoutes = (
 					.json({ message: rejection.message });
 			}
 
+			let result;
 			try {
 				const signal = createRequestSignal(req, res);
-				const result = await handleHttpRoute(implementation, {
+				result = await handleHttpRoute(implementation, {
 					request: {
 						body: req.body,
 						query: new URL(req.originalUrl, "http://localhost").searchParams,
@@ -90,32 +91,34 @@ export const registerExpressHttpRoutes = (
 					context: {},
 					handlerFields: { req, res, signal },
 				});
+			} catch (error) {
+				return next(error);
+			}
 
+			if (result instanceof RequestValidationError) {
+				return requestValidationErrorHandler
+					? requestValidationErrorHandler(result, req, res, next)
+					: res.status(result.status).json(result.responseBody);
+			}
+
+			if (result instanceof ResponseValidationError) {
+				if (responseValidationErrorHandler) {
+					return responseValidationErrorHandler(result, req, res, next);
+				}
+				if (res.headersSent) return next(result);
+				return res.status(result.status).json(result.responseBody);
+			}
+
+			try {
 				return await writeNodeResponse(result, res);
 			} catch (error) {
-				if (error instanceof RequestValidationError) {
-					if (requestValidationErrorHandler) {
-						return requestValidationErrorHandler(error, req, res, next);
-					}
-
-					return res.status(400).json({
-						message:
-							"Request validation failed. Check the validationErrors field for details.",
-						validationErrors: error.issues,
-					});
-				}
-
 				if (error instanceof ResponseValidationError) {
 					if (responseValidationErrorHandler) {
 						return responseValidationErrorHandler(error, req, res, next);
 					}
-
 					if (res.headersSent) return next(error);
-					return res.status(500).json({
-						message: "Response validation failed.",
-					});
+					return res.status(error.status).json(error.responseBody);
 				}
-
 				return next(error);
 			}
 		};

@@ -113,54 +113,48 @@ export function createRouteHandler(
 			body,
 		};
 
-		try {
-			const implementation = matched.implementation;
-			const result = await handleHttpRoute(implementation, {
-				request: parsedRequest,
-				context: contextArguments[0] ?? {},
-				handlerFields: { req: request, res: response, signal },
-			});
-			if (!response.destroyed) await writeNodeResponse(result, response);
+		const result = await handleHttpRoute(matched.implementation, {
+			request: parsedRequest,
+			context: contextArguments[0] ?? {},
+			handlerFields: { req: request, res: response, signal },
+		});
+
+		if (result instanceof RequestValidationError) {
+			if (options.requestValidationErrorHandler) {
+				await options.requestValidationErrorHandler(result, request, response);
+			} else {
+				response.statusCode = result.status;
+				response.setHeader("content-type", "application/json");
+				response.end(JSON.stringify(result.responseBody));
+			}
 			return { matched: true };
-		} catch (error) {
-			if (error instanceof RequestValidationError) {
-				if (options.requestValidationErrorHandler) {
-					await options.requestValidationErrorHandler(error, request, response);
-					return { matched: true };
-				}
-
-				response.statusCode = 400;
-				response.setHeader("content-type", "application/json");
-				response.end(
-					JSON.stringify({
-						message:
-							"Request validation failed. Check the validationErrors field for details.",
-						validationErrors: error.issues,
-					}),
-				);
-				return { matched: true };
-			}
-
-			if (error instanceof ResponseValidationError) {
-				if (options.responseValidationErrorHandler) {
-					await options.responseValidationErrorHandler(
-						error,
-						request,
-						response,
-					);
-					return { matched: true };
-				}
-
-				if (response.headersSent) throw error;
-				response.statusCode = 500;
-				response.setHeader("content-type", "application/json");
-				response.end(
-					JSON.stringify({ message: "Response validation failed." }),
-				);
-				return { matched: true };
-			}
-
-			throw error;
 		}
+
+		if (result instanceof ResponseValidationError) {
+			if (options.responseValidationErrorHandler) {
+				await options.responseValidationErrorHandler(result, request, response);
+			} else {
+				if (response.headersSent) throw result;
+				response.statusCode = result.status;
+				response.setHeader("content-type", "application/json");
+				response.end(JSON.stringify(result.responseBody));
+			}
+			return { matched: true };
+		}
+
+		try {
+			if (!response.destroyed) await writeNodeResponse(result, response);
+		} catch (error) {
+			if (!(error instanceof ResponseValidationError)) throw error;
+			if (options.responseValidationErrorHandler) {
+				await options.responseValidationErrorHandler(error, request, response);
+			} else {
+				if (response.headersSent) throw error;
+				response.statusCode = error.status;
+				response.setHeader("content-type", "application/json");
+				response.end(JSON.stringify(error.responseBody));
+			}
+		}
+		return { matched: true };
 	};
 }
