@@ -24,6 +24,9 @@ describe("handleHttpRoute", () => {
 			route,
 			(request) => {
 				assert.deepEqual(request, {
+					body: undefined,
+					query: undefined,
+					headers: undefined,
 					params: { id: 123 },
 					frameworkValue: "framework-1",
 					context: { requestId: "request-1" },
@@ -58,6 +61,9 @@ describe("handleHttpRoute", () => {
 			route,
 			(request) => {
 				assert.deepEqual(request, {
+					body: undefined,
+					params: undefined,
+					headers: undefined,
 					query: ["todo"],
 					context: {},
 					route,
@@ -273,7 +279,7 @@ describe("handleHttpRoute", () => {
 		assert.equal(stream.kind, "stream");
 	});
 
-	it("passes decoded custom procedure input and its content type", async () => {
+	it("passes acquired procedure input through schema validation", async () => {
 		const declaration = coreRoute
 			.input(z.object({ title: z.string() }), {
 				contentType: "application/x-www-form-urlencoded",
@@ -284,7 +290,6 @@ describe("handleHttpRoute", () => {
 			(request) => {
 				assert.deepEqual(request, {
 					input: { title: "Write docs" },
-					contentType: "application/x-www-form-urlencoded",
 					context: {},
 					route: declaration,
 				});
@@ -292,7 +297,7 @@ describe("handleHttpRoute", () => {
 			},
 			{
 				request: {
-					body: new URLSearchParams([["title", "Write docs"]]),
+					body: { title: "Write docs" },
 					headers: {
 						"content-type": "application/x-www-form-urlencoded",
 					},

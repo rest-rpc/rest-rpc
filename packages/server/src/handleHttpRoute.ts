@@ -6,13 +6,12 @@ import type {
 import { getRouteResponses } from "@rest-rpc/core/contract";
 import type { HttpHeaders } from "./headers.ts";
 import { RouteResponseError } from "./routeResponseError.ts";
-import { RequestValidationError } from "./validationErrors.ts";
 import type { RuntimeRouteHandler } from "./routeBuilder.types.ts";
 import type { ImplicitResponseEnvelope } from "./routeBuilder.types.ts";
 import {
 	resolveCustomResponseBody,
 	type RequestSegments,
-	validateRequest,
+	validateRequestSegments,
 	validateResponseBody,
 	validateResponseHeaders,
 	validateResponseStreamChunks,
@@ -270,10 +269,10 @@ export async function handleHttpRoute<
 	handler: RuntimeRouteHandler,
 	options: HandleHttpRouteOptions<TAdditionalHandlerFields, TContext>,
 ): Promise<HttpRouteResult> {
-	const requestValidation = await validateRequest(route, options.request);
-	if (!requestValidation.success) {
-		throw new RequestValidationError(requestValidation.issues);
-	}
+	const validatedRequest = await validateRequestSegments(
+		route,
+		options.request,
+	);
 
 	let handlerResult: unknown;
 	try {
@@ -284,14 +283,11 @@ export async function handleHttpRoute<
 					? {
 							input:
 								route.method === "GET"
-									? requestValidation.data.query
-									: requestValidation.data.body,
-							...("contentType" in requestValidation.data
-								? { contentType: requestValidation.data.contentType }
-								: {}),
+									? validatedRequest.query
+									: validatedRequest.body,
 						}
 					: {}
-				: requestValidation.data),
+				: validatedRequest),
 			context: options.context,
 			route,
 		});
