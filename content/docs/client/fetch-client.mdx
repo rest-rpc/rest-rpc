@@ -104,6 +104,7 @@ const client = initClient(api, {
 selects the first matching user rule that provides it, then falls back to the
 defaults from `@rest-rpc/core/codecs`. Rules without the requested operation are
 skipped. JSON can be overridden in either direction; declared NDJSON streaming
+requires an `application/x-ndjson` base media type and a body stream, and
 bypasses ordinary codecs.
 
 Matchers receive the lowercase base media type without parameters. The

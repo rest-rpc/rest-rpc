@@ -1,12 +1,5 @@
 import type { BodyCodec } from "./types.ts";
 
-const bufferedResponse = async (source: Request | Response) => {
-	const bytes = await source.arrayBuffer();
-	return bytes.byteLength === 0
-		? undefined
-		: new Response(bytes, { headers: source.headers });
-};
-
 /** Fetch-compatible built-in codecs, ordered from specific formats to binary fallback. */
 export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 	{
@@ -17,7 +10,7 @@ export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 			if (body === undefined) throw new TypeError("Expected a JSON body");
 			return { body };
 		},
-		deserialize: async (source) => (await bufferedResponse(source))?.json(),
+		deserialize: (source) => source.json(),
 	},
 	{
 		match: (mediaType) => mediaType === "application/x-www-form-urlencoded",
@@ -26,10 +19,7 @@ export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 				throw new TypeError("Expected URLSearchParams body");
 			return { body: value };
 		},
-		deserialize: async (source) => {
-			const response = await bufferedResponse(source);
-			return response ? new URLSearchParams(await response.text()) : undefined;
-		},
+		deserialize: async (source) => new URLSearchParams(await source.text()),
 	},
 	{
 		match: (mediaType) => mediaType === "multipart/form-data",
@@ -38,7 +28,7 @@ export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 				throw new TypeError("Expected FormData body");
 			return { body: value, contentType: null };
 		},
-		deserialize: async (source) => (await bufferedResponse(source))?.formData(),
+		deserialize: (source) => source.formData(),
 	},
 	{
 		match: (mediaType) => mediaType.startsWith("text/"),
@@ -47,7 +37,7 @@ export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 				throw new TypeError("Expected string body");
 			return { body: value };
 		},
-		deserialize: async (source) => (await bufferedResponse(source))?.text(),
+		deserialize: (source) => source.text(),
 	},
 	{
 		match: () => true,
@@ -55,6 +45,6 @@ export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 			if (!(value instanceof Blob)) throw new TypeError("Expected Blob body");
 			return { body: value };
 		},
-		deserialize: async (source) => (await bufferedResponse(source))?.blob(),
+		deserialize: (source) => source.blob(),
 	},
 ];

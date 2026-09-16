@@ -7,8 +7,10 @@ import type {
 } from "./types.ts";
 
 /** Extracts the lowercase base media type without header parameters. */
-export function normalizeMediaType(contentType: string): string {
-	return contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+export function normalizeMediaType(
+	contentType: string | undefined | null,
+): string {
+	return contentType?.split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
 /** Selects the first matching serializer, skipping rules without that operation. */

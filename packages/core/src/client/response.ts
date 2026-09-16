@@ -4,24 +4,14 @@ import {
 	type BodyCodec,
 } from "../codecs/index.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
-import type {
-	DeclaredClientResponse,
-	ResponseDeclaration,
-	SuccessfulDeclaredClientResponse,
-} from "../contract/response.ts";
+import type { ResponseDeclaration } from "../contract/response.ts";
 import { getRouteResponses } from "../contract/response.ts";
-import { validateStandardSchema } from "../standard-schema/index.ts";
+import {
+	validateStandardSchema,
+	type StandardSchemaV1,
+} from "../standard-schema/index.ts";
 import { parseNdjsonStream } from "./stream.ts";
 import type { FetchArgs } from "./types.ts";
-
-type FetchedRouteResponse<E extends RouteDeclaration> =
-	DeclaredClientResponse<E> extends infer TResponse
-		? TResponse extends object
-			? TResponse & { headers: Headers }
-			: never
-		: never;
-
-const isSuccessStatus = (status: number) => status >= 200 && status < 300;
 
 export const getResponseSchema = (
 	route: RouteDeclaration,
@@ -49,30 +39,39 @@ const assertResponseContentType = (
 	}
 };
 
-const readBody = async (
-	schema: ResponseDeclaration,
+const STREAM_CONTENT_TYPE = "application/x-ndjson";
+
+const readStreamResponse = (
+	schema: StandardSchemaV1,
 	rawResponse: Response,
 	validate: boolean,
-	generated: boolean,
-	codecs: readonly BodyCodec<Response>[] | undefined,
-	method: string,
 ) => {
-	if (method === "HEAD" || [204, 205, 304].includes(rawResponse.status))
-		return undefined;
-	if (schema.kind === "stream") {
-		if (!rawResponse.body)
-			throw new Error("Server returned an empty stream response");
-		return parseNdjsonStream(
-			validate ? schema.body : undefined,
-			rawResponse.body,
-			validate,
-		);
+	if (
+		normalizeMediaType(rawResponse.headers.get("content-type")) !==
+		STREAM_CONTENT_TYPE
+	) {
+		throw new Error("Server returned an unsupported stream content-type.");
 	}
-	if (!generated && schema.body === undefined) return undefined;
-	if (!generated) assertResponseContentType(schema.contentType, rawResponse);
-	const value = await deserializeBody(rawResponse, codecs);
-	if (!validate || schema.body === undefined) return value;
-	const result = await validateStandardSchema(schema.body, value);
+
+	if (rawResponse.body === null) {
+		throw new Error("Server returned no stream body");
+	}
+	return parseNdjsonStream(schema, rawResponse.body, validate);
+};
+
+const deserializeResponseBody = (
+	rawResponse: Response,
+	codecs: readonly BodyCodec<Response>[] | undefined,
+) =>
+	rawResponse.body === null ? undefined : deserializeBody(rawResponse, codecs);
+
+const validateResponseBody = async (
+	schema: StandardSchemaV1 | undefined,
+	value: unknown,
+	validate: boolean,
+) => {
+	if (!validate || schema === undefined) return value;
+	const result = await validateStandardSchema(schema, value);
 	if (result.issues) throw result.issues;
 	return result.value;
 };
@@ -83,14 +82,14 @@ const readDeclaredHeaders = async (
 	validate: boolean,
 ) => {
 	const { headers } = schema;
-	if (!headers) return {};
+	if (!headers) return undefined;
 
 	const rawHeaders = Object.fromEntries(rawResponse.headers.entries());
-	if (!validate) return { responseHeaders: rawHeaders };
+	if (!validate) return rawHeaders;
 
 	const result = await validateStandardSchema(headers, rawHeaders);
 	if (result.issues) throw result.issues;
-	return { responseHeaders: result.value };
+	return result.value;
 };
 
 export type RouteRequestFn = <E extends RouteDeclaration>(
@@ -106,36 +105,45 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 	route: E,
 	routePath: readonly string[],
 	...args: FetchArgs<E>
-): Promise<FetchedRouteResponse<E>> => {
+) => {
 	const rawResponse = await request(route, routePath, ...args);
-	if (
-		!Number.isInteger(rawResponse.status) ||
-		rawResponse.status < 100 ||
-		rawResponse.status > 599
-	) {
-		throw new Error(
-			`Server returned invalid HTTP response status "${rawResponse.status}".`,
-		);
-	}
 
 	const schema = getResponseSchema(route, rawResponse.status);
 	if (!schema) {
 		throw new Error("Request did not return a declared response");
 	}
-	return {
+
+	const responseMetadata = {
 		status: rawResponse.status,
-		body: await readBody(
+		headers: rawResponse.headers,
+		responseHeaders: await readDeclaredHeaders(
 			schema,
 			rawResponse,
 			validateResponse,
-			route.source === "generated",
-			bodyCodecs,
-			route.method,
 		),
-		headers: rawResponse.headers,
-		...(await readDeclaredHeaders(schema, rawResponse, validateResponse)),
-	} as FetchedRouteResponse<E>;
+	};
+
+	if (schema.kind === "stream") {
+		return {
+			...responseMetadata,
+			body: readStreamResponse(schema.body, rawResponse, validateResponse),
+		};
+	}
+
+	if (route.source !== "generated") {
+		assertResponseContentType(schema.contentType, rawResponse);
+	}
+
+	const value = await deserializeResponseBody(rawResponse, bodyCodecs);
+	const body = await validateResponseBody(schema.body, value, validateResponse);
+
+	return {
+		...responseMetadata,
+		body,
+	};
 };
+
+const isSuccessStatus = (status: number) => status >= 200 && status < 300;
 
 export const fetchSuccess = async <E extends RouteDeclaration>(
 	fetchRouteResponse: (
@@ -146,19 +154,12 @@ export const fetchSuccess = async <E extends RouteDeclaration>(
 	route: E,
 	routePath: readonly string[],
 	...args: FetchArgs<E>
-): Promise<SuccessfulClientResponseBody<E>> => {
+) => {
 	const response = await fetchRouteResponse(route, routePath, ...args);
 
-	if (!("body" in response) || !isSuccessStatus(response.status)) {
+	if (!isSuccessStatus(response.status)) {
 		throw new Error("Request did not return a declared success response");
 	}
 
-	return response.body as SuccessfulClientResponseBody<E>;
+	return response.body;
 };
-
-type SuccessfulClientResponseBody<E extends RouteDeclaration> =
-	SuccessfulDeclaredClientResponse<E> extends infer TResponse
-		? TResponse extends { body: infer TBody }
-			? TBody
-			: never
-		: never;

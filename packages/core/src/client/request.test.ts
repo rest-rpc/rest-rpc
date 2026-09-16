@@ -634,7 +634,7 @@ describe("ApiClient requests", () => {
 
 		await assert.rejects(
 			() => client.todos.create({ body: { title: "created" } }),
-			/getGlobalHeaders\(\) must not return a "content-type" header/,
+			/ApiClient request headers must not contain a "content-type" header/,
 		);
 	});
 

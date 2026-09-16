@@ -65,6 +65,7 @@ describe("ApiClient responses", () => {
 		assert.deepEqual(response, {
 			status: 404,
 			headers: new Headers(),
+			responseHeaders: undefined,
 			body: { code: "not_found" },
 		});
 	});
@@ -121,7 +122,7 @@ describe("ApiClient responses", () => {
 		assert.equal(rawResponse.bodyUsed, false);
 	});
 
-	it("rejects response statuses outside the HTTP range", async () => {
+	it("rejects an error response as an undeclared status", async () => {
 		captureFetch(Response.error());
 		const client = initClient(createResponseTestContract(), {
 			baseUrl: "https://api.test",
@@ -129,7 +130,7 @@ describe("ApiClient responses", () => {
 
 		await assert.rejects(
 			() => client.todos.get({ params: { id: "todo-1" } }),
-			/invalid HTTP response status "0"/,
+			/declared response/,
 		);
 	});
 

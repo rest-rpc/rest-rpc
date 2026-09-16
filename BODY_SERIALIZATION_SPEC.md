@@ -436,9 +436,20 @@ For a declared request body, a present unsupported media type yields HTTP
 415 before deserialization, including under framework ownership. A supported
 but malformed built-in body yields HTTP 400; an oversized built-in body yields 413. No declared request body means no codec invocation or stream read.
 Declared body schemas receive `undefined` for an absent body after media-type
-acceptance, and determine whether it is valid. A zero-byte stream is absent;
-JSON `null` is a present value. The client similarly skips ordinary parsing for
-bodyless declared responses, HEAD responses, and HTTP 204/205/304.
+acceptance, and determine whether it is valid. An absent body means the
+transport has no body stream. An existing zero-byte stream is passed to the
+selected parser without special handling: empty JSON and malformed multipart
+fail parsing, while empty text, URL-encoded data, and binary produce their
+native empty values for schema validation. JSON `null` is a present value.
+The client selects the declared response by status, then coordinates two
+branches. Declared streams require a present Content-Type whose normalized
+base type is `application/x-ndjson` and a non-null body stream; they use the
+NDJSON parser and bypass ordinary codecs. Ordinary responses first check
+declared media-type acceptance when runtime metadata is available, then
+deserialize a present body through codecs or produce `undefined` for a null
+body. Schema validation is a separate subsequent step, including for
+`undefined`. A present ordinary body is decoded even without a body schema.
+No route-method or status-specific body handling is needed.
 
 A contract-first client rejects an unexpected present response media type
 for a declared body before deserialization. A server-first client

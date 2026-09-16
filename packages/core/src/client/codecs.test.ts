@@ -137,7 +137,7 @@ describe("client body codecs", () => {
 		await assert.rejects(required.required());
 	});
 
-	it("skips bodyless declarations and HTTP bodyless statuses in both validation modes", async () => {
+	it("decodes present bodies without schemas and bypasses codecs for null bodies", async () => {
 		for (const validateResponses of [false, true]) {
 			const response = new Response("unexpected bytes", {
 				headers: { "content-type": "application/json" },
@@ -152,7 +152,7 @@ describe("client body codecs", () => {
 				bodyCodecs: [
 					{
 						match: () => {
-							throw new Error("Must not match");
+							return true;
 						},
 						deserialize: () => "wrong",
 					},
@@ -162,9 +162,68 @@ describe("client body codecs", () => {
 						? response
 						: new Response(null, { status: 204 }),
 			});
-			assert.equal((await client.empty()).body, undefined);
+			assert.equal((await client.empty()).body, "wrong");
 			assert.equal(response.bodyUsed, false);
 			assert.equal((await client.noContent()).body, undefined);
+		}
+	});
+
+	it("validates null bodies independently of HTTP status", async () => {
+		const client = initClient(
+			{
+				required: route.get("/required").response(204, z.string()),
+				optional: route.get("/optional").response(
+					204,
+					z
+						.string()
+						.optional()
+						.transform((value) => value ?? "absent"),
+				),
+			},
+			{
+				baseUrl,
+				validateResponses: true,
+				fetch: async () => new Response(null, { status: 204 }),
+			},
+		);
+		await assert.rejects(client.required());
+		assert.equal((await client.optional()).body, "absent");
+	});
+
+	it("requires NDJSON headers and a body stream in both validation modes", async () => {
+		for (const validateResponses of [false, true]) {
+			for (const contentType of [undefined, "application/json"]) {
+				const response = new Response("{}", {
+					headers: contentType ? { "content-type": contentType } : {},
+				});
+				const client = initClient(
+					{
+						events: route.get("/events").streamResponse(200, z.object({})),
+					},
+					{ baseUrl, validateResponses, fetch: async () => response },
+				);
+				await assert.rejects(
+					client.events(),
+					/unsupported stream content-type/,
+				);
+				assert.equal(response.bodyUsed, false);
+			}
+			const client = initClient(
+				{
+					events: route.get("/events").streamResponse(200, z.object({})),
+				},
+				{
+					baseUrl,
+					validateResponses,
+					fetch: async () =>
+						new Response(null, {
+							headers: {
+								"content-type": "Application/X-NDJSON; charset=utf-8",
+							},
+						}),
+				},
+			);
+			await assert.rejects(client.events(), /no stream body/);
 		}
 	});
 

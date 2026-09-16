@@ -98,7 +98,7 @@ describe("body codecs", () => {
 		}
 	});
 
-	it("returns undefined for absent and zero-byte built-in bodies but preserves JSON null", async () => {
+	it("returns undefined for absent bodies but preserves JSON null", async () => {
 		for (const type of [
 			"application/json",
 			"text/plain",
@@ -112,14 +112,34 @@ describe("body codecs", () => {
 				),
 				undefined,
 			);
-			assert.equal(
-				await deserializeBody(
-					new Response(new Uint8Array(), { headers: { "content-type": type } }),
-				),
-				undefined,
-			);
 		}
 		assert.equal(await deserializeBody(Response.json(null)), null);
+	});
+
+	it("parses zero-byte streams according to their media type", async () => {
+		const emptyResponse = (contentType: string) =>
+			new Response(new Uint8Array(), {
+				headers: { "content-type": contentType },
+			});
+		await assert.rejects(
+			deserializeBody(emptyResponse("application/json")),
+			SyntaxError,
+		);
+		await assert.rejects(
+			deserializeBody(emptyResponse("multipart/form-data; boundary=test")),
+			TypeError,
+		);
+		assert.equal(await deserializeBody(emptyResponse("text/plain")), "");
+		const form = await deserializeBody(
+			emptyResponse("application/x-www-form-urlencoded"),
+		);
+		assert.ok(form instanceof URLSearchParams);
+		assert.equal(form.size, 0);
+		const binary = await deserializeBody(
+			emptyResponse("application/octet-stream"),
+		);
+		assert.ok(binary instanceof Blob);
+		assert.equal(binary.size, 0);
 	});
 
 	it("round trips plain defaults, including structured JSON suffixes and multipart files", async () => {
