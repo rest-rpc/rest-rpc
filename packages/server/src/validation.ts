@@ -1,5 +1,4 @@
 import {
-	type BodyContentType,
 	getRequestHeaderSchemas,
 	type ResponseBodySchema,
 	type ResponseDeclaration,
@@ -93,19 +92,6 @@ const validateRequestHeaders = async (
 	return { data, errors };
 };
 
-const normalizeContentType = (contentType: string) =>
-	contentType.split(";")[0]?.trim().toLowerCase();
-
-const getDeclaredContentType = (
-	contentTypes: readonly string[],
-	contentType: string,
-) => {
-	const normalized = normalizeContentType(contentType);
-	return contentTypes.find(
-		(value) => normalizeContentType(value) === normalized,
-	);
-};
-
 export async function validateRequestSegments(
 	route: RouteDeclaration,
 	segments: RequestSegments,
@@ -178,30 +164,6 @@ export const validateResponseHeaders = async (
 			value === undefined ? [] : [[name, String(value)]],
 		),
 	);
-};
-
-export const resolveCustomResponseBody = (
-	declaredContentType: BodyContentType,
-	body: unknown,
-	selectedContentType: unknown,
-	errorMessage: string,
-): { contentType: string; body: unknown } => {
-	const declaredContentTypes = Array.isArray(declaredContentType)
-		? declaredContentType
-		: [declaredContentType as string];
-	const contentType =
-		typeof selectedContentType === "string"
-			? getDeclaredContentType(declaredContentTypes, selectedContentType)
-			: declaredContentTypes.length === 1
-				? declaredContentTypes[0]
-				: undefined;
-
-	if (!contentType) throw new Error(errorMessage);
-
-	return {
-		contentType,
-		body,
-	};
 };
 
 export const validateResponseStreamChunk = async (

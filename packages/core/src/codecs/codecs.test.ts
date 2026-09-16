@@ -33,7 +33,6 @@ describe("body codec resolution", () => {
 		]);
 		assert.deepEqual(await resolvedCodec.serialize("hello", contentType), {
 			body: "hello",
-			contentType,
 		});
 		assert.equal(
 			await resolvedCodec.deserialize(
@@ -65,7 +64,6 @@ describe("body codec resolution", () => {
 		]);
 		assert.deepEqual(await resolvedCodec!.serialize!("ignored", "text/plain"), {
 			body: "custom",
-			contentType: "text/plain",
 		});
 		assert.equal(resolvedCodec?.deserialize, codecs[2].deserialize);
 		const partial = resolveBodyCodecs("application/json", [
@@ -81,7 +79,7 @@ describe("body codec resolution", () => {
 		]);
 		assert.deepEqual(
 			await deserializeOnly!.serialize!("fallback", "text/plain"),
-			{ body: "fallback", contentType: "text/plain" },
+			{ body: "fallback" },
 		);
 	});
 

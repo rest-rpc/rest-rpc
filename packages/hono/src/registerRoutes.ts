@@ -153,7 +153,7 @@ export function registerRoutes<TEnv extends Env = Env>(
 					return c.json(result.responseBody, result.status);
 				}
 
-				return createFetchResponse(result);
+				return createFetchResponse(result, bodyCodecs);
 			},
 		);
 	}

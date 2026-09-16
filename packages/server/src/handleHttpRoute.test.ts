@@ -47,10 +47,10 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(result, {
-			kind: "json",
+			kind: "response",
 			status: 200,
 			headers: undefined,
-			body: { id: 123 },
+			body: { value: { id: 123 }, contentType: "application/json" },
 		});
 	});
 
@@ -84,7 +84,7 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(result, {
-			kind: "empty",
+			kind: "response",
 			status: 204,
 			headers: undefined,
 		});
@@ -142,9 +142,9 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(result, {
-			kind: "json",
+			kind: "response",
 			status: 200,
-			body: { id: "todo-1" },
+			body: { value: { id: "todo-1" }, contentType: "application/json" },
 		});
 		const enveloped = await handleHttpRoute(
 			{
@@ -154,9 +154,9 @@ describe("handleHttpRoute", () => {
 			{ request: {}, handlerFields: {}, context: {} },
 		);
 		assert.deepEqual(enveloped, {
-			kind: "json",
+			kind: "response",
 			status: 201,
-			body: { id: "todo-1" },
+			body: { value: { id: "todo-1" }, contentType: "application/json" },
 			headers: undefined,
 		});
 		await assert.rejects(
@@ -195,10 +195,10 @@ describe("handleHttpRoute", () => {
 		assert.deepEqual(input, { term: "go" });
 
 		assert.deepEqual(result, {
-			kind: "json",
+			kind: "response",
 			status: 200,
 			headers: undefined,
-			body: { status: "ready" },
+			body: { value: { status: "ready" }, contentType: "application/json" },
 		});
 	});
 
@@ -219,11 +219,10 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(result, {
-			kind: "custom",
+			kind: "response",
 			status: 200,
 			headers: undefined,
-			body: "todo data",
-			contentType: "text/plain",
+			body: { value: "todo data", contentType: "text/plain" },
 		});
 	});
 
@@ -298,10 +297,9 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(custom, {
-			kind: "custom",
+			kind: "response",
 			status: 200,
-			body: "event data",
-			contentType: "text/plain",
+			body: { value: "event data", contentType: "text/plain" },
 		});
 		assert.equal(stream.kind, "stream");
 	});
@@ -440,12 +438,12 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(result, {
-			kind: "json",
+			kind: "response",
 			status: 200,
 			headers: {
 				etag: "todo-etag",
 			},
-			body: { id: "todo-1" },
+			body: { value: { id: "todo-1" }, contentType: "application/json" },
 		});
 	});
 
@@ -468,10 +466,10 @@ describe("handleHttpRoute", () => {
 		);
 
 		assert.deepEqual(result, {
-			kind: "json",
+			kind: "response",
 			status: 404,
 			headers: undefined,
-			body: { code: "not_found" },
+			body: { value: { code: "not_found" }, contentType: "application/json" },
 		});
 	});
 
@@ -551,10 +549,11 @@ describe("handleHttpRoute custom responses", () => {
 			},
 		);
 
-		assert.equal(result.kind, "custom");
+		assert.equal(result.kind, "response");
+		if (result.kind !== "response") throw new Error("Expected response");
 		assert.equal(result.status, 200);
-		assert.equal(result.contentType, "text/csv");
-		assert.equal(result.body, "id,title\n1,First\n");
+		assert.equal(result.body?.contentType, "text/csv");
+		assert.equal(result.body?.value, "id,title\n1,First\n");
 	});
 
 	it("normalizes custom response bodies with selected content types", async () => {
@@ -576,10 +575,11 @@ describe("handleHttpRoute custom responses", () => {
 			},
 		);
 
-		assert.equal(result.kind, "custom");
+		assert.equal(result.kind, "response");
+		if (result.kind !== "response") throw new Error("Expected response");
 		assert.equal(result.status, 200);
-		assert.equal(result.contentType, "image/jpeg");
-		assert.equal(result.body, "jpeg bytes");
+		assert.equal(result.body?.contentType, "image/jpeg");
+		assert.equal(result.body?.value, "jpeg bytes");
 	});
 
 	it("treats an ordinary NDJSON content type as custom content", async () => {
@@ -597,8 +597,9 @@ describe("handleHttpRoute custom responses", () => {
 			},
 		);
 
-		assert.equal(result.kind, "custom");
-		assert.equal(result.contentType, "application/x-ndjson");
-		assert.equal(result.body, "event data");
+		assert.equal(result.kind, "response");
+		if (result.kind !== "response") throw new Error("Expected response");
+		assert.equal(result.body?.contentType, "application/x-ndjson");
+		assert.equal(result.body?.value, "event data");
 	});
 });

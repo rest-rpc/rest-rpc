@@ -141,7 +141,7 @@ export function registerRoutes(
 			}
 
 			try {
-				return await writeNodeResponse(result, res);
+				return await writeNodeResponse(result, res, bodyCodecs);
 			} catch (error) {
 				if (error instanceof ResponseValidationError) {
 					if (responseValidationErrorHandler) {

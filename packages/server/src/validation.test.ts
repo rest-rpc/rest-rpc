@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import { route } from "@rest-rpc/core";
 import z from "zod";
 import {
-	resolveCustomResponseBody,
 	validateRequestSegments,
 	validateResponseBody,
 	validateResponseHeaders,
@@ -310,36 +309,6 @@ describe("validateResponseHeaders", () => {
 				assert.equal(error.issues.length, 1);
 				return true;
 			},
-		);
-	});
-});
-
-describe("resolveCustomResponseBody", () => {
-	it("resolves declared custom response content types", () => {
-		assert.deepEqual(
-			resolveCustomResponseBody(
-				["image/png", "image/jpeg"],
-				"jpeg bytes",
-				"image/jpeg",
-				"Unsupported custom response body contentType.",
-			),
-			{
-				contentType: "image/jpeg",
-				body: "jpeg bytes",
-			},
-		);
-	});
-
-	it("rejects undeclared custom response content types", () => {
-		assert.throws(
-			() =>
-				resolveCustomResponseBody(
-					["image/png", "image/jpeg"],
-					"webp bytes",
-					"image/webp",
-					"Unsupported custom response body contentType.",
-				),
-			/Unsupported custom response body contentType/,
 		);
 	});
 });

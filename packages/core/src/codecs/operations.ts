@@ -48,9 +48,7 @@ export function resolveBodyCodecs<TSource>(
 							"Codec content-type must retain the declared base media type",
 						);
 					}
-					return result.contentType === undefined
-						? { ...result, contentType }
-						: result;
+					return result;
 				};
 			}
 			if (!deserialize && codec.deserialize) deserialize = codec.deserialize;

@@ -1,3 +1,5 @@
+import type { SerializedBody } from "@rest-rpc/core";
+import { nestBodyCodecs } from "./codecs.ts";
 import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
 import {
 	type CallHandler,
@@ -16,7 +18,6 @@ import {
 import {
 	assertRequestContentType,
 	handleHttpRoute,
-	handleHttpRouteResult,
 	RequestValidationError,
 	ResponseValidationError,
 } from "@rest-rpc/server";
@@ -149,38 +150,42 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 			throw new ResponseValidationException(result);
 		}
 
-		return handleHttpRouteResult(result, {
-			setHeader: (name, value) => {
-				if (value !== undefined) {
-					const headerValue = Array.isArray(value)
-						? value.map(String)
-						: String(value);
-					adapter.setHeader(res, name, headerValue as string);
-				}
-			},
-			sendEmpty: (status) => {
-				adapter.status(res, status);
-				return undefined;
-			},
-			sendJson: (status, body) => {
-				adapter.status(res, status);
-				return body;
-			},
-			sendCustom: (status, body) => {
-				adapter.status(res, status);
-				if (body instanceof Uint8Array) return new StreamableFile(body);
-				return String(body);
-			},
-			sendStream: ({ body, status, contentType }) => {
-				adapter.status(res, status);
-				if (adapter.getType() === "express") {
-					return writeStreamResponse(body, rawResponse, status, contentType);
-				}
-
-				return new StreamableFile(createNodeResponseStream(body), {
-					type: contentType,
-				});
-			},
-		});
+		let serialized: SerializedBody | undefined;
+		if (result.kind === "response" && result.body) {
+			const { value, contentType } = result.body;
+			const codec = resolveBodyCodecs(normalizeMediaType(contentType), [
+				...(this.options?.bodyCodecs ?? []),
+				...nestBodyCodecs,
+			]);
+			serialized = await codec!.serialize!(value, contentType);
+			for (const [name, value] of Object.entries(serialized.headers ?? {})) {
+				if (value !== undefined) adapter.setHeader(res, name, String(value));
+			}
+		}
+		for (const [name, value] of Object.entries(result.headers ?? {})) {
+			if (value !== undefined) {
+				const headerValue = Array.isArray(value)
+					? value.map(String)
+					: String(value);
+				adapter.setHeader(res, name, headerValue as string);
+			}
+		}
+		adapter.status(res, result.status);
+		if (result.kind === "stream") {
+			if (adapter.getType() === "express") {
+				return writeStreamResponse(result.body, rawResponse, result.status);
+			}
+			return new StreamableFile(createNodeResponseStream(result.body), {
+				type: "application/x-ndjson",
+			});
+		}
+		if (!serialized) return undefined;
+		const contentType =
+			serialized.contentType === undefined
+				? result.body!.contentType
+				: serialized.contentType;
+		if (contentType === null) res.removeHeader("content-type");
+		else adapter.setHeader(res, "content-type", contentType);
+		return serialized.body;
 	}
 }

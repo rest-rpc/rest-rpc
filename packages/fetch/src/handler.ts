@@ -174,6 +174,9 @@ export function createRouteHandler(
 			};
 		}
 
-		return { matched: true, response: await createFetchResponse(result) };
+		return {
+			matched: true,
+			response: await createFetchResponse(result, bodyCodecs),
+		};
 	};
 }

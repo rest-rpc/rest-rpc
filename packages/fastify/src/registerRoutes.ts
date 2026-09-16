@@ -1,14 +1,17 @@
-import type { BodyCodec } from "@rest-rpc/core";
+import type { BodyCodec, SerializedBody } from "@rest-rpc/core";
 import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
-import { createNodeResponseStream, createRequestSignal } from "@rest-rpc/node";
+import {
+	createNodeResponseStream,
+	createRequestSignal,
+	nodeBodyCodecs,
+} from "@rest-rpc/node";
 import {
 	type RuntimeImplementationTree,
 	flattenRouteImplementations,
 	assertRequestContentType,
 	handleHttpRoute,
-	handleHttpRouteResult,
 	RequestValidationError,
 	ResponseValidationError,
 } from "@rest-rpc/server";
@@ -134,22 +137,38 @@ export function registerRoutes(
 					return reply.status(result.status).send(result.responseBody);
 				}
 
-				return handleHttpRouteResult(result, {
-					setHeader: (name, value) => reply.header(name, value),
-					sendEmpty: (status) => reply.status(status).send(),
-					sendJson: (status, body) => reply.status(status).send(body),
-					sendCustom: (status, body) =>
-						reply
-							.status(status)
-							.send(
-								body instanceof Uint8Array ? Buffer.from(body) : String(body),
-							),
-					sendStream: ({ body, status, contentType }) =>
-						reply
-							.status(status)
-							.type(contentType)
-							.send(createNodeResponseStream(body)),
-				});
+				let serialized: SerializedBody | undefined;
+				if (result.kind === "response" && result.body) {
+					const { value, contentType } = result.body;
+					const codec = resolveBodyCodecs(normalizeMediaType(contentType), [
+						...bodyCodecs,
+						...nodeBodyCodecs,
+					]);
+					serialized = await codec!.serialize!(value, contentType);
+					for (const [name, value] of Object.entries(
+						serialized.headers ?? {},
+					)) {
+						if (value !== undefined) reply.header(name, value);
+					}
+				}
+				for (const [name, value] of Object.entries(result.headers ?? {})) {
+					if (value !== undefined) reply.header(name, value);
+				}
+				if (result.kind === "stream") {
+					return reply
+						.status(result.status)
+						.type("application/x-ndjson")
+						.send(createNodeResponseStream(result.body));
+				}
+				reply.status(result.status);
+				if (!serialized) return reply.send();
+				const contentType =
+					serialized.contentType === undefined
+						? result.body!.contentType
+						: serialized.contentType;
+				if (contentType === null) reply.removeHeader("content-type");
+				else reply.type(contentType);
+				return reply.send(serialized.body);
 			},
 		);
 	}

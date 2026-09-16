@@ -160,7 +160,8 @@ export function createRouteHandler(
 		}
 
 		try {
-			if (!response.destroyed) await writeNodeResponse(result, response);
+			if (!response.destroyed)
+				await writeNodeResponse(result, response, bodyCodecs);
 		} catch (error) {
 			if (!(error instanceof ResponseValidationError)) throw error;
 			if (options.responseValidationErrorHandler) {

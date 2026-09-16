@@ -238,7 +238,10 @@ export const executeRequest = async <E extends RouteDeclaration>(
 			value === undefined ? [] : [[name, String(value)]],
 		),
 	);
-	const outgoingContentType = serialized?.contentType;
+	const outgoingContentType =
+		serialized?.contentType === undefined
+			? contentType
+			: serialized.contentType;
 	const headers = (await options.getGlobalHeaders?.()) ?? {};
 	assertNoContentTypeHeader(headers);
 	const signalState = createRequestSignal(

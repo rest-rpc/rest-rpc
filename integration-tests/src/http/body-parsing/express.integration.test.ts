@@ -129,9 +129,7 @@ describe("express user request codecs", () => {
 				},
 				{
 					match: () => true,
-					serialize: () => {
-						throw new Error("request serialization");
-					},
+					serialize: (value) => ({ body: JSON.stringify(value) }),
 				},
 			],
 		});

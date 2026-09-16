@@ -110,9 +110,7 @@ for (const factory of factories)
 					},
 					{
 						match: () => true,
-						serialize: () => {
-							throw new Error("request serialization");
-						},
+						serialize: (value) => ({ body: JSON.stringify(value) }),
 					},
 				])
 				.start();

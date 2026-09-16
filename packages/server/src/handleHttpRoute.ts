@@ -1,9 +1,9 @@
+import { normalizeMediaType } from "@rest-rpc/core/codecs";
 import {
 	RequestValidationError,
 	ResponseValidationError,
 } from "./validationErrors.ts";
 import type {
-	ResponseBodySchema,
 	ResponseDeclaration,
 	RouteDeclaration,
 } from "@rest-rpc/core/contract";
@@ -14,7 +14,6 @@ import type { RuntimeRouteHandler } from "./routeBuilder.types.ts";
 import type { RuntimeImplementation } from "./match.ts";
 import type { ImplicitResponseEnvelope } from "./routeBuilder.types.ts";
 import {
-	resolveCustomResponseBody,
 	type RequestSegments,
 	validateRequestSegments,
 	validateResponseBody,
@@ -22,26 +21,20 @@ import {
 	validateResponseStreamChunks,
 } from "./validation.ts";
 
-type HttpRouteResultBase = {
-	status: number;
-	headers?: HttpHeaders;
-};
-
-/**
- * A normalized HTTP route result ready for an adapter-specific writer.
- */
+/** A validated logical response for adapter-specific serialization and delivery. */
 export type HttpRouteResult =
-	| (HttpRouteResultBase & { kind: "empty" })
-	| (HttpRouteResultBase & { kind: "json"; body: unknown })
-	| (HttpRouteResultBase & {
-			kind: "custom";
-			body: unknown;
-			contentType: string;
-	  })
-	| (HttpRouteResultBase & {
+	| {
+			kind: "response";
+			status: number;
+			headers?: HttpHeaders;
+			body?: { value: unknown; contentType: string };
+	  }
+	| {
 			kind: "stream";
+			status: number;
+			headers?: HttpHeaders;
 			body: AsyncIterable<unknown>;
-	  });
+	  };
 
 /**
  * Inputs needed to invoke and normalize one HTTP route handler.
@@ -77,7 +70,7 @@ const usesPlainOutput = (route: RouteDeclaration) =>
 const hasStatus = (value: unknown): value is ImplicitResponseEnvelope =>
 	typeof value === "object" && value !== null && "status" in value;
 
-const classifyImplicitProcedureResponse = (
+const normalizeImplicitProcedureResponse = (
 	output: unknown,
 ): HttpRouteResult => {
 	if (isAsyncIterable(output)) {
@@ -85,16 +78,19 @@ const classifyImplicitProcedureResponse = (
 	}
 	if (isCustomProcedureOutput(output)) {
 		return {
-			kind: "custom",
+			kind: "response",
 			status: 200,
-			body: output.data,
-			contentType: output.contentType,
+			body: { value: output.data, contentType: output.contentType },
 		};
 	}
-	return { kind: "json", status: 200, body: output };
+	return {
+		kind: "response",
+		status: 200,
+		body: { value: output, contentType: "application/json" },
+	};
 };
 
-const classifyImplicitHttpResponse = (
+const normalizeImplicitHttpResponse = (
 	response: ImplicitResponseEnvelope,
 ): HttpRouteResult => {
 	if (
@@ -109,7 +105,7 @@ const classifyImplicitHttpResponse = (
 	const headers = response.responseHeaders;
 	if (!("body" in response)) {
 		return {
-			kind: "empty",
+			kind: "response",
 			status: response.status,
 			headers,
 		};
@@ -125,18 +121,15 @@ const classifyImplicitHttpResponse = (
 		};
 	}
 
-	const { contentType } = response;
-	if (contentType !== undefined) {
-		return {
-			kind: "custom",
-			status: response.status,
-			headers,
-			body,
-			contentType,
-		};
-	}
-
-	return { kind: "json", status: response.status, headers, body };
+	return {
+		kind: "response",
+		status: response.status,
+		headers,
+		body: {
+			value: body,
+			contentType: response.contentType ?? "application/json",
+		},
+	};
 };
 
 const getResponseSchema = (
@@ -162,23 +155,21 @@ type DeclaredResponseEnvelope = {
 	responseHeaders?: Record<string, unknown>;
 };
 
-const normalizeCustomBodyResult = async (
-	schema: ResponseBodySchema,
-	declaredContentType: string | readonly string[],
-	body: unknown,
-	contentType: unknown,
-) => {
-	const result = resolveCustomResponseBody(
-		declaredContentType,
-		body,
-		contentType,
-		"Unsupported custom response body contentType.",
-	);
-
-	return {
-		contentType: result.contentType,
-		body: await validateResponseBody(schema, result.body),
-	};
+const selectResponseContentType = (
+	declared: string | readonly string[],
+	selected: unknown,
+): string => {
+	const types = typeof declared === "string" ? [declared] : declared;
+	const contentType =
+		typeof selected === "string"
+			? types.find(
+					(type) => normalizeMediaType(type) === normalizeMediaType(selected),
+				)
+			: types.length === 1
+				? types[0]
+				: undefined;
+	if (!contentType) throw new Error("Unsupported response body contentType.");
+	return contentType;
 };
 
 const normalizeResponseResult = async (
@@ -187,15 +178,11 @@ const normalizeResponseResult = async (
 ): Promise<HttpRouteResult> => {
 	const schema = getResponseSchema(route, result.status);
 	const bodySchema = schema.body;
-	const declaredHeaders = await validateResponseHeaders(
-		schema,
-		result.responseHeaders,
-	);
-	const headers = declaredHeaders;
+	const headers = await validateResponseHeaders(schema, result.responseHeaders);
 
 	if (bodySchema === undefined) {
 		return {
-			kind: "empty",
+			kind: "response",
 			status: result.status,
 			headers,
 		};
@@ -213,37 +200,17 @@ const normalizeResponseResult = async (
 		};
 	}
 
-	const declaredContentType = schema.contentType;
-	if (declaredContentType === "application/json") {
-		return {
-			kind: "json",
-			status: result.status,
-			headers,
-			body: await validateResponseBody(bodySchema, result.body),
-		};
-	}
-
-	if (declaredContentType !== undefined) {
-		const customResult = await normalizeCustomBodyResult(
-			bodySchema,
-			declaredContentType,
-			result.body,
-			result.contentType,
-		);
-		return {
-			kind: "custom",
-			status: result.status,
-			headers,
-			contentType: customResult.contentType,
-			body: customResult.body,
-		};
-	}
-
 	return {
-		kind: "json",
+		kind: "response",
 		status: result.status,
 		headers,
-		body: await validateResponseBody(bodySchema, result.body),
+		body: {
+			value: await validateResponseBody(bodySchema, result.body),
+			contentType: selectResponseContentType(
+				schema.contentType ?? "application/json",
+				result.contentType,
+			),
+		},
 	};
 };
 
@@ -304,8 +271,8 @@ export async function handleHttpRoute<
 		const hasDeclaredResponses = Object.keys(route.responses).length > 0;
 		if (!hasDeclaredResponses) {
 			return hasStatus(handlerResult)
-				? classifyImplicitHttpResponse(handlerResult)
-				: classifyImplicitProcedureResponse(handlerResult);
+				? normalizeImplicitHttpResponse(handlerResult)
+				: normalizeImplicitProcedureResponse(handlerResult);
 		}
 
 		if (usesPlainOutput(route)) {
