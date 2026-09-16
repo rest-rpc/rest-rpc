@@ -1,3 +1,4 @@
+import { initClient } from "@rest-rpc/core";
 import type { IncomingMessage } from "node:http";
 import type {
 	BodyCodec,
@@ -33,3 +34,29 @@ expectType<BodyDeserializer<IncomingMessage> | undefined>(
 expectError(deserializeBody(new Response(), [native]));
 expectType<Promise<unknown>>(deserializeBody(new Response()));
 expectType<Promise<SerializedBody>>(serializeBody({}, "application/json"));
+
+// Client option inference provides the concrete Fetch Response source.
+initClient(
+	{},
+	{
+		baseUrl: "https://example.test",
+		bodyCodecs: [
+			{
+				match: () => true,
+				deserialize: (source) => {
+					expectType<Response>(source);
+					return source.text();
+				},
+			},
+		],
+	},
+);
+expectError(
+	initClient({}, { baseUrl: "https://example.test", bodyCodecs: [native] }),
+);
+expectError(
+	initClient(
+		{},
+		{ baseUrl: "https://example.test", bodyParser: () => undefined },
+	),
+);

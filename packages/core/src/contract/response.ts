@@ -97,18 +97,6 @@ export type ServerResponseBody<TResponse> =
 				: never
 		: never;
 
-type ClientResponseMetadata<TResponse> = TResponse extends {
-	contentType: infer TContentType;
-}
-	? TContentType extends "application/json"
-		? unknown
-		: TContentType extends readonly string[]
-			? { contentType: TContentType[number] }
-			: TContentType extends string
-				? { contentType: TContentType }
-				: unknown
-	: unknown;
-
 type ServerResponseMetadata<TResponse> = TResponse extends {
 	contentType: infer TContentType;
 }
@@ -157,7 +145,6 @@ type ClientResponseEntry<TStatus extends number, TResponse> = ResponseEntry<
 	TStatus,
 	InferClientResponseBody<TResponse>
 > &
-	ClientResponseMetadata<TResponse> &
 	ResponseHeadersMetadata<TResponse, "output"> extends infer TEntry
 	? Simplify<TEntry>
 	: never;

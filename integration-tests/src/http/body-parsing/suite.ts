@@ -147,6 +147,24 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 		it("parses urlencoded form request bodies as validated objects", async () => {
 			const client = initClient(bodyParsingContract, {
 				baseUrl: server.origin,
+				bodyCodecs: [
+					{
+						match: (mediaType) =>
+							mediaType === "application/x-www-form-urlencoded",
+						serialize(value) {
+							const body = new URLSearchParams();
+							for (const [key, field] of Object.entries(
+								value as Record<string, unknown>,
+							)) {
+								if (Array.isArray(field)) {
+									for (const item of field)
+										body.append(`${key}[]`, String(item));
+								} else if (field !== undefined) body.append(key, String(field));
+							}
+							return { body };
+						},
+					},
+				],
 			});
 
 			const responseResponse = await client.formUrlEncoded({
@@ -168,6 +186,24 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 		it("parses empty-bracket arrays in query and urlencoded form fields", async () => {
 			const client = initClient(bodyParsingContract, {
 				baseUrl: server.origin,
+				bodyCodecs: [
+					{
+						match: (mediaType) =>
+							mediaType === "application/x-www-form-urlencoded",
+						serialize(value) {
+							const body = new URLSearchParams();
+							for (const [key, field] of Object.entries(
+								value as Record<string, unknown>,
+							)) {
+								if (Array.isArray(field)) {
+									for (const item of field)
+										body.append(`${key}[]`, String(item));
+								} else if (field !== undefined) body.append(key, String(field));
+							}
+							return { body };
+						},
+					},
+				],
 			});
 
 			const response = await client.formUrlEncoded({

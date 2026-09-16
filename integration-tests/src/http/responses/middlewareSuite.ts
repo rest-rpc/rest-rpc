@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { initClient, type ApiClientFor } from "@rest-rpc/core";
 import type { StartedServer } from "../harness/listen.ts";
-import { responsesContract } from "./contract.ts";
-
-type ResponsesClient = ApiClientFor<typeof responsesContract>;
 
 type MiddlewareSuiteAdapter = {
 	name: string;
@@ -17,11 +13,9 @@ export const runResponseMiddlewareHeadersSuite = (
 ) => {
 	describe(`${adapter.name} response middleware headers integration`, () => {
 		let server: StartedServer;
-		let client: ResponsesClient;
 
 		before(async () => {
 			server = await adapter.start();
-			client = initClient(responsesContract, { baseUrl: server.origin });
 		});
 
 		after(async () => {
@@ -29,13 +23,17 @@ export const runResponseMiddlewareHeadersSuite = (
 		});
 
 		it("preserves headers written by framework middleware", async () => {
-			const response = await client.jsonContentType();
+			// This fixture deliberately overrides its declared JSON media type.
+			// Inspect native delivery directly; the client now rejects that mismatch.
+			const response = await fetch(
+				`${server.origin}/responses/json-content-type`,
+			);
 
 			assert.equal(response.status, 200);
 			for (const [name, value] of Object.entries(expectedHeaders)) {
 				assert.equal(response.headers.get(name), value);
 			}
-			assert.deepEqual(response.body, { ok: true });
+			assert.deepEqual(await response.json(), { ok: true });
 		});
 	});
 };

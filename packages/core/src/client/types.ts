@@ -1,3 +1,4 @@
+import type { BodyCodec } from "../codecs/index.ts";
 import type { Contract, RouteDeclaration } from "../contract/contract.ts";
 import type { ClientRequest } from "../contract/request.ts";
 import type {
@@ -23,11 +24,6 @@ export type FetchLike = (
 	input: string | URL | Request,
 	init?: RequestInit,
 ) => Promise<Response>;
-
-/** Parses a non-stream, non-JSON response body for an API client. */
-export type ApiClientBodyParser = (
-	response: Response,
-) => unknown | Promise<unknown>;
 
 export type HeaderRecord = Record<string, string>;
 
@@ -183,7 +179,7 @@ export type ApiClientOptions<
 	TGlobalHeaders extends HeaderRecord = Record<never, string>,
 > = {
 	baseUrl: string;
-	bodyParser?: ApiClientBodyParser;
+	bodyCodecs?: readonly BodyCodec<Response>[];
 	fetch?: FetchLike;
 	fetchOptions?: ApiClientFetchOptions;
 	getGlobalHeaders?: GetHeadersFn<TGlobalHeaders>;

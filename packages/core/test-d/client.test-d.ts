@@ -448,7 +448,7 @@ csvResponseClient.todos.exportCsv().then((response) => {
 
 csvResponseClient.todos.exportCsv().then((response) => {
 	if (response.status === 200) {
-		expectType<"text/csv">(response.contentType);
+		expectError(response.contentType);
 		expectType<string>(response.body);
 	}
 });
@@ -474,7 +474,7 @@ imageResponseClient.todos.exportImage().then((response) => {
 
 imageResponseClient.todos.exportImage().then((response) => {
 	if (response.status === 200) {
-		expectType<"image/png" | "image/jpeg">(response.contentType);
+		expectError(response.contentType);
 		expectType<Uint8Array<ArrayBuffer>>(response.body);
 	}
 });
