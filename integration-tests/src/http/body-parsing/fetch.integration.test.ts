@@ -38,6 +38,26 @@ runBodyParsingSuite({
 });
 
 describe("fetch default body parser errors", () => {
+	it("rejects unsupported media types before parsing or validation hooks", async () => {
+		const handler = createRouteHandler(createBodyParsingImplementations(), {
+			bodyParser: () => {
+				throw new Error("Parser must not run");
+			},
+			requestValidationErrorHandler: () => {
+				throw new Error("Validation hook must not run");
+			},
+		});
+		const request = new Request("http://127.0.0.1/body-parsing/json", {
+			method: "POST",
+			headers: { "content-type": "text/plain" },
+			body: "{",
+		});
+		const result = await handler(request);
+		assert(result.matched);
+		assert.equal(result.response.status, 415);
+		assert.equal(request.bodyUsed, false);
+	});
+
 	it("returns a parsing 400 when the default JSON parser fails", async () => {
 		const handler = createRouteHandler(createBodyParsingImplementations());
 		const result = await handler(

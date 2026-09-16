@@ -340,14 +340,15 @@ responseBody?: ResponseBodyOptions;
 // Added to Fetch/Node Create*HandlerOptions and Hono RegisterRoutesOptions:
 // TSource is Request for Fetch/Hono, IncomingMessage for Node.
 bodyCodecs?: readonly BodyCodec<TSource>[];
-requestBody?: { source: "raw"; maxBytes?: number };
+requestBody?: { maxBytes?: number };
 responseBody?: { mode: "raw" };
 ```
 
 `RequestBodyOptions` and `ResponseBodyOptions` are explicit root exports from
 `@rest-rpc/server`, re-exported explicitly by Express, Fastify, and Nest.
 Fetch, Node, and Hono support only raw parsing and raw delivery; their option declarations
-use the narrower shapes shown above. Express supports opting its response into
+use the narrower shapes shown above; request source selection is unnecessary
+when raw parsing is the only supported source. Express supports opting its response into
 framework ownership through its ordinary `res.send(value)` path as well as its
 default rest-rpc writer. Omitted source/mode options use the defaults in the table.
 Codecs apply only to directions owned by rest-rpc. Configuration that provides
@@ -425,16 +426,32 @@ exactly. A JSON codec accepting `+json` does not let an `application/json` route
 accept `application/problem+json` unless separately declared. Parameters such
 as charset and multipart boundaries do not affect acceptance.
 
-A missing or empty incoming `Content-Type` takes the `undefined` body path
-before media-type acceptance or codec resolution, for both requests and ordinary
-responses. No codec is called and no body is read, even if the transport carries
-bytes; bytes alone do not imply a media type. A declared body schema determines
-whether `undefined` is valid. Under framework ownership the same rule applies
-before supplying the framework-parsed value to validation.
+Request media-type acceptance is a separate assertion before rest-rpc body
+acquisition. For a declared request body, a present unsupported media type
+returns a shared status/message rejection (HTTP 415) that the adapter writes
+through its native response mechanism. Missing or empty headers and routes
+without a declared body pass this assertion. Under framework ownership this
+assertion runs before handing the parsed value to validation; framework parsers
+may already have run in upstream middleware or hooks.
 
-For a declared request body, a present unsupported media type yields HTTP
-415 before deserialization, including under framework ownership. A supported
-but malformed built-in body yields HTTP 400; an oversized built-in body yields 413. No declared request body means no codec invocation or stream read.
+Body acquisition does not receive the route declaration. Raw acquisition uses
+the received header to resolve a deserializer. Missing or empty `Content-Type`
+produces `undefined` without codec resolution or reading. Framework ownership
+simply uses the framework's parsed body, including when the header is missing.
+There is no separate framework-body resolver, conversion, or suppression step.
+A body may be acquired even when no body schema is declared; validation then
+neither validates nor forwards that undeclared segment. Whether the native
+source supplied `undefined` or a value is immaterial in that case.
+
+Shared request validation passes the acquired body directly to its schema,
+without transport checks, form conversion, or incoming content-type metadata.
+Schema transformations remain supported. A supported but malformed built-in
+raw body yields HTTP 400; an oversized built-in raw body yields 413.
+
+For ordinary client responses, missing or empty incoming `Content-Type`
+produces `undefined` without codec resolution or reading, even when bytes are
+present. A declared response schema determines whether `undefined` is valid.
+
 Declared body schemas receive `undefined` for an absent body after media-type
 acceptance, and determine whether it is valid. An absent body means the
 transport has no body stream. An existing zero-byte stream is passed to the
@@ -530,7 +547,7 @@ const routes = {
 };
 
 const handler = createRouteHandler(routes, {
-	requestBody: { source: "raw", maxBytes: 8 * 1024 * 1024 },
+	requestBody: { maxBytes: 8 * 1024 * 1024 },
 });
 // Mount handler in the Fetch runtime; its result is { matched, response }.
 
@@ -721,7 +738,7 @@ The following snippets use each application's existing implementation tree.
 import { createRouteHandler } from "@rest-rpc/node";
 const handler = createRouteHandler(routes, {
 	bodyCodecs: [csvSerializeOnlyCodec],
-	requestBody: { source: "raw", maxBytes: 4 * 1024 * 1024 },
+	requestBody: { maxBytes: 4 * 1024 * 1024 },
 });
 ```
 
@@ -752,7 +769,7 @@ registerRoutes(app, rawRoutes, {
 // Hono: Fetch parsing and encoding are always rest-rpc-owned.
 import { registerRoutes } from "@rest-rpc/hono";
 registerRoutes(app, routes, {
-	requestBody: { source: "raw", maxBytes: 4 * 1024 * 1024 },
+	requestBody: { maxBytes: 4 * 1024 * 1024 },
 });
 ```
 
@@ -794,7 +811,8 @@ parsers or automatic response handling is outside this spec's scope.
    content-type metadata while retaining outgoing selection.
 2. Add bounded built-in Fetch request reading; Node resolves custom native
    deserializers first and bridges only for built-in fallback. Enforce media-type
-   acceptance before parsing. Preserve abort signals and bodyless/NDJSON paths.
+   acceptance separately from route-independent body acquisition. Preserve abort
+   signals and absent-stream/NDJSON paths.
 3. Separate validated logical results from codec encoding and native delivery
    in server; implement the declared adapter ownership defaults and options.
 4. Verify each built-in format with real HTTP tests, including multipart output

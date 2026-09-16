@@ -2,6 +2,7 @@ import { createFetchResponse, defaultBodyParser } from "@rest-rpc/fetch";
 import type { RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
 import {
+	assertRequestContentType,
 	handleHttpRoute,
 	RequestValidationError,
 	ResponseValidationError,
@@ -75,6 +76,14 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 				(mw) => (c: Context<TEnv>, next: Next) => mw(c, next, route),
 			),
 			async (c: Context<TEnv>) => {
+				const rejection = assertRequestContentType(
+					route,
+					c.req.header("content-type"),
+				);
+				if (rejection) {
+					return c.json({ message: rejection.message }, rejection.status);
+				}
+
 				let body: unknown;
 				try {
 					body = bodyParser

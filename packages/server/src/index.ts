@@ -36,3 +36,4 @@ export type {
 	ServerBuilderExtension,
 	ServerRouteBuilder,
 } from "./routeBuilder.types.ts";
+export { assertRequestContentType } from "./requestContentType.ts";

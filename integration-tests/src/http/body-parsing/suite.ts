@@ -12,34 +12,11 @@ type BodyParsingSuiteAdapter = {
 const readJson = async (response: Response) =>
 	response.json() as Promise<unknown>;
 
-const assertDefaultValidationErrorResponse = async (response: Response) => {
-	assert.equal(response.status, 400);
-	assert.match(
-		response.headers.get("content-type") ?? "",
-		/^application\/json/,
-	);
-
-	const body = await readJson(response);
-	assert.equal(typeof body, "object");
-	assert.notEqual(body, null);
-	assert.equal(
-		(body as { message?: unknown }).message,
-		"Request validation failed. Check the validationErrors field for details.",
-	);
-	const validationErrors = (body as { validationErrors?: unknown })
-		.validationErrors;
-
-	assert.equal(typeof validationErrors, "object");
-	assert.notEqual(validationErrors, null);
-	const grouped = validationErrors as Record<string, unknown>;
-	assert.deepEqual(Object.keys(grouped), [
-		"body",
-		"query",
-		"params",
-		"headers",
-	]);
-	assert.ok(Array.isArray(grouped.body));
-	assert.ok(grouped.body.length > 0);
+const assertContentTypeRejection = async (response: Response) => {
+	assert.equal(response.status, 415);
+	assert.deepEqual(await readJson(response), {
+		message: "Unsupported request body content type.",
+	});
 };
 
 export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
@@ -119,7 +96,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 				},
 			);
 
-			await assertDefaultValidationErrorResponse(response);
+			await assertContentTypeRejection(response);
 		});
 
 		it("parses custom JSON request bodies with content-type parameters", async () => {
@@ -252,7 +229,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 				}),
 			});
 
-			await assertDefaultValidationErrorResponse(response);
+			await assertContentTypeRejection(response);
 		});
 
 		it("rejects binary bodies sent to text routes", async () => {
@@ -264,7 +241,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 				body: new Uint8Array([65, 66, 67]),
 			});
 
-			await assertDefaultValidationErrorResponse(response);
+			await assertContentTypeRejection(response);
 		});
 
 		it("rejects text bodies sent to binary routes", async () => {
@@ -276,7 +253,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 				body: "ABC",
 			});
 
-			await assertDefaultValidationErrorResponse(response);
+			await assertContentTypeRejection(response);
 		});
 
 		it("ignores supplied bodies for routes declared as noBody", async () => {

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
 	createRouteMatcher,
+	assertRequestContentType,
 	handleHttpRoute,
 	RequestValidationError,
 	ResponseValidationError,
@@ -79,6 +80,17 @@ export function createRouteHandler(
 		});
 		if (!matched) {
 			return { matched: false };
+		}
+
+		const rejection = assertRequestContentType(
+			matched.implementation.route,
+			request.headers["content-type"],
+		);
+		if (rejection) {
+			response.statusCode = rejection.status;
+			response.setHeader("content-type", "application/json");
+			response.end(JSON.stringify({ message: rejection.message }));
+			return { matched: true };
 		}
 
 		const signal = createRequestSignal(request, response);

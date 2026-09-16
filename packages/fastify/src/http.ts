@@ -2,6 +2,7 @@ import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
 import { createNodeResponseStream, createRequestSignal } from "@rest-rpc/node";
 import {
+	assertRequestContentType,
 	handleHttpRoute,
 	handleHttpRouteResult,
 	RequestValidationError,
@@ -66,6 +67,16 @@ export const registerFastifyHttpRoutes = (
 				}),
 			},
 			async (req: FastifyRequest, reply: FastifyReply) => {
+				const rejection = assertRequestContentType(
+					route,
+					req.headers["content-type"],
+				);
+				if (rejection) {
+					return reply
+						.status(rejection.status)
+						.send({ message: rejection.message });
+				}
+
 				try {
 					const signal = createRequestSignal(req.raw, reply.raw);
 					const result = await handleHttpRoute(

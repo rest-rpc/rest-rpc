@@ -14,6 +14,7 @@ import {
 	writeStreamResponse,
 } from "@rest-rpc/node";
 import {
+	assertRequestContentType,
 	handleHttpRoute,
 	handleHttpRouteResult,
 	RequestValidationError,
@@ -112,6 +113,15 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 		const adapter = this.httpAdapterHost.httpAdapter;
 		const rawRequest = req.raw ?? req;
 		const rawResponse = res.raw ?? res;
+		const rejection = assertRequestContentType(
+			metadata.route,
+			rawRequest.headers["content-type"],
+		);
+		if (rejection) {
+			adapter.status(res, rejection.status);
+			return { message: rejection.message };
+		}
+
 		const signal = createRequestSignal(rawRequest, rawResponse);
 		const userContext = await this.options?.createContext?.(context);
 		const implementation = assertRouteImplementation(

@@ -2,6 +2,7 @@ import { createRequestSignal, writeNodeResponse } from "@rest-rpc/node";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
 import {
+	assertRequestContentType,
 	handleHttpRoute,
 	RequestValidationError,
 	ResponseValidationError,
@@ -68,6 +69,16 @@ export const registerExpressHttpRoutes = (
 			res: ExpressResponse,
 			next: NextFunction,
 		) => {
+			const rejection = assertRequestContentType(
+				route,
+				req.headers["content-type"],
+			);
+			if (rejection) {
+				return res
+					.status(rejection.status)
+					.json({ message: rejection.message });
+			}
+
 			try {
 				const signal = createRequestSignal(req, res);
 				const result = await handleHttpRoute(

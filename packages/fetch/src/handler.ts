@@ -1,5 +1,6 @@
 import {
 	createRouteMatcher,
+	assertRequestContentType,
 	handleHttpRoute,
 	RequestValidationError,
 	ResponseValidationError,
@@ -74,6 +75,20 @@ export function createRouteHandler(
 		});
 		if (!matched) {
 			return { matched: false, response: undefined };
+		}
+
+		const rejection = assertRequestContentType(
+			matched.implementation.route,
+			request.headers.get("content-type"),
+		);
+		if (rejection) {
+			return {
+				matched: true,
+				response: Response.json(
+					{ message: rejection.message },
+					{ status: rejection.status },
+				),
+			};
 		}
 
 		let body: unknown;
