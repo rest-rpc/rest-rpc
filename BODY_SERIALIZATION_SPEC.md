@@ -1,8 +1,9 @@
 # Body serialization and parsing spec
 
-Status: proposed target API, awaiting user approval. No implementation is
-authorized by this document. All examples describe the proposed API, including
-options and exports that do not exist yet.
+Status: the user approved implementation of the shared codec subpath and Fetch
+client wiring only, as two separate commits. Server work remains deferred for
+review. Examples describe the target API, including server options that do not
+exist yet.
 
 This document records the intended body behavior before implementation. It covers
 ordinary HTTP request and response bodies. Declared NDJSON responses keep their
@@ -166,7 +167,7 @@ client users may enforce a response limit in their own deserializer.
 
 ## Shared implementation boundary
 
-- `@rest-rpc/core` owns normalized matching, ordered operation resolution,
+- `@rest-rpc/core/codecs` owns normalized matching, ordered operation resolution,
   generic codec types, and shared built-in format behavior. The Fetch client
   uses Fetch reading and delivery there; core does not depend on server adapters
   or require custom server codecs to use Fetch sources or outputs.
@@ -278,8 +279,15 @@ Both operations are optional. Resolution skips a rule lacking the requested
 operation **before** calling its matcher, then selects the first matching rule
 that supplies the operation. A rule with neither callback contributes nothing.
 Arrays are readonly, evaluated in user order, and followed by built-in
-fallbacks. There is no public codec registry or resolution helper in this
-proposal.
+fallbacks. There is no public codec registry. The approved `@rest-rpc/core/codecs`
+subpath exports `defaultBodyCodecs`, `normalizeMediaType`, `serializeBody`,
+`deserializeBody`, `resolveBodySerializer`, and `resolveBodyDeserializer` for
+client and adapter reuse. These helpers are not re-exported from the package
+root; codec types are. The operation resolvers receive a normalized media type,
+user rules, and optional fallback rules; omitting fallbacks allows native
+adapters to resolve custom callbacks before deciding whether to bridge to Fetch.
+The serialize/deserialize convenience functions use Fetch-compatible defaults,
+while native adapters retain responsibility for their built-in delivery bridges.
 
 `SerializedBody.body` is required but typed as `unknown`: a custom codec owns
 preparing it for the destination's native delivery API. This does not imply
@@ -792,6 +800,8 @@ parsers or automatic response handling is outside this spec's scope.
    callbacks, object form conversion, binary coercion, and incoming metadata.
 7. Run relevant unit/integration suites, workspace typechecking, and lint.
 
-Implementation may begin only after the user approves the target API. Any
+The approved implementation scope currently includes only the shared codec
+subpath and Fetch client wiring, with a commit for each pass. Server work may
+begin only after further user review and authorization. Any
 change to these public signatures or observable rules requires revising this
 spec for review first; implementation must not choose a different API silently.
