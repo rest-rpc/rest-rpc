@@ -1,53 +1,49 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	deserializeBody,
+	defaultBodyCodecs,
 	normalizeMediaType,
-	resolveBodyDeserializer,
-	serializeBody,
+	resolveBodyCodecs,
+	type BodyCodec,
 } from "./index.ts";
-import type { BodyCodec } from "./index.ts";
 
-describe("body codecs", () => {
-	it("matches base media types while retaining original callback headers and declarations", async () => {
+describe("body codec resolution", () => {
+	it("normalizes media types and preserves original callback inputs", async () => {
+		const contentType = "Text/Plain; charset=utf-8";
+		assert.equal(
+			normalizeMediaType(" Text/Plain ; charset=utf-8"),
+			"text/plain",
+		);
 		const codec: BodyCodec<Response> = {
 			match: (mediaType) => {
 				assert.equal(mediaType, "text/plain");
 				return true;
 			},
-			serialize: (value, declaredContentType) => {
-				assert.equal(declaredContentType, "Text/Plain; charset=utf-8");
+			serialize: (value, declared) => {
+				assert.equal(declared, contentType);
 				return { body: value };
 			},
 			deserialize: (source) => {
-				assert.equal(
-					source.headers.get("content-type"),
-					"Text/Plain; charset=utf-8",
-				);
+				assert.equal(source.headers.get("content-type"), contentType);
 				return source.text();
 			},
 		};
+		const resolvedCodec = resolveBodyCodecs(normalizeMediaType(contentType), [
+			codec,
+		]);
+		assert.deepEqual(await resolvedCodec.serialize("hello", contentType), {
+			body: "hello",
+			contentType,
+		});
 		assert.equal(
-			normalizeMediaType(" Text/Plain ; charset=utf-8"),
-			"text/plain",
-		);
-		assert.equal(
-			(await serializeBody("hello", "Text/Plain; charset=utf-8", [codec]))
-				.contentType,
-			"Text/Plain; charset=utf-8",
-		);
-		assert.equal(
-			await deserializeBody(
-				new Response("hello", {
-					headers: { "content-type": "Text/Plain; charset=utf-8" },
-				}),
-				[codec],
+			await resolvedCodec.deserialize(
+				new Response("hello", { headers: { "content-type": contentType } }),
 			),
 			"hello",
 		);
 	});
 
-	it("resolves operations independently and skips matchers without that operation", async () => {
+	it("selects operations independently in user order before fallback order", async () => {
 		const codecs: BodyCodec<Response>[] = [
 			{
 				match: () => {
@@ -57,99 +53,101 @@ describe("body codecs", () => {
 			{ match: () => true, serialize: () => ({ body: "custom" }) },
 			{ match: () => true, deserialize: () => "first" },
 			{
-				match: () => true,
-				deserialize: () => {
-					throw new Error("Later rule must not run");
+				match: () => {
+					throw new Error("Resolved operations must stop matching");
 				},
+				deserialize: () => "late",
 			},
 		];
-		assert.equal(
-			(await serializeBody({}, "application/json", codecs)).body,
-			"custom",
-		);
-		assert.equal(await deserializeBody(Response.json({}), codecs), "first");
+		const resolvedCodec = resolveBodyCodecs("application/json", [
+			...codecs,
+			...defaultBodyCodecs,
+		]);
+		assert.deepEqual(await resolvedCodec!.serialize!("ignored", "text/plain"), {
+			body: "custom",
+			contentType: "text/plain",
+		});
+		assert.equal(resolvedCodec?.deserialize, codecs[2].deserialize);
+		const partial = resolveBodyCodecs("application/json", [
+			...codecs.slice(0, 2),
+			...defaultBodyCodecs,
+		]);
+		assert.deepEqual(await partial.deserialize(Response.json({ ok: true })), {
+			ok: true,
+		});
+		const deserializeOnly = resolveBodyCodecs("text/plain", [
+			codecs[2],
+			...defaultBodyCodecs,
+		]);
 		assert.deepEqual(
-			await deserializeBody(Response.json({ ok: true }), [
-				codecs[0],
-				codecs[1],
-			]),
-			{ ok: true },
+			await deserializeOnly!.serialize!("fallback", "text/plain"),
+			{ body: "fallback", contentType: "text/plain" },
 		);
 	});
 
-	it("bypasses missing or empty content types without reading bytes or matching rules", async () => {
-		for (const contentType of [undefined, "", "  "]) {
-			const response = new Response(new Uint8Array([1]), {
-				headers:
-					contentType === undefined ? {} : { "content-type": contentType },
-			});
-			assert.equal(
-				await deserializeBody(response, [
-					{
-						match: () => {
-							throw new Error("Must not match");
-						},
-						deserialize: () => "wrong",
+	it("returns undefined without matching for an empty type or unmatched rules", () => {
+		assert.equal(
+			resolveBodyCodecs("", [
+				{
+					match: () => {
+						throw new Error("Must not match");
 					},
-				]),
-				undefined,
-			);
-			assert.equal(response.bodyUsed, false);
-		}
+					deserialize: () => "wrong",
+				},
+			]),
+			undefined,
+		);
+		assert.equal(
+			resolveBodyCodecs("text/plain", [
+				{ match: () => false, serialize: () => ({ body: "" }) },
+			]),
+			undefined,
+		);
+		assert.equal(
+			typeof resolveBodyCodecs("text/plain", defaultBodyCodecs)?.serialize,
+			"function",
+		);
 	});
 
-	it("returns undefined for absent bodies but preserves JSON null", async () => {
-		for (const type of [
-			"application/json",
-			"text/plain",
-			"application/octet-stream",
-			"multipart/form-data",
-			"application/x-www-form-urlencoded",
-		]) {
-			assert.equal(
-				await deserializeBody(
-					new Response(null, { headers: { "content-type": type } }),
-				),
-				undefined,
-			);
-		}
-		assert.equal(await deserializeBody(Response.json(null)), null);
+	it("matches once per candidate without reading or invoking callbacks", () => {
+		let matches = 0;
+		const codec = {
+			match: () => {
+				matches++;
+				return true;
+			},
+			serialize: () => {
+				throw new Error("Must not serialize");
+			},
+			deserialize: () => {
+				throw new Error("Must not deserialize");
+			},
+		};
+		const resolvedCodec = resolveBodyCodecs("text/plain", [codec]);
+		assert.equal(matches, 1);
+		assert.equal(typeof resolvedCodec?.serialize, "function");
+		assert.equal(resolvedCodec?.deserialize, codec.deserialize);
 	});
 
-	it("parses zero-byte streams according to their media type", async () => {
-		const emptyResponse = (contentType: string) =>
-			new Response(new Uint8Array(), {
-				headers: { "content-type": contentType },
-			});
-		await assert.rejects(
-			deserializeBody(emptyResponse("application/json")),
-			SyntaxError,
-		);
-		await assert.rejects(
-			deserializeBody(emptyResponse("multipart/form-data; boundary=test")),
-			TypeError,
-		);
-		assert.equal(await deserializeBody(emptyResponse("text/plain")), "");
-		const form = await deserializeBody(
-			emptyResponse("application/x-www-form-urlencoded"),
-		);
-		assert.ok(form instanceof URLSearchParams);
-		assert.equal(form.size, 0);
-		const binary = await deserializeBody(
-			emptyResponse("application/octet-stream"),
-		);
-		assert.ok(binary instanceof Blob);
-		assert.equal(binary.size, 0);
+	it("resolves native user callbacks with fallbacks explicitly disabled", async () => {
+		const source = { native: true };
+		const resolvedCodec = resolveBodyCodecs("application/json", [
+			{ match: () => true, deserialize: (request: typeof source) => request },
+		]);
+		assert.equal(resolvedCodec?.serialize, undefined);
+		assert.equal(await resolvedCodec!.deserialize!(source), source);
 	});
+});
 
-	it("round trips plain defaults, including structured JSON suffixes and multipart files", async () => {
+describe("built-in body codecs", () => {
+	it("round trips JSON, text, forms, multipart files, and binary without conversions", async () => {
 		const form = new FormData();
 		form.append("title", "Hello");
 		form.append(
 			"file",
 			new File(["contents"], "hello.txt", { type: "text/plain" }),
 		);
-		for (const [type, value] of [
+		for (const [contentType, value] of [
 			["application/json", { title: "Hello", nested: [1] }],
 			["application/problem+json", { detail: "Hello" }],
 			["text/csv", "title\nHello"],
@@ -166,115 +164,75 @@ describe("body codecs", () => {
 				new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }),
 			],
 		] as const) {
-			const output = await serializeBody(value, type);
-			const headers = output.contentType
-				? { "content-type": output.contentType }
-				: undefined;
-			const response = new Response(output.body as BodyInit, { headers });
-			const parsed = await deserializeBody(response);
+			const resolvedCodec = resolveBodyCodecs(
+				normalizeMediaType(contentType),
+				defaultBodyCodecs,
+			);
+			const output = await resolvedCodec.serialize(value, contentType);
+			const response = new Response(output.body as BodyInit, {
+				headers:
+					output.contentType === null
+						? undefined
+						: { "content-type": output.contentType ?? contentType },
+			});
+			const parsed = await resolvedCodec.deserialize(response);
 			if (value instanceof FormData) {
-				assert.ok(parsed instanceof FormData);
+				assert(parsed instanceof FormData);
 				assert.equal(parsed.get("title"), "Hello");
 				const file = parsed.get("file");
-				assert.ok(file instanceof File);
+				assert(file instanceof File);
 				assert.equal(file.name, "hello.txt");
 				assert.equal(await file.text(), "contents");
 				assert.match(response.headers.get("content-type")!, /boundary=/);
 			} else if (value instanceof Blob) {
-				assert.ok(parsed instanceof Blob);
+				assert(parsed instanceof Blob);
 				assert.deepEqual(await parsed.arrayBuffer(), await value.arrayBuffer());
 			} else if (value instanceof URLSearchParams) {
-				assert.ok(parsed instanceof URLSearchParams);
+				assert(parsed instanceof URLSearchParams);
 				assert.equal(parsed.toString(), value.toString());
 			} else assert.deepEqual(parsed, value);
-			assert.equal(response.bodyUsed, true);
 		}
 	});
 
-	it("rejects implicit form and binary conversion and malformed JSON", async () => {
-		for (const type of [
+	it("rejects implicit conversions and preserves empty native values", async () => {
+		for (const mediaType of [
 			"application/x-www-form-urlencoded",
 			"multipart/form-data",
 			"text/plain",
 			"application/octet-stream",
 		]) {
-			await assert.rejects(serializeBody({ title: "Hello" }, type), TypeError);
+			const resolvedCodec = resolveBodyCodecs(mediaType, defaultBodyCodecs);
+			await assert.rejects(
+				async () => resolvedCodec!.serialize!({ title: "Hello" }, mediaType),
+				TypeError,
+			);
 		}
+		const json = resolveBodyCodecs("application/json", defaultBodyCodecs)!;
 		await assert.rejects(
-			serializeBody(undefined, "application/json"),
+			async () => json.serialize!(undefined, "application/json"),
 			TypeError,
 		);
 		await assert.rejects(
-			deserializeBody(
-				new Response("{", { headers: { "content-type": "application/json" } }),
-			),
+			async () => json.deserialize!(new Response("{")),
 			SyntaxError,
 		);
-	});
-
-	it("allows parameter directives and neutral output while rejecting reserved headers and protocol changes", async () => {
-		const body = { native: true };
-		assert.equal(
-			(
-				await serializeBody({}, "text/plain", [
-					{
-						match: () => true,
-						serialize: () => ({
-							body,
-							headers: { "x-count": 2 },
-							contentType: "text/plain; charset=utf-8",
-						}),
-					},
-				])
-			).body,
-			body,
-		);
-		for (const name of [
-			"Content-Type",
-			"CONTENT-Length",
-			"transfer-encoding",
+		assert.equal(await json.deserialize!(Response.json(null)), null);
+		for (const mediaType of [
+			"text/plain",
+			"application/x-www-form-urlencoded",
+			"application/octet-stream",
 		]) {
-			await assert.rejects(
-				serializeBody({}, "text/plain", [
-					{
-						match: () => true,
-						serialize: () => ({ body: "", headers: { [name]: "bad" } }),
-					},
-				]),
-				/Codec headers/,
+			const resolvedCodec = resolveBodyCodecs(mediaType, defaultBodyCodecs)!;
+			const parsed = await resolvedCodec.deserialize!(
+				new Response(new Uint8Array(), {
+					headers: { "content-type": mediaType },
+				}),
 			);
+			if (typeof parsed === "string") assert.equal(parsed, "");
+			else {
+				assert(parsed instanceof URLSearchParams || parsed instanceof Blob);
+				assert.equal(parsed.size, 0);
+			}
 		}
-		await assert.rejects(
-			serializeBody({}, "text/plain", [
-				{
-					match: () => true,
-					serialize: () => ({ body: "", contentType: "application/json" }),
-				},
-			]),
-			/base media type/,
-		);
-		assert.equal(
-			(
-				await serializeBody({}, "text/plain", [
-					{
-						match: () => true,
-						serialize: () => ({ body: "", contentType: null }),
-					},
-				])
-			).contentType,
-			null,
-		);
-	});
-
-	it("can resolve a native custom deserializer without Fetch adaptation", async () => {
-		const source = { native: true };
-		const codecs: BodyCodec<typeof source>[] = [
-			{ match: () => true, deserialize: (request) => request },
-		];
-		assert.equal(
-			await resolveBodyDeserializer("application/json", codecs)!(source),
-			source,
-		);
-		assert.equal(resolveBodyDeserializer("application/json", []), undefined);
 	});
 });

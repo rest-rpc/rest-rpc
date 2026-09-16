@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
 import { describe, it } from "node:test";
-import { createRouteHandler, defaultBodyParser } from "@rest-rpc/fetch";
+import { createRouteHandler } from "@rest-rpc/fetch";
 import { listen } from "../harness/listen.ts";
 import { createBodyParsingImplementations } from "./handlers.ts";
 import { runBodyParsingSuite } from "./suite.ts";
@@ -37,12 +37,17 @@ runBodyParsingSuite({
 	},
 });
 
-describe("fetch default body parser errors", () => {
+describe("fetch request codec errors", () => {
 	it("rejects unsupported media types before parsing or validation hooks", async () => {
 		const handler = createRouteHandler(createBodyParsingImplementations(), {
-			bodyParser: () => {
-				throw new Error("Parser must not run");
-			},
+			bodyCodecs: [
+				{
+					match: () => true,
+					deserialize: () => {
+						throw new Error("Parser must not run");
+					},
+				},
+			],
 			requestValidationErrorHandler: () => {
 				throw new Error("Validation hook must not run");
 			},
@@ -80,11 +85,16 @@ describe("fetch default body parser errors", () => {
 		});
 	});
 
-	it("lets custom body parser errors propagate", async () => {
+	it("lets custom deserializer errors propagate", async () => {
 		const handler = createRouteHandler(createBodyParsingImplementations(), {
-			bodyParser: () => {
-				throw new Error("custom parser failed");
-			},
+			bodyCodecs: [
+				{
+					match: () => true,
+					deserialize: () => {
+						throw new Error("custom parser failed");
+					},
+				},
+			],
 		});
 
 		await assert.rejects(
@@ -97,40 +107,6 @@ describe("fetch default body parser errors", () => {
 					}),
 				),
 			/custom parser failed/,
-		);
-	});
-});
-
-describe("fetch default body parser content types", () => {
-	it("parses structured JSON content types", async () => {
-		const request = new Request("http://127.0.0.1/body", {
-			method: "POST",
-			headers: { "content-type": "application/problem+json; charset=utf-8" },
-			body: JSON.stringify({ title: "Invalid request" }),
-		});
-
-		assert.deepEqual(await defaultBodyParser(request), {
-			title: "Invalid request",
-		});
-	});
-
-	it("uses bytes for unrecognized content types", async () => {
-		const request = new Request("http://127.0.0.1/body", {
-			method: "POST",
-			headers: { "content-type": "application/x-custom" },
-			body: new Uint8Array([0, 127, 255]),
-		});
-
-		assert.deepEqual(
-			await defaultBodyParser(request),
-			new Uint8Array([0, 127, 255]),
-		);
-	});
-
-	it("returns undefined when the request has no body", async () => {
-		assert.equal(
-			await defaultBodyParser(new Request("http://127.0.0.1/body")),
-			undefined,
 		);
 	});
 });

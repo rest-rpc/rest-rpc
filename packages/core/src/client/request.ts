@@ -1,4 +1,10 @@
-import { serializeBody, type BodyCodec } from "../codecs/index.ts";
+import {
+	resolveBodyCodecs,
+	defaultBodyCodecs,
+	normalizeMediaType,
+	type SerializedBody,
+	type BodyCodec,
+} from "../codecs/index.ts";
 import type { RouteDeclaration } from "../contract/contract.ts";
 import { replacePathParams } from "../contract/path.ts";
 import type { GroupedRequestInput } from "./requestInput.ts";
@@ -216,10 +222,17 @@ export const executeRequest = async <E extends RouteDeclaration>(
 		fetchOptions?.contentType,
 	);
 
-	const serialized =
-		body === undefined || contentType === undefined
-			? undefined
-			: await serializeBody(body, contentType, options.bodyCodecs);
+	let serialized: SerializedBody | undefined;
+	if (body !== undefined && contentType !== undefined) {
+		const mediaType = normalizeMediaType(contentType);
+		const resolvedCodec = resolveBodyCodecs(mediaType, [
+			...(options.bodyCodecs ?? []),
+			...defaultBodyCodecs,
+		]);
+		if (!resolvedCodec?.serialize)
+			throw new Error("No serializer for declared content-type");
+		serialized = await resolvedCodec.serialize(body, contentType);
+	}
 	const codecHeaders = Object.fromEntries(
 		Object.entries(serialized?.headers ?? {}).flatMap(([name, value]) =>
 			value === undefined ? [] : [[name, String(value)]],

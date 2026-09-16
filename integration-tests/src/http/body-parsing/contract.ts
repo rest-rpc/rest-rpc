@@ -13,7 +13,7 @@ export const bodyParsingContract = {
 	textVariant: route
 		.post("/body-parsing/text-variant")
 		.body(z.string(), { contentType: ["text/plain", "text/markdown"] })
-		.response(200, z.object({ contentType: z.string(), body: z.string() })),
+		.response(200, z.object({ body: z.string() })),
 	customJson: route
 		.post("/body-parsing/custom-json")
 		.body(
@@ -27,18 +27,13 @@ export const bodyParsingContract = {
 	formUrlEncoded: route
 		.post("/body-parsing/form-url-encoded")
 		.query(z.object({ filters: z.array(z.string()).optional() }))
-		.body(
-			z.object({
-				count: z.coerce.number<number>(),
-				title: z.string(),
-				tags: z.array(z.string()).optional(),
-			}),
-			{ contentType: "application/x-www-form-urlencoded" },
-		)
+		.body(z.instanceof(URLSearchParams), {
+			contentType: "application/x-www-form-urlencoded",
+		})
 		.response(
 			200,
 			z.object({
-				count: z.number(),
+				count: z.string(),
 				title: z.string(),
 				filters: z.array(z.string()).optional(),
 				tags: z.array(z.string()).optional(),
@@ -46,7 +41,7 @@ export const bodyParsingContract = {
 		),
 	binary: route
 		.post("/body-parsing/binary")
-		.body(z.instanceof(Uint8Array), {
+		.body(z.instanceof(Blob), {
 			contentType: "application/octet-stream",
 		})
 		.response(
@@ -54,6 +49,17 @@ export const bodyParsingContract = {
 			z.object({ byteLength: z.number(), bytes: z.array(z.number()) }),
 		),
 	deleteNoBody: route.delete("/body-parsing/no-body").response(204),
+} as const;
+
+export const frameworkBodyParsingContract = {
+	...bodyParsingContract,
+	binary: route
+		.post("/body-parsing/binary")
+		.body(z.instanceof(Uint8Array), { contentType: "application/octet-stream" })
+		.response(
+			200,
+			z.object({ byteLength: z.number(), bytes: z.array(z.number()) }),
+		),
 } as const;
 
 export type BodyParsingContract = typeof bodyParsingContract;

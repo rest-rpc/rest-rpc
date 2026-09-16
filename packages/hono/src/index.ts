@@ -24,7 +24,6 @@ export type {
 } from "@rest-rpc/server";
 export type {
 	ExtendedHonoMiddleware,
-	HonoBodyParser,
 	RequestValidationErrorHandler,
 	ResponseValidationErrorHandler,
 } from "./http.ts";

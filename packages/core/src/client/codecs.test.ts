@@ -292,6 +292,67 @@ describe("client body codecs", () => {
 		);
 	});
 
+	it("checks serialized headers and media-type directives before Fetch delivery", async () => {
+		const api = {
+			value: route
+				.post("/value")
+				.body(z.string(), { contentType: "text/plain" })
+				.response(204),
+		};
+		for (const headers of [
+			{ "Content-Type": "bad" },
+			{ "CONTENT-Length": "1" },
+			{ "transfer-encoding": "chunked" },
+		]) {
+			const client = initClient(api, {
+				baseUrl,
+				bodyCodecs: [
+					{ match: () => true, serialize: () => ({ body: "", headers }) },
+				],
+				fetch: async () => {
+					throw new Error("Must not fetch");
+				},
+			});
+			await assert.rejects(client.value({ body: "hello" }), /Codec headers/);
+		}
+		const changedProtocol = initClient(api, {
+			baseUrl,
+			bodyCodecs: [
+				{
+					match: () => true,
+					serialize: () => ({ body: "", contentType: "application/json" }),
+				},
+			],
+			fetch: async () => {
+				throw new Error("Must not fetch");
+			},
+		});
+		await assert.rejects(
+			changedProtocol.value({ body: "hello" }),
+			/base media type/,
+		);
+		for (const contentType of [undefined, null, "text/plain; charset=utf-8"]) {
+			const client = initClient(api, {
+				baseUrl,
+				bodyCodecs: [
+					{
+						match: () => true,
+						serialize: () => ({ body: "wire", contentType }),
+					},
+				],
+				fetch: async (_url, init) => {
+					assert.equal(init?.body, "wire");
+					assert.equal(
+						new Headers(init?.headers).get("content-type"),
+						contentType === undefined ? "text/plain" : contentType,
+					);
+					return new Response(null, { status: 204 });
+				},
+			});
+			await client.value({ body: "hello" });
+		}
+	});
+
 	it("propagates codec failures and keeps declared NDJSON on its streaming path", async () => {
 		const failure = new Error("Codec failed");
 		const input = {

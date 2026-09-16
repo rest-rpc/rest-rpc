@@ -77,8 +77,7 @@ export type {
 	ResponseValidationErrorHandler,
 } from "./handler.ts";
 export { createRequestSignal } from "./lifecycle.ts";
-export { defaultBodyParser, parseRequestTarget } from "./request.ts";
-export type { NodeBodyParser } from "./request.ts";
+export { parseRequestTarget } from "./request.ts";
 export {
 	createNodeResponseStream,
 	writeNodeResponse,

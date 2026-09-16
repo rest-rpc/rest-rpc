@@ -1,5 +1,8 @@
 import { implement } from "@rest-rpc/server";
-import { bodyParsingContract } from "./contract.ts";
+import {
+	bodyParsingContract,
+	frameworkBodyParsingContract,
+} from "./contract.ts";
 
 export const createBodyParsingImplementations = () => {
 	const implementor = implement(bodyParsingContract);
@@ -19,7 +22,6 @@ export const createBodyParsingImplementations = () => {
 		textVariant: implementor.textVariant.handler((request) => ({
 			status: 200,
 			body: {
-				contentType: request.contentType,
 				body: request.body,
 			},
 		})),
@@ -33,19 +35,32 @@ export const createBodyParsingImplementations = () => {
 		formUrlEncoded: implementor.formUrlEncoded.handler((request) => ({
 			status: 200,
 			body: {
-				count: request.body.count,
-				title: request.body.title,
+				count: request.body.get("count")!,
+				title: request.body.get("title")!,
 				filters: request.query.filters,
-				tags: request.body.tags,
+				tags: request.body.has("tags")
+					? request.body.getAll("tags")
+					: undefined,
 			},
 		})),
-		binary: implementor.binary.handler((request) => ({
+		binary: implementor.binary.handler(async (request) => ({
 			status: 200,
 			body: {
-				byteLength: request.body.byteLength,
-				bytes: Array.from(request.body),
+				byteLength: request.body.size,
+				bytes: Array.from(new Uint8Array(await request.body.arrayBuffer())),
 			},
 		})),
 		deleteNoBody: implementor.deleteNoBody.handler(() => ({ status: 204 })),
 	};
 };
+
+export const createFrameworkBodyParsingImplementations = () => ({
+	...createBodyParsingImplementations(),
+	binary: implement(frameworkBodyParsingContract).binary.handler((request) => ({
+		status: 200,
+		body: {
+			byteLength: request.body.byteLength,
+			bytes: Array.from(request.body),
+		},
+	})),
+});

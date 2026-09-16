@@ -79,7 +79,6 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 
 			assert.equal(response.status, 200);
 			assert.deepEqual(await readJson(response), {
-				contentType: "text/markdown",
 				body: "# Parsed markdown",
 			});
 		});
@@ -121,97 +120,51 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 			});
 		});
 
-		it("parses urlencoded form request bodies as validated objects", async () => {
+		it("sends URLSearchParams directly through the default codec", async () => {
 			const client = initClient(bodyParsingContract, {
 				baseUrl: server.origin,
-				bodyCodecs: [
-					{
-						match: (mediaType) =>
-							mediaType === "application/x-www-form-urlencoded",
-						serialize(value) {
-							const body = new URLSearchParams();
-							for (const [key, field] of Object.entries(
-								value as Record<string, unknown>,
-							)) {
-								if (Array.isArray(field)) {
-									for (const item of field)
-										body.append(`${key}[]`, String(item));
-								} else if (field !== undefined) body.append(key, String(field));
-							}
-							return { body };
-						},
-					},
-				],
 			});
-
-			const responseResponse = await client.formUrlEncoded({
+			const response = await client.formUrlEncoded({
 				query: {},
-				body: {
-					count: 7,
-					title: "Typed form",
-				},
+				body: new URLSearchParams({ count: "7", title: "Typed form" }),
 			});
-			assert.equal(responseResponse.status, 200);
-			const response = responseResponse.body;
-
-			assert.deepEqual(response, {
-				count: 7,
-				title: "Typed form",
-			});
+			assert.equal(response.status, 200);
+			assert.deepEqual(response.body, { count: "7", title: "Typed form" });
 		});
 
-		it("parses empty-bracket arrays in query and urlencoded form fields", async () => {
+		it("preserves repeated URLSearchParams fields and query arrays", async () => {
 			const client = initClient(bodyParsingContract, {
 				baseUrl: server.origin,
-				bodyCodecs: [
-					{
-						match: (mediaType) =>
-							mediaType === "application/x-www-form-urlencoded",
-						serialize(value) {
-							const body = new URLSearchParams();
-							for (const [key, field] of Object.entries(
-								value as Record<string, unknown>,
-							)) {
-								if (Array.isArray(field)) {
-									for (const item of field)
-										body.append(`${key}[]`, String(item));
-								} else if (field !== undefined) body.append(key, String(field));
-							}
-							return { body };
-						},
-					},
-				],
 			});
-
 			const response = await client.formUrlEncoded({
 				query: { filters: ["open", "assigned"] },
-				body: {
-					count: 2,
-					title: "Array fields",
-					tags: ["typescript", "rpc"],
-				},
+				body: new URLSearchParams([
+					["count", "2"],
+					["title", "Array fields"],
+					["tags", "typescript"],
+					["tags", "rpc"],
+				]),
 			});
-
 			assert.equal(response.status, 200);
 			assert.deepEqual(response.body, {
-				count: 2,
+				count: "2",
 				title: "Array fields",
 				filters: ["open", "assigned"],
 				tags: ["typescript", "rpc"],
 			});
 		});
 
-		it("parses custom application/octet-stream bodies as bytes", async () => {
-			const response = await fetch(`${server.origin}/body-parsing/binary`, {
-				method: "POST",
-				headers: {
-					"content-type": "application/octet-stream",
-				},
-				body: new Uint8Array([0, 1, 127, 128, 255]),
+		it("sends Blob bodies directly through the default codec", async () => {
+			const client = initClient(bodyParsingContract, {
+				baseUrl: server.origin,
 			});
-
+			const response = await client.binary({
+				body: new Blob([new Uint8Array([0, 1, 127, 128, 255])], {
+					type: "application/octet-stream",
+				}),
+			});
 			assert.equal(response.status, 200);
-			assert.deepEqual(await readJson(response), {
+			assert.deepEqual(response.body, {
 				byteLength: 5,
 				bytes: [0, 1, 127, 128, 255],
 			});
@@ -256,7 +209,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 			await assertContentTypeRejection(response);
 		});
 
-		it("ignores supplied bodies for routes declared as noBody", async () => {
+		it("rejects content types on routes without a body declaration", async () => {
 			const response = await fetch(`${server.origin}/body-parsing/no-body`, {
 				method: "DELETE",
 				headers: {
@@ -265,8 +218,7 @@ export const runBodyParsingSuite = (adapter: BodyParsingSuiteAdapter) => {
 				body: JSON.stringify({ ignored: true }),
 			});
 
-			assert.equal(response.status, 204);
-			assert.equal(await response.text(), "");
+			await assertContentTypeRejection(response);
 		});
 	});
 };

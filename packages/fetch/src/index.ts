@@ -67,6 +67,4 @@ export type {
 	RequestValidationErrorHandler,
 	ResponseValidationErrorHandler,
 } from "./handler.ts";
-export { defaultBodyParser } from "./request.ts";
-export type { FetchBodyParser } from "./request.ts";
 export { createFetchResponse } from "./response.ts";

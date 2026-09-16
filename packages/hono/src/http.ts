@@ -1,4 +1,6 @@
-import { createFetchResponse, defaultBodyParser } from "@rest-rpc/fetch";
+import { createFetchResponse } from "@rest-rpc/fetch";
+import { deserializeRequestBody } from "@rest-rpc/fetch/deserializeRequestBody";
+import type { RegisterRoutesOptions } from "./registerRoutes.ts";
 import type { RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
 import {
@@ -7,7 +9,7 @@ import {
 	RequestValidationError,
 	ResponseValidationError,
 } from "@rest-rpc/server";
-import type { Context, Hono, HonoRequest, Next } from "hono";
+import type { Context, Hono, Next } from "hono";
 import type { Env } from "hono/types";
 
 /**
@@ -31,15 +33,6 @@ export type ResponseValidationErrorHandler<TEnv extends Env = Env> = (
 ) => Response | Promise<Response>;
 
 /**
- * Custom Hono request body parser used during route registration.
- *
- * @see {@link https://rest-rpc.dev/docs/server/hono#body-parsing}
- */
-export type HonoBodyParser = (
-	request: HonoRequest,
-) => unknown | Promise<unknown>;
-
-/**
  * Hono middleware that also receives the matched rest-rpc route declaration.
  *
  * @see {@link https://rest-rpc.dev/docs/server/hono#middleware}
@@ -56,12 +49,14 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 	routes: ReturnType<
 		typeof import("@rest-rpc/server").flattenRouteImplementations
 	>,
-	bodyParser: HonoBodyParser | undefined = undefined,
-	middleware: ExtendedHonoMiddleware<TEnv>[] = [],
-	requestValidationErrorHandler?: RequestValidationErrorHandler<TEnv>,
-	responseValidationErrorHandler?: ResponseValidationErrorHandler<TEnv>,
+	options: RegisterRoutesOptions<TEnv> = {},
 ) => {
-	const usesDefaultBodyParser = bodyParser === undefined;
+	const {
+		bodyCodecs = [],
+		middleware = [],
+		requestValidationErrorHandler,
+		responseValidationErrorHandler,
+	} = options;
 
 	for (const implementation of routes) {
 		const route = implementation.route;
@@ -84,14 +79,17 @@ export const registerHonoHttpRoutes = <TEnv extends Env = Env>(
 					return c.json({ message: rejection.message }, rejection.status);
 				}
 
-				let body: unknown;
-				try {
-					body = bodyParser
-						? await bodyParser(c.req)
-						: await defaultBodyParser(c.req.raw);
-				} catch (error) {
-					if (!usesDefaultBodyParser) throw error;
-					return c.json({ message: "Invalid request body" }, 400);
+				const { body, rejection: bodyRejection } = await deserializeRequestBody(
+					c.req,
+					c.req.raw,
+					bodyCodecs,
+					options.requestBody?.maxBytes,
+				);
+				if (bodyRejection) {
+					return c.json(
+						{ message: bodyRejection.message },
+						bodyRejection.status,
+					);
 				}
 
 				const result = await handleHttpRoute(implementation, {

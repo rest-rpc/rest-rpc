@@ -1,5 +1,6 @@
 import {
-	deserializeBody,
+	resolveBodyCodecs,
+	defaultBodyCodecs,
 	normalizeMediaType,
 	type BodyCodec,
 } from "../codecs/index.ts";
@@ -58,12 +59,6 @@ const readStreamResponse = (
 	}
 	return parseNdjsonStream(schema, rawResponse.body, validate);
 };
-
-const deserializeResponseBody = (
-	rawResponse: Response,
-	codecs: readonly BodyCodec<Response>[] | undefined,
-) =>
-	rawResponse.body === null ? undefined : deserializeBody(rawResponse, codecs);
 
 const validateResponseBody = async (
 	schema: StandardSchemaV1 | undefined,
@@ -134,7 +129,15 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 		assertResponseContentType(schema.contentType, rawResponse);
 	}
 
-	const value = await deserializeResponseBody(rawResponse, bodyCodecs);
+	const mediaType = normalizeMediaType(rawResponse.headers.get("content-type"));
+	let value: unknown;
+	if (mediaType && rawResponse.body !== null) {
+		const resolvedCodec = resolveBodyCodecs(mediaType, [
+			...(bodyCodecs ?? []),
+			...defaultBodyCodecs,
+		]);
+		value = await resolvedCodec?.deserialize?.(rawResponse);
+	}
 	const body = await validateResponseBody(schema.body, value, validateResponse);
 
 	return {

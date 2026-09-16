@@ -1,6 +1,6 @@
 import { registerRoutes } from "@rest-rpc/fastify";
 import Fastify from "fastify";
-import { createBodyParsingImplementations } from "./handlers.ts";
+import { createFrameworkBodyParsingImplementations } from "./handlers.ts";
 import { runBodyParsingSuite } from "./suite.ts";
 
 runBodyParsingSuite({
@@ -40,7 +40,7 @@ runBodyParsingSuite({
 			(_request, body, done) => done(null, body),
 		);
 
-		registerRoutes(app, createBodyParsingImplementations());
+		registerRoutes(app, createFrameworkBodyParsingImplementations());
 
 		const origin = await app.listen({ host: "127.0.0.1", port: 0 });
 

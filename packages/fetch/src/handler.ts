@@ -1,3 +1,4 @@
+import type { BodyCodec } from "@rest-rpc/core";
 import {
 	createRouteMatcher,
 	assertRequestContentType,
@@ -7,7 +8,7 @@ import {
 	type RuntimeImplementationTree,
 } from "@rest-rpc/server";
 import type { DefaultContext } from "./index.ts";
-import { defaultBodyParser, type FetchBodyParser } from "./request.ts";
+import { deserializeRequestBody } from "./deserializeRequestBody.ts";
 import { createFetchResponse } from "./response.ts";
 
 /**
@@ -16,7 +17,8 @@ import { createFetchResponse } from "./response.ts";
  * @see {@link https://rest-rpc.dev/docs/server/fetch#options}
  */
 export type CreateFetchHandlerOptions = {
-	bodyParser?: FetchBodyParser;
+	bodyCodecs?: readonly BodyCodec<Request>[];
+	requestBody?: { maxBytes?: number };
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 };
@@ -65,7 +67,22 @@ export function createRouteHandler(
 	...contextArguments: ContextArguments
 ) => Promise<FetchRouteHandlerResult> {
 	const matchRoute = createRouteMatcher(implementations);
-	const bodyParser = options.bodyParser ?? defaultBodyParser;
+	const bodyCodecs = options.bodyCodecs ?? [];
+	const maxBytes = options.requestBody?.maxBytes;
+	if (
+		maxBytes !== undefined &&
+		(!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
+	) {
+		throw new Error("requestBody.maxBytes must be a positive safe integer");
+	}
+	if (
+		options.requestBody?.maxBytes !== undefined &&
+		bodyCodecs.some((codec) => codec.deserialize !== undefined)
+	) {
+		throw new Error(
+			"requestBody.maxBytes cannot be combined with a custom deserializer",
+		);
+	}
 
 	return async (request, ...contextArguments) => {
 		const url = new URL(request.url);
@@ -91,18 +108,18 @@ export function createRouteHandler(
 			};
 		}
 
-		let body: unknown;
-		try {
-			body = await bodyParser(request);
-		} catch (error) {
-			if (options.bodyParser !== undefined) throw error;
+		const { body, rejection: bodyRejection } = await deserializeRequestBody(
+			request,
+			request,
+			bodyCodecs,
+			maxBytes,
+		);
+		if (bodyRejection) {
 			return {
 				matched: true,
 				response: Response.json(
-					{ message: "Invalid request body" },
-					{
-						status: 400,
-					},
+					{ message: bodyRejection.message },
+					{ status: bodyRejection.status },
 				),
 			};
 		}

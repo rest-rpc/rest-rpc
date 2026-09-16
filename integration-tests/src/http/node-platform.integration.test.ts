@@ -7,21 +7,27 @@ import { createRouteHandler, route } from "@rest-rpc/node";
 import { listen } from "./harness/listen.ts";
 
 test("Node decodes chunked large JSON, multipart and repeated headers", async (t) => {
-	const handler = createRouteHandler({
-		json: route
-			.post("/json")
-			.body(type<{ text: string }>())
-			.handler(({ body: { text } }) => ({ status: 200, body: text.length })),
-		multipart: route
-			.post("/multipart")
-			.body(type<{ file: Blob; tags: string[] }>(), {
-				contentType: "multipart/form-data",
-			})
-			.handler(async ({ body }) => ({
-				status: 200,
-				body: { bytes: body.file.size, tags: body.tags },
-			})),
-	});
+	const handler = createRouteHandler(
+		{
+			json: route
+				.post("/json")
+				.body(type<{ text: string }>())
+				.handler(({ body: { text } }) => ({ status: 200, body: text.length })),
+			multipart: route
+				.post("/multipart")
+				.body(type<FormData>(), {
+					contentType: "multipart/form-data",
+				})
+				.handler(async ({ body }) => ({
+					status: 200,
+					body: {
+						bytes: (body.get("file") as File).size,
+						tags: body.getAll("tags[]"),
+					},
+				})),
+		},
+		{ requestBody: { maxBytes: 3 * 1024 * 1024 } },
+	);
 	const server = await listen(
 		createServer(async (req, res) => {
 			try {

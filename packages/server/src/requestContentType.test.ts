@@ -22,17 +22,21 @@ describe("assertRequestContentType", () => {
 		);
 	});
 
-	it("accepts missing headers and ignores media types without a declared body", () => {
+	it("accepts missing headers and rejects received types without a declaration", () => {
 		const declaration = route.post("/body").body(z.unknown())["~restrpc"];
 		for (const header of [undefined, null, "", " "]) {
 			assert.equal(assertRequestContentType(declaration, header), undefined);
+			assert.equal(
+				assertRequestContentType(route.get("/empty")["~restrpc"], header),
+				undefined,
+			);
 		}
-		assert.equal(
+		assert.deepEqual(
 			assertRequestContentType(
 				route.get("/empty")["~restrpc"],
 				"application/xml",
 			),
-			undefined,
+			{ status: 415, message: "Unsupported request body content type." },
 		);
 		assert.equal(
 			assertRequestContentType(declaration, "application/json; charset=utf-8"),

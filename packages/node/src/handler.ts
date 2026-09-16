@@ -1,3 +1,5 @@
+import type { BodyCodec } from "@rest-rpc/core";
+import { deserializeRequestBody } from "@rest-rpc/fetch/deserializeRequestBody";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
 	createRouteMatcher,
@@ -9,11 +11,7 @@ import {
 } from "@rest-rpc/server";
 import type { DefaultContext, NodeRouteHandlerResult } from "./index.ts";
 import { createRequestSignal } from "./lifecycle.ts";
-import {
-	defaultBodyParser,
-	parseRequestTarget,
-	type NodeBodyParser,
-} from "./request.ts";
+import { toFetchRequest, parseRequestTarget } from "./request.ts";
 import { writeNodeResponse } from "./response.ts";
 
 /**
@@ -22,7 +20,8 @@ import { writeNodeResponse } from "./response.ts";
  * @see {@link https://rest-rpc.dev/docs/server/node#options}
  */
 export type CreateNodeHandlerOptions = {
-	bodyParser?: NodeBodyParser;
+	bodyCodecs?: readonly BodyCodec<IncomingMessage>[];
+	requestBody?: { maxBytes?: number };
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 };
@@ -70,7 +69,22 @@ export function createRouteHandler(
 	...contextArguments: ContextArguments
 ) => Promise<NodeRouteHandlerResult> {
 	const matchRoute = createRouteMatcher(implementations);
-	const bodyParser = options.bodyParser ?? defaultBodyParser;
+	const bodyCodecs = options.bodyCodecs ?? [];
+	const maxBytes = options.requestBody?.maxBytes;
+	if (
+		maxBytes !== undefined &&
+		(!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
+	) {
+		throw new Error("requestBody.maxBytes must be a positive safe integer");
+	}
+	if (
+		maxBytes !== undefined &&
+		bodyCodecs.some((codec) => codec.deserialize !== undefined)
+	) {
+		throw new Error(
+			"requestBody.maxBytes cannot be combined with a custom deserializer",
+		);
+	}
 
 	return async (request, response, ...contextArguments) => {
 		const url = parseRequestTarget(request);
@@ -94,16 +108,19 @@ export function createRouteHandler(
 		}
 
 		const signal = createRequestSignal(request, response);
-		let body: unknown;
-		try {
-			body = await bodyParser(request);
-		} catch (error) {
-			if (options.bodyParser !== undefined) throw error;
-			response.statusCode = 400;
+		const { body, rejection: bodyRejection } = await deserializeRequestBody(
+			request,
+			{
+				toFetchRequest: () => toFetchRequest(request, signal),
+				contentType: request.headers["content-type"],
+			},
+			bodyCodecs,
+			maxBytes,
+		);
+		if (bodyRejection) {
+			response.statusCode = bodyRejection.status;
 			response.setHeader("content-type", "application/json");
-			response.end(
-				JSON.stringify({ message: "Failed to parse request body." }),
-			);
+			response.end(JSON.stringify({ message: bodyRejection.message }));
 			return { matched: true };
 		}
 		const parsedRequest = {

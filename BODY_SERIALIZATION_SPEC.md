@@ -149,7 +149,8 @@ The server limit belongs to the component that reads the body, not to the
 codec rule itself. Fetch enforces the raw request limit while its built-in
 deserializer reads; Node delegates to that same path. A counting stream can
 reject as soon as received bytes exceed the limit, without a separate full
-read. `Content-Length` may allow an early rejection but cannot replace byte
+read. `Content-Length` converted with `Number` allows early rejection when above the
+limit, before default parsing reads the stream, but cannot replace byte
 counting. The oversized-body result is HTTP `413`.
 
 The limit applies to a request resolved to a library-owned default
@@ -257,7 +258,7 @@ when annotating a standalone codec and inferred from entry-point options:
 | Fetch client         | `Response`                                                     |
 | Fetch server handler | `Request`                                                      |
 | Node server handler  | `IncomingMessage`                                              |
-| Hono                 | `Request` (`context.req.raw`)                                  |
+| Hono                 | `HonoRequest` (`context.req`)                                  |
 | Express raw parsing  | Express `Request`, which extends `IncomingMessage`             |
 | Fastify raw parsing  | `FastifyRequest`, with an unconsumed payload stream in `.body` |
 | Nest with Express    | Express `Request`, via `expressBodyCodecs`                     |
@@ -275,19 +276,36 @@ can be shared using `BodyCodec<Request | Response>` because both sources expose
 the Fetch body APIs. Native codecs are not guaranteed to be portable, though
 users may explicitly normalize their source or prepare portable outputs.
 
-Both operations are optional. Resolution skips a rule lacking the requested
-operation **before** calling its matcher, then selects the first matching rule
-that supplies the operation. A rule with neither callback contributes nothing.
-Arrays are readonly, evaluated in user order, and followed by built-in
-fallbacks. There is no public codec registry. The approved `@rest-rpc/core/codecs`
-subpath exports `defaultBodyCodecs`, `normalizeMediaType`, `serializeBody`,
-`deserializeBody`, `resolveBodySerializer`, and `resolveBodyDeserializer` for
-client and adapter reuse. These helpers are not re-exported from the package
-root; codec types are. The operation resolvers receive a normalized media type,
-user rules, and optional fallback rules; omitting fallbacks allows native
-adapters to resolve custom callbacks before deciding whether to bridge to Fetch.
-The serialize/deserialize convenience functions use Fetch-compatible defaults,
-while native adapters retain responsibility for their built-in delivery bridges.
+Both operations are optional. `resolveBodyCodecs(mediaType, codecs)` evaluates
+only the supplied list, in order. Callers combine user and default codecs as
+`[...userCodecs, ...defaultBodyCodecs]` when both are needed, or pass either list
+alone. There are no implicit defaults or fallback options. Each operation retains its first matching
+callback. Rules that cannot supply an unresolved operation are skipped before
+matching. Each candidate matcher is called once, and resolution stops when both
+operations are selected. Missing media types bypass matching. If neither
+operation matches, the result is `undefined`.
+
+The result exposes optional callable `serialize` and `deserialize` functions,
+without ownership metadata. The serializer wraps the selected callback and
+applies serializer-output/header checks when invoked. Resolution does not invoke
+callbacks, read a source, or normalize a transport.
+
+Server raw-body parsing first resolves only user codecs.
+A selected user deserializer receives the original source without library bounds.
+Otherwise, the server resolves built-ins and invokes their deserializer with a
+bounded Fetch source. Native adapters retain responsibility for preparing that
+Fetch source when using built-ins.
+The Fetch helper accepts `deserializeRequestBody(request, rawRequest, bodyCodecs,
+maxBytes)`: the generic request is supplied to custom codecs, while `rawRequest`
+is a Fetch `Request` or `{ toFetchRequest: () => Request, contentType }`.
+The lazy form supplies content type for custom resolution and creates a Fetch
+Request only if default parsing is needed. Node uses this form to defer its
+`Readable.toWeb` bridge until after custom codec selection.
+
+The `@rest-rpc/core/codecs` subpath exports `defaultBodyCodecs`,
+`normalizeMediaType`, and `resolveBodyCodecs`. Separate operation resolvers and
+serialize/deserialize convenience functions are removed. These helpers are not
+re-exported from the package root; codec configuration types are.
 
 `SerializedBody.body` is required but typed as `unknown`: a custom codec owns
 preparing it for the destination's native delivery API. This does not imply
@@ -358,7 +376,7 @@ an override cannot silently do nothing.
 Existing server `bodyParser` options and their root-exported callback types
 (`FetchBodyParser`, `NodeBodyParser`, and `HonoBodyParser` where exported) are
 removed. Node custom deserializers retain native `IncomingMessage` access;
-Hono custom deserializers receive the native Fetch `Request`, not Hono context. Native handler request fields remain
+Hono custom deserializers receive the native `HonoRequest` (`context.req`). Native handler request fields remain
 available to handlers, outside codec callbacks.
 
 The default raw server request limit is **1,048,576 bytes (1 MiB)**.
@@ -427,10 +445,10 @@ accept `application/problem+json` unless separately declared. Parameters such
 as charset and multipart boundaries do not affect acceptance.
 
 Request media-type acceptance is a separate assertion before rest-rpc body
-acquisition. For a declared request body, a present unsupported media type
-returns a shared status/message rejection (HTTP 415) that the adapter writes
-through its native response mechanism. Missing or empty headers and routes
-without a declared body pass this assertion. Under framework ownership this
+acquisition. A present media type without a matching declaration returns a
+shared status/message rejection (HTTP 415) that the adapter writes through its
+native response mechanism, including on routes without a body declaration.
+Missing or empty headers pass this assertion. Under framework ownership this
 assertion runs before handing the parsed value to validation; framework parsers
 may already have run in upstream middleware or hooks.
 

@@ -23,7 +23,7 @@ runBodyParsingSuite({
 	},
 });
 
-describe("hono default body parser errors", () => {
+describe("hono request codecs", () => {
 	it("returns a parsing 400 when the default JSON parser fails", async () => {
 		const app = new Hono();
 		registerRoutes(app, createBodyParsingImplementations());
@@ -46,7 +46,96 @@ describe("hono default body parser errors", () => {
 		});
 	});
 
-	it("lets custom body parser errors propagate", async () => {
+	it("enforces default byte limits and rejects oversized hints before reading", async () => {
+		const app = new Hono();
+		registerRoutes(app, createBodyParsingImplementations(), {
+			requestBody: { maxBytes: 2 },
+		});
+		for (const headers of [
+			{ "content-type": "application/json" },
+			{ "content-type": "application/json", "content-length": "3" },
+		]) {
+			const source = new Request("http://127.0.0.1/body-parsing/json", {
+				method: "POST",
+				headers,
+				body: "{} ",
+			});
+			const response = await app.fetch(source);
+			assert.equal(response.status, 413);
+			assert.deepEqual(await response.json(), {
+				message: "Request body too large",
+			});
+			if ("content-length" in headers) assert.equal(source.bodyUsed, false);
+		}
+	});
+
+	it("passes the original HonoRequest to custom deserializers without bounds", async () => {
+		const app = new Hono();
+		const source = new Request("http://127.0.0.1/body-parsing/json", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				"content-length": "2000000",
+			},
+			body: "x".repeat(1_048_577),
+		});
+		registerRoutes(app, createBodyParsingImplementations(), {
+			bodyCodecs: [
+				{
+					match: (mediaType) => mediaType === "application/json",
+					deserialize: async (native) => {
+						assert.equal(native.raw, source);
+						assert.equal(native.path, "/body-parsing/json");
+						assert.equal(native.raw.bodyUsed, false);
+						assert.equal((await native.text()).length, 1_048_577);
+						return { count: 1, title: "custom" };
+					},
+				},
+			],
+		});
+		const response = await app.fetch(source);
+		assert.equal(response.status, 200);
+		assert.deepEqual(await response.json(), { count: 1, title: "custom" });
+	});
+
+	it("rejects unsupported types before custom matching and validates configuration", async () => {
+		const app = new Hono();
+		const implementations = createBodyParsingImplementations();
+		for (const maxBytes of [0, -1, 1.5, Infinity]) {
+			assert.throws(() =>
+				registerRoutes(app, implementations, { requestBody: { maxBytes } }),
+			);
+		}
+		assert.throws(() =>
+			registerRoutes(app, implementations, {
+				requestBody: { maxBytes: 1 },
+				bodyCodecs: [{ match: () => false, deserialize: () => undefined }],
+			}),
+		);
+		registerRoutes(app, implementations, {
+			bodyCodecs: [
+				{
+					match: () => {
+						throw new Error("must not match");
+					},
+					deserialize: () => undefined,
+				},
+			],
+			requestValidationErrorHandler: () => {
+				throw new Error("must not call validation hook");
+			},
+		});
+		const source = new Request("http://127.0.0.1/body-parsing/json", {
+			method: "POST",
+			headers: { "content-type": "text/plain" },
+			body: "hello",
+		});
+		const response = await app.fetch(source);
+		assert.equal(response.status, 415);
+		assert.equal(source.bodyUsed, false);
+	});
+
+	it("lets custom deserializer errors propagate", async () => {
 		const app = new Hono();
 		let capturedError: unknown;
 		app.onError((error) => {
@@ -54,9 +143,14 @@ describe("hono default body parser errors", () => {
 			return new Response("custom error handler", { status: 599 });
 		});
 		registerRoutes(app, createBodyParsingImplementations(), {
-			bodyParser: () => {
-				throw new Error("custom parser failed");
-			},
+			bodyCodecs: [
+				{
+					match: () => true,
+					deserialize: () => {
+						throw new Error("custom parser failed");
+					},
+				},
+			],
 		});
 
 		const response = await app.fetch(
