@@ -26,8 +26,8 @@ export type {
 	ExtendedFastifyPreHandler,
 	RequestValidationErrorHandler,
 	ResponseValidationErrorHandler,
-} from "./http.ts";
-export type { RegisterRoutesOptions } from "./registerRoutes.ts";
+	RegisterRoutesOptions,
+} from "./registerRoutes.ts";
 export { registerRoutes } from "./registerRoutes.ts";
 export {
 	RequestValidationError,
