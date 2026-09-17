@@ -332,18 +332,18 @@ describe("Fetch request codec integration", () => {
 			Number.MAX_SAFE_INTEGER + 1,
 		]) {
 			assert.throws(() =>
-				createRouteHandler(implementations(), { requestBody: { maxBytes } }),
+				createRouteHandler(implementations(), { requestBodyLimit: maxBytes }),
 			);
 		}
-		assert.throws(() =>
+		assert.doesNotThrow(() =>
 			createRouteHandler(implementations(), {
-				requestBody: { maxBytes: 1 },
+				requestBodyLimit: 1,
 				bodyCodecs: [{ match: () => false, deserialize: () => undefined }],
 			}),
 		);
 		assert.doesNotThrow(() =>
 			createRouteHandler(implementations(), {
-				requestBody: { maxBytes: 1 },
+				requestBodyLimit: 1,
 				bodyCodecs: [{ match: () => true, serialize: () => ({ body: "" }) }],
 			}),
 		);
@@ -396,7 +396,7 @@ describe("Fetch request codec integration", () => {
 
 	it("writes built-in rejections and allows custom policies", async () => {
 		const handler = createRouteHandler(implementations(), {
-			requestBody: { maxBytes: 2 },
+			requestBodyLimit: 2,
 		});
 		const result = await handler(request("abc"));
 		assert(result.matched);
@@ -405,6 +405,7 @@ describe("Fetch request codec integration", () => {
 			message: "Request body too large",
 		});
 		const custom = createRouteHandler(implementations(), {
+			requestBodyLimit: 1,
 			bodyCodecs: [{ match: () => true, deserialize: () => "custom" }],
 		});
 		const success = await custom(request("hello"));

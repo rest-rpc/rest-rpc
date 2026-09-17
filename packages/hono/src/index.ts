@@ -56,12 +56,12 @@ export type RouteHandler<
 > = ServerRouteHandler<TRoute["~restrpc"], HonoHandlerFields<TEnv>>;
 
 /**
- * Entry point for declaring server-first routes handled by Hono.
+ * Entry point for declaring routes with handlers for Hono.
  *
  * @remarks Responses are inferred from the handler unless they are declared
  * before `.handler()`.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#define-routes-and-handlers}
+ * @see {@link https://rest-rpc.dev/docs/quickstart#define-and-register-routes}
  * @see {@link https://rest-rpc.dev/docs/server/hono#framework-context}
  */
 export const route =

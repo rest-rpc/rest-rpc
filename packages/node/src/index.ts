@@ -31,12 +31,12 @@ export type NodeRouteHandlerResult = { matched: boolean };
 export interface DefaultContext {}
 
 /**
- * Entry point for declaring server-first routes handled by Node HTTP.
+ * Entry point for declaring routes with handlers for Node HTTP.
  *
  * @remarks Responses are inferred from the handler unless they are declared
  * before `.handler()`.
  *
- * @see {@link https://rest-rpc.dev/docs/server-first-quickstart#define-routes-and-handlers}
+ * @see {@link https://rest-rpc.dev/docs/quickstart#define-and-register-routes}
  * @see {@link https://rest-rpc.dev/docs/server/node}
  */
 export const route = serverFirstRoute as unknown as ServerRouteBuilder<

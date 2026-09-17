@@ -1,13 +1,69 @@
 ---
-title: HTTP Serialization
+title: Serialization and Codecs
 description: Default body codecs and custom serialization for clients and server adapters
 ---
 
-Body codecs convert values to HTTP bodies (`serialize`) and read HTTP bodies
-back into values (`deserialize`). Declare a body's content type with the
-`contentType` option on `.body()` or `.response()`; both default to
-`application/json`. Schemas describe the values before serialization and after
-deserialization.
+HTTP values travel through URL strings, headers, or request and response bodies.
+These rules are shared across routes, clients, and server adapters. See the
+[Route Builder](/docs/route-builder) for declaring the interface and
+[Schemas and Validation](/docs/http-behavior/schemas) for validation boundaries.
+
+## Path, Query, and Headers
+
+The client stringifies scalar values. The server passes HTTP strings to request
+schemas, which perform any required coercion.
+
+| Location    | Client value shape                                   | Wire representation                                        |
+| ----------- | ---------------------------------------------------- | ---------------------------------------------------------- |
+| Path params | Object of string, number, or boolean values          | Each value is URL-encoded into its path segment            |
+| Query       | Object of scalars, scalar arrays, or optional values | Scalars use `key=value`. Arrays use repeated `key[]=value` |
+| Headers     | Object of scalars or optional values                 | String values under lowercase header names                 |
+
+Undefined query and header values are omitted. Missing required path params
+fail on the client. Nested query objects are unsupported. A flat GET `.input()`
+uses the same query encoding as `.query()`.
+
+The server reconstructs `tag[]=one&tag[]=two` as `{ tag: ["one", "two"] }`.
+A single `tag[]=one` remains an array. Repeated scalar keys such as
+`tag=one&tag=two` keep the last value.
+
+Declare header schemas with lowercase names. Incoming Node and Fetch header
+names are normalized to lowercase and uppercase schema keys do not match them.
+Declare request content types through body options rather than a
+`content-type` request header.
+
+## Bodies and Content Types
+
+Body codecs serialize values into HTTP bodies and deserialize HTTP bodies into
+values. `.input()`, `.body()`, `.output()`, and `.response()` default to
+`application/json`. Specifying the `contentType` option can select another media type.
+Schemas operate on values before encoding and after decoding.
+
+Outgoing codecs are selected from the declared content type. Incoming codecs
+are selected from the received `Content-Type` header. Matching uses the lowercase
+base media type without parameters, so `application/json; charset=utf-8` matches
+the JSON codec. A client response without a content-type header or body yields
+`undefined`.
+
+For a list of request content types, select one in the client's per-call options:
+
+```ts
+await client.files.upload(bytes, { contentType: "image/png" });
+```
+
+For a list of response content types, the handler selects one with its returned
+`contentType`. The schema and codecs must agree on the values represented by
+each selected type.
+
+## Streaming
+
+Async iterable outputs use `application/x-ndjson`: each item is JSON-encoded on
+its own line. The client incrementally parses those lines and yields items
+through an async iterable.
+
+Inferred streams, `.streamOutput()`, and `.streamResponse()` use the same
+framing. Streams bypass `bodyCodecs`. Declared item schemas validate on the
+server and optionally on the client with `validateResponses`.
 
 ## Fetch Client Defaults
 
@@ -17,7 +73,7 @@ deserialization.
 | -------------------------------------------- | ---------------------- | ------------------------------------------------------------------- |
 | `application/json` or any `+json` media type | JSON value             | UTF-8 JSON text                                                     |
 | `application/x-www-form-urlencoded`          | `URLSearchParams`      | URL-encoded form                                                    |
-| `multipart/form-data`                        | `FormData`             | Multipart form; Fetch supplies the boundary and content-type header |
+| `multipart/form-data`                        | `FormData`             | Multipart form. Fetch supplies the boundary and content-type header |
 | `text/*`                                     | `string`               | Text                                                                |
 | Any other media type                         | `Blob` or `Uint8Array` | Binary body                                                         |
 
@@ -31,12 +87,8 @@ deserialization.
 | `text/*`                                     | Text              | `string` from `Response.text()`          |
 | Any other media type                         | Binary body       | `Blob` from `Response.blob()`            |
 
-Outgoing codecs are selected from the declared content type. Incoming codecs
-are selected from the received `Content-Type` header. Matching uses the lowercase
-base media type without parameters, so `application/json; charset=utf-8` matches
-the JSON codec. A response without a content-type header or body yields
-`undefined`. Client response validation runs after deserialization when
-`validateResponses` is enabled.
+Client response validation runs after deserialization when `validateResponses`
+is enabled. See [Schemas and Validation](/docs/http-behavior/schemas#response-validation-on-the-client).
 
 ## Server Adapter Defaults
 
@@ -49,10 +101,10 @@ serialize outgoing response bodies after response validation.
 | ----------------------------------- | -------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------- |
 | All adapters                        | `application/json` or any `+json` media type | JSON value                                                    | UTF-8 JSON text                                                      |
 | All adapters                        | `application/x-www-form-urlencoded`          | `URLSearchParams`                                             | URL-encoded form                                                     |
-| Fetch, Hono                         | `multipart/form-data`                        | `FormData`                                                    | Multipart form; Fetch supplies the boundary and content-type header  |
+| Fetch, Hono                         | `multipart/form-data`                        | `FormData`                                                    | Multipart form. Fetch supplies the boundary and content-type header  |
 | All adapters                        | `text/*`                                     | `string`                                                      | UTF-8 text                                                           |
 | Fetch, Hono                         | Any other media type                         | `Blob` or `Uint8Array`                                        | Binary body                                                          |
-| Node HTTP, Express, Fastify, NestJS | Any other media type                         | `Blob`, `Uint8Array` (including `Buffer`), or Node `Readable` | Binary body; native values are sent using the adapter's response API |
+| Node HTTP, Express, Fastify, NestJS | Any other media type                         | `Blob`, `Uint8Array` (including `Buffer`), or Node `Readable` | Binary body. Native values are sent using the adapter's response API |
 
 Binary fallback serializers reject other values.
 Use a custom serializer to supply another body type supported by the adapter.
@@ -73,9 +125,9 @@ Use a custom serializer to supply another body type supported by the adapter.
 For Express, Fastify, and Nest, configure the framework's request parsers or
 supply a custom deserializer for the content types your routes accept.
 
-Fetch, Hono, and Node limit built-in request decoding to 1 MiB by default.
-Set `requestBody.maxBytes` to change the limit. Malformed bodies return 400 and
-oversized bodies return 413.
+Fetch, Hono, and Node limit built-in request decoding to `1 MiB` by default.
+Set `requestBodyLimit` to change the limit. Malformed bodies returns `400` Response and
+oversized bodies return `413` Response.
 
 ## Override A Codec
 
@@ -124,7 +176,7 @@ adapter's response API.
 
 The adapter applies the response status and headers, then delivers
 `serialized.body` as follows. A custom serializer must return a value accepted
-by this delivery path; its result does not go through the default serializers.
+by this delivery path. Its result does not go through the default serializers.
 
 | Adapter            | What happens to `serialized.body`                                                                                                            | Requirements for custom serializers                                                                                                                                                              |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -139,7 +191,7 @@ by this delivery path; its result does not go through the default serializers.
 including parameters, and returns `{ body, headers?, contentType? }`:
 
 - `body` must be usable by the target Fetch or server response API.
-- `headers` adds headers; declared request or response headers take precedence.
+- `headers` adds headers. Declared request or response headers take precedence.
   Codec headers cannot contain `Content-Type`, `Content-Length`, or
   `Transfer-Encoding` (case-insensitively).
 - Omitting `contentType` preserves the declared content type. A string may change
@@ -161,12 +213,9 @@ source for the configured entry point:
 | Fastify      | `FastifyRequest`                                          |
 | NestJS       | Underlying Express or Fastify request, typed as `unknown` |
 
-Custom deserializers own their body reading and limits. An explicit
-`requestBody.maxBytes` cannot be combined with any custom deserializer on Fetch,
-Hono, or Node HTTP. Codec errors propagate to the client's caller or the server
-adapter's normal error handling.
-
-## Streaming
-
-Routes declared with `.streamResponse()` or `streamOutput()` use NDJSON framing and yield parsed
-items on the client. These streams bypass `bodyCodecs`.
+:::warning
+Custom deserializers own their body reading and limits and error handling.
+You can combine `requestBodyLimit` with custom deserializers but the limit applies
+**ONLY** to built-in decoding. Matched custom deserializers manage their own limits.
+All errors propagate to the caller or to framework's normal error handling. The adapter does not wrap or transform them.
+:::

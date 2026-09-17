@@ -52,11 +52,12 @@ export type ExtendedHonoMiddleware<TEnv extends Env = Env> = (
  * @see {@link https://rest-rpc.dev/docs/server/hono#options}
  */
 export type RegisterRoutesOptions<TEnv extends Env = Env> = {
+	bodyCodecs?: readonly BodyCodec<HonoRequest>[];
+	/** The maximum accepted size of the request body in bytes. */
+	requestBodyLimit?: number;
 	requestValidationErrorHandler?: RequestValidationErrorHandler<TEnv>;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler<TEnv>;
 	middleware?: ExtendedHonoMiddleware<TEnv>[];
-	bodyCodecs?: readonly BodyCodec<HonoRequest>[];
-	requestBody?: { maxBytes?: number };
 };
 
 /**
@@ -69,20 +70,12 @@ export function registerRoutes<TEnv extends Env = Env>(
 	implementations: RuntimeImplementationTree,
 	options: RegisterRoutesOptions<TEnv> = {},
 ) {
-	const maxBytes = options.requestBody?.maxBytes;
+	const maxBytes = options.requestBodyLimit;
 	if (
 		maxBytes !== undefined &&
 		(!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
 	) {
-		throw new Error("requestBody.maxBytes must be a positive safe integer");
-	}
-	if (
-		maxBytes !== undefined &&
-		options.bodyCodecs?.some((codec) => codec.deserialize !== undefined)
-	) {
-		throw new Error(
-			"requestBody.maxBytes cannot be combined with a custom deserializer",
-		);
+		throw new Error("requestBodyLimit must be a positive safe integer");
 	}
 
 	const {
@@ -117,7 +110,7 @@ export function registerRoutes<TEnv extends Env = Env>(
 					c.req,
 					c.req.raw,
 					bodyCodecs,
-					options.requestBody?.maxBytes,
+					options.requestBodyLimit,
 				);
 				if (bodyRejection) {
 					return c.json(

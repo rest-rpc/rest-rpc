@@ -18,7 +18,8 @@ import { createFetchResponse } from "./response.ts";
  */
 export type CreateFetchHandlerOptions = {
 	bodyCodecs?: readonly BodyCodec<Request>[];
-	requestBody?: { maxBytes?: number };
+	/** The maximum accepted size of the request body in bytes. */
+	requestBodyLimit?: number;
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 };
@@ -68,20 +69,12 @@ export function createRouteHandler(
 ) => Promise<FetchRouteHandlerResult> {
 	const matchRoute = createRouteMatcher(implementations);
 	const bodyCodecs = options.bodyCodecs ?? [];
-	const maxBytes = options.requestBody?.maxBytes;
+	const maxBytes = options.requestBodyLimit;
 	if (
 		maxBytes !== undefined &&
 		(!Number.isSafeInteger(maxBytes) || maxBytes <= 0)
 	) {
-		throw new Error("requestBody.maxBytes must be a positive safe integer");
-	}
-	if (
-		options.requestBody?.maxBytes !== undefined &&
-		bodyCodecs.some((codec) => codec.deserialize !== undefined)
-	) {
-		throw new Error(
-			"requestBody.maxBytes cannot be combined with a custom deserializer",
-		);
+		throw new Error("requestBodyLimit must be a positive safe integer");
 	}
 
 	return async (request, ...contextArguments) => {

@@ -1,6 +1,6 @@
 import { defineMeta } from "blume";
 
 export default defineMeta({
-	title: "Contracts",
-	pages: ["declaration"],
+	pages: ["schemas", "serialization"],
+	title: "HTTP Behavior",
 });

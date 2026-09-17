@@ -9,7 +9,7 @@ export type ResponseBodySchema = ResponseSchema;
 /**
  * Declares a whole-object schema for typed response headers.
  *
- * @see {@link https://rest-rpc.dev/docs/contract/declaration}
+ * @see {@link https://rest-rpc.dev/docs/route-builder}
  */
 export type ResponseHeaders = StandardSchemaV1<
 	unknown,
@@ -19,7 +19,7 @@ export type ResponseHeaders = StandardSchemaV1<
 /**
  * Canonical declaration for one route response.
  *
- * @see {@link https://rest-rpc.dev/docs/http-serialization}
+ * @see {@link https://rest-rpc.dev/docs/http-behavior/serialization}
  */
 export type ResponseDeclaration =
 	| {

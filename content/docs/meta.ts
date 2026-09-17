@@ -3,14 +3,14 @@ import { defineMeta } from "blume";
 export default defineMeta({
 	pages: [
 		"quickstart",
-		"server-first-quickstart",
-		"procedures",
-		"api-reference",
+		"contract-first-quickstart",
+		"route-builder",
 		"contract",
-		"http-serialization",
+		"http-behavior",
 		"server",
 		"client",
-		"type-helpers",
 		"openapi",
+		"type-helpers",
+		"api-reference",
 	],
 });

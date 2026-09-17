@@ -14,7 +14,7 @@ describe("node request codecs", () => {
 		const server = await createNodeAdapter(
 			createRequestCodecErrorsImplementations(),
 			{
-				createHandlerOptions: { requestBody: { maxBytes: 2 } },
+				createHandlerOptions: { requestBodyLimit: 2 },
 			},
 		).start();
 		try {
@@ -67,6 +67,7 @@ describe("node request codecs", () => {
 			createRequestCodecErrorsImplementations(),
 			{
 				createHandlerOptions: {
+					requestBodyLimit: 1,
 					bodyCodecs: [
 						{
 							match: (mediaType) => mediaType === "application/json",
@@ -154,18 +155,18 @@ describe("node request codecs", () => {
 		const implementations = createRequestCodecErrorsImplementations();
 		for (const maxBytes of [0, -1, 1.5, Infinity]) {
 			assert.throws(() =>
-				createRouteHandler(implementations, { requestBody: { maxBytes } }),
+				createRouteHandler(implementations, { requestBodyLimit: maxBytes }),
 			);
 		}
-		assert.throws(() =>
+		assert.doesNotThrow(() =>
 			createRouteHandler(implementations, {
-				requestBody: { maxBytes: 1 },
+				requestBodyLimit: 1,
 				bodyCodecs: [{ match: () => false, deserialize: () => undefined }],
 			}),
 		);
 		assert.doesNotThrow(() =>
 			createRouteHandler(implementations, {
-				requestBody: { maxBytes: 1 },
+				requestBodyLimit: 1,
 				bodyCodecs: [{ match: () => true, serialize: () => ({ body: "" }) }],
 			}),
 		);

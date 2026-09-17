@@ -18,7 +18,7 @@ import {
 /**
  * A Standard Schema validation issue surfaced by server request validation.
  *
- * @see {@link https://rest-rpc.dev/docs/contract/schemas#validation}
+ * @see {@link https://rest-rpc.dev/docs/http-behavior/schemas#request-validation}
  */
 export type ValidationIssue = StandardSchemaV1.Issue;
 

@@ -36,7 +36,7 @@ describe("hono request codecs", () => {
 	it("enforces default byte limits and rejects oversized hints before reading", async () => {
 		const app = new Hono();
 		registerRoutes(app, createRequestCodecErrorsImplementations(), {
-			requestBody: { maxBytes: 2 },
+			requestBodyLimit: 2,
 		});
 		for (const headers of [
 			{ "content-type": "application/json" },
@@ -67,6 +67,7 @@ describe("hono request codecs", () => {
 			body: "x".repeat(1_048_577),
 		});
 		registerRoutes(app, createRequestCodecErrorsImplementations(), {
+			requestBodyLimit: 1,
 			bodyCodecs: [
 				{
 					match: (mediaType) => mediaType === "application/json",
@@ -90,12 +91,12 @@ describe("hono request codecs", () => {
 		const implementations = createRequestCodecErrorsImplementations();
 		for (const maxBytes of [0, -1, 1.5, Infinity]) {
 			assert.throws(() =>
-				registerRoutes(app, implementations, { requestBody: { maxBytes } }),
+				registerRoutes(app, implementations, { requestBodyLimit: maxBytes }),
 			);
 		}
-		assert.throws(() =>
+		assert.doesNotThrow(() =>
 			registerRoutes(app, implementations, {
-				requestBody: { maxBytes: 1 },
+				requestBodyLimit: 1,
 				bodyCodecs: [{ match: () => false, deserialize: () => undefined }],
 			}),
 		);
