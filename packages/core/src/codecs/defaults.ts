@@ -42,8 +42,9 @@ export const defaultBodyCodecs: readonly BodyCodec<Request | Response>[] = [
 	{
 		match: () => true,
 		serialize: (value) => {
-			if (!(value instanceof Blob)) throw new TypeError("Expected Blob body");
-			return { body: value };
+			if (value instanceof Blob) return { body: value };
+			if (value instanceof Uint8Array) return { body: value };
+			throw new TypeError("Expected Blob or Uint8Array body");
 		},
 		deserialize: (source) => source.blob(),
 	},

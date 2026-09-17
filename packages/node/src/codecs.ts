@@ -1,4 +1,6 @@
 import type { BodyCodec } from "@rest-rpc/core";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 
 /** Default response codecs producing bodies for Node writes and Fastify replies. */
 export const nodeBodyCodecs: readonly BodyCodec<unknown>[] = [
@@ -29,9 +31,17 @@ export const nodeBodyCodecs: readonly BodyCodec<unknown>[] = [
 	},
 	{
 		match: () => true,
-		serialize: async (value) => ({
-			body:
-				value instanceof Blob ? Buffer.from(await value.arrayBuffer()) : value,
-		}),
+		serialize: (value) => {
+			if (value instanceof Blob)
+				return {
+					// DOM and Node declare the same runtime stream with different types.
+					body: Readable.fromWeb(
+						value.stream() as unknown as NodeReadableStream<Uint8Array>,
+					),
+				};
+			if (value instanceof Uint8Array) return { body: value };
+			if (value instanceof Readable) return { body: value };
+			throw new TypeError("Expected Blob, Uint8Array, or Readable body");
+		},
 	},
 ];

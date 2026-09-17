@@ -13,13 +13,13 @@ deserialization.
 
 ### Client Request Serialization
 
-| Content type                                 | In: client value  | Out: body on the wire                                               |
-| -------------------------------------------- | ----------------- | ------------------------------------------------------------------- |
-| `application/json` or any `+json` media type | JSON value        | UTF-8 JSON text                                                     |
-| `application/x-www-form-urlencoded`          | `URLSearchParams` | URL-encoded form                                                    |
-| `multipart/form-data`                        | `FormData`        | Multipart form; Fetch supplies the boundary and content-type header |
-| `text/*`                                     | `string`          | Text                                                                |
-| Any other media type                         | `Blob`            | Binary body                                                         |
+| Content type                                 | In: client value       | Out: body on the wire                                               |
+| -------------------------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| `application/json` or any `+json` media type | JSON value             | UTF-8 JSON text                                                     |
+| `application/x-www-form-urlencoded`          | `URLSearchParams`      | URL-encoded form                                                    |
+| `multipart/form-data`                        | `FormData`             | Multipart form; Fetch supplies the boundary and content-type header |
+| `text/*`                                     | `string`               | Text                                                                |
+| Any other media type                         | `Blob` or `Uint8Array` | Binary body                                                         |
 
 ### Client Response Deserialization
 
@@ -45,14 +45,17 @@ serialize outgoing response bodies after response validation.
 
 ### Server Response Serialization
 
-| Adapter                             | Content type                                 | In: handler value                                                            | Out: body on the wire                                                |
-| ----------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| All adapters                        | `application/json` or any `+json` media type | JSON value                                                                   | UTF-8 JSON text                                                      |
-| All adapters                        | `application/x-www-form-urlencoded`          | `URLSearchParams`                                                            | URL-encoded form                                                     |
-| Fetch, Hono                         | `multipart/form-data`                        | `FormData`                                                                   | Multipart form; Fetch supplies the boundary and content-type header  |
-| All adapters                        | `text/*`                                     | `string`                                                                     | UTF-8 text                                                           |
-| Fetch, Hono                         | Any other media type                         | `Blob`                                                                       | Binary body                                                          |
-| Node HTTP, Express, Fastify, NestJS | Any other media type                         | `Blob` or a native response body, such as a `Buffer` or Node readable stream | Binary body; native values are sent using the adapter's response API |
+| Adapter                             | Content type                                 | In: handler value                                             | Out: body on the wire                                                |
+| ----------------------------------- | -------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| All adapters                        | `application/json` or any `+json` media type | JSON value                                                    | UTF-8 JSON text                                                      |
+| All adapters                        | `application/x-www-form-urlencoded`          | `URLSearchParams`                                             | URL-encoded form                                                     |
+| Fetch, Hono                         | `multipart/form-data`                        | `FormData`                                                    | Multipart form; Fetch supplies the boundary and content-type header  |
+| All adapters                        | `text/*`                                     | `string`                                                      | UTF-8 text                                                           |
+| Fetch, Hono                         | Any other media type                         | `Blob` or `Uint8Array`                                        | Binary body                                                          |
+| Node HTTP, Express, Fastify, NestJS | Any other media type                         | `Blob`, `Uint8Array` (including `Buffer`), or Node `Readable` | Binary body; native values are sent using the adapter's response API |
+
+Binary fallback serializers reject other values.
+Use a custom serializer to supply another body type supported by the adapter.
 
 ### Server Request Deserialization
 
