@@ -1,5 +1,5 @@
 import type { BodyCodec } from "@rest-rpc/core";
-import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
+import { normalizeMediaType, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import { nodeBodyCodecs } from "@rest-rpc/node";
 import { StreamableFile } from "@nestjs/common";
 import { Readable } from "node:stream";
@@ -14,7 +14,7 @@ export const nestBodyCodecs: readonly BodyCodec<unknown>[] = [
 	{
 		match: () => true,
 		serialize: async (value, contentType) => {
-			const codec = resolveBodyCodecs(
+			const codec = resolveBodyCodec(
 				normalizeMediaType(contentType),
 				nodeBodyCodecs,
 			);

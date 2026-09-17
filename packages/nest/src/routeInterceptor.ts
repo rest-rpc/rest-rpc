@@ -1,6 +1,6 @@
 import type { SerializedBody } from "@rest-rpc/core";
 import { nestBodyCodecs } from "./codecs.ts";
-import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
+import { normalizeMediaType, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import {
 	type CallHandler,
 	type ExecutionContext,
@@ -111,7 +111,7 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 
 		const signal = createRequestSignal(rawRequest, rawResponse);
 		const mediaType = normalizeMediaType(rawRequest.headers["content-type"]);
-		const codec = resolveBodyCodecs(mediaType, this.options?.bodyCodecs ?? []);
+		const codec = resolveBodyCodec(mediaType, this.options?.bodyCodecs ?? []);
 		const body = codec?.deserialize
 			? await codec.deserialize(http.getRequest())
 			: req.body;
@@ -153,7 +153,7 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 		let serialized: SerializedBody | undefined;
 		if (result.kind === "response" && result.body) {
 			const { value, contentType } = result.body;
-			const codec = resolveBodyCodecs(normalizeMediaType(contentType), [
+			const codec = resolveBodyCodec(normalizeMediaType(contentType), [
 				...(this.options?.bodyCodecs ?? []),
 				...nestBodyCodecs,
 			]);

@@ -6,7 +6,7 @@ import type {
 	BodySerializer,
 	SerializedBody,
 } from "@rest-rpc/core";
-import { defaultBodyCodecs, resolveBodyCodecs } from "@rest-rpc/core/codecs";
+import { defaultBodyCodecs, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import { expectAssignable, expectError, expectType } from "tsd";
 
 expectAssignable<BodyCodec<Response>>({ match: () => true });
@@ -23,18 +23,18 @@ const native: BodyCodec<IncomingMessage> = {
 	match: () => true,
 	deserialize: (request) => request.headers,
 };
-const resolvedNative = resolveBodyCodecs("application/json", [native]);
+const resolvedNative = resolveBodyCodec("application/json", [native]);
 expectType<BodyDeserializer<IncomingMessage> | undefined>(
 	resolvedNative?.deserialize,
 );
 expectError(
-	resolveBodyCodecs("application/json", [native, ...defaultBodyCodecs]),
+	resolveBodyCodec("application/json", [native, ...defaultBodyCodecs]),
 );
 expectType<BodySerializer | undefined>(
-	resolveBodyCodecs("application/json", defaultBodyCodecs)?.serialize,
+	resolveBodyCodec("application/json", defaultBodyCodecs)?.serialize,
 );
 expectType<BodyDeserializer<Request | Response> | undefined>(
-	resolveBodyCodecs("application/json", defaultBodyCodecs)?.deserialize,
+	resolveBodyCodec("application/json", defaultBodyCodecs)?.deserialize,
 );
 
 // Client option inference provides the concrete Fetch Response source.

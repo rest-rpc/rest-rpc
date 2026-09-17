@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { HttpRouteResult } from "@rest-rpc/server";
 import type { BodyCodec, SerializedBody } from "@rest-rpc/core";
-import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
+import { normalizeMediaType, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import { nodeBodyCodecs } from "./codecs.ts";
 
 const formatResponseStreamChunk = (chunk: unknown) =>
@@ -50,7 +50,7 @@ export async function writeNodeResponse(
 	let serialized: SerializedBody | undefined;
 	if (result.kind === "response" && result.body) {
 		const { value, contentType } = result.body;
-		const codec = resolveBodyCodecs(normalizeMediaType(contentType), [
+		const codec = resolveBodyCodec(normalizeMediaType(contentType), [
 			...bodyCodecs,
 			...nodeBodyCodecs,
 		]);

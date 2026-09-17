@@ -231,7 +231,7 @@ type ResponseMethods<
 > = WhenResponsesAvailable<
 	TState,
 	{
-		/** Declares a response status, schema, and HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-responses} */
+		/** Declares a response status, schema, and HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-serialization} */
 		response<
 			const TStatus extends number,
 			const TSchema extends StandardSchemaV1 | undefined = undefined,
@@ -249,7 +249,7 @@ type ResponseMethods<
 			TPath,
 			TMetadata
 		>;
-		/** Declares a streaming response. @see {@link https://rest-rpc.dev/docs/http-responses#streaming-ndjson-responses} */
+		/** Declares a streaming response. @see {@link https://rest-rpc.dev/docs/http-serialization#streaming} */
 		streamResponse<
 			const TStatus extends number,
 			const TSchema extends StandardSchemaV1,
@@ -277,7 +277,7 @@ type BodyMethods<
 		TState,
 		"body",
 		{
-			/** Declares a request body and its HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-requests} */
+			/** Declares a request body and its HTTP metadata. @see {@link https://rest-rpc.dev/docs/http-serialization} */
 			body<
 				const TSchema extends StandardSchemaV1,
 				const TOptions extends BodyOptions | undefined = undefined,

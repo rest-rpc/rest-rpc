@@ -1,5 +1,5 @@
 import {
-	resolveBodyCodecs,
+	resolveBodyCodec,
 	defaultBodyCodecs,
 	normalizeMediaType,
 	type SerializedBody,
@@ -225,7 +225,7 @@ export const executeRequest = async <E extends RouteDeclaration>(
 	let serialized: SerializedBody | undefined;
 	if (body !== undefined && contentType !== undefined) {
 		const mediaType = normalizeMediaType(contentType);
-		const resolvedCodec = resolveBodyCodecs(mediaType, [
+		const resolvedCodec = resolveBodyCodec(mediaType, [
 			...(options.bodyCodecs ?? []),
 			...defaultBodyCodecs,
 		]);

@@ -1,5 +1,5 @@
 import type { BodyCodec } from "@rest-rpc/core";
-import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
+import { normalizeMediaType, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import { createRequestSignal, writeNodeResponse } from "@rest-rpc/node";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
@@ -105,7 +105,7 @@ export function registerRoutes(
 			let result;
 			try {
 				const signal = createRequestSignal(req, res);
-				const codec = resolveBodyCodecs(
+				const codec = resolveBodyCodec(
 					normalizeMediaType(req.headers["content-type"]),
 					bodyCodecs,
 				);

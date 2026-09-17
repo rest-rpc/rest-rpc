@@ -58,20 +58,16 @@ type RouteHandlerFields<E extends Env = Env> = {
 type RegisterRoutesOptions<TEnv extends Env = Env> = {
 	requestValidationErrorHandler?: RequestValidationErrorHandler<TEnv>;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler<TEnv>;
-	bodyParser?: HonoBodyParser;
+	bodyCodecs?: readonly BodyCodec<HonoRequest>[];
+	requestBody?: { maxBytes?: number };
 	middleware?: Array<
 		(c: Context<TEnv>, next: Next, route: RouteDeclaration) => any
 	>;
 };
 ```
 
-### Body Parsing
-
-```ts
-registerRoutes(app, routes, {
-	bodyParser: (request) => request.json(),
-});
-```
+`bodyCodecs` customizes body serialization and deserialization. See
+[HTTP Serialization](/docs/http-serialization) for defaults and overrides.
 
 ### Error handling
 

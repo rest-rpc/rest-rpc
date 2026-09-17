@@ -80,7 +80,7 @@ const client = initClient(api, {
 		bodyCodecs: {
 			type: "readonly BodyCodec<Response>[]",
 			description:
-				"Ordered overrides for ordinary request serialization and response parsing.",
+				"Optional overrides for the default body codecs used to serialize and deserialize request and response bodies.",
 		},
 		getGlobalHeaders: {
 			type: "() => Record<string, string> | Promise<Record<string, string>>",
@@ -99,58 +99,8 @@ const client = initClient(api, {
 	}}
 />
 
-`bodyCodecs` replaces the former `bodyParser` option. Each rule can provide
-`serialize`, `deserialize`, both, or neither. For each operation, the client
-selects the first matching user rule that provides it, then falls back to the
-defaults from `@rest-rpc/core/codecs`. Rules without the requested operation are
-skipped. JSON can be overridden in either direction; declared NDJSON streaming
-requires an `application/x-ndjson` base media type and a body stream, and
-bypasses ordinary codecs.
-
-Matchers receive the lowercase base media type without parameters. The
-serializer receives the selected declared content type including parameters;
-the deserializer receives the original Fetch `Response` with complete headers.
-Missing or empty incoming content types produce `undefined` without invoking a
-codec. Contract-first clients check present received media types against the
-declaration even when schema validation is disabled. Generated server-first
-clients parse by the received header without that declaration check.
-
-Built-ins use JSON, `URLSearchParams`, `FormData`, strings, and `Blob` for JSON,
-URL-encoded, multipart, text, and binary bodies respectively. Forms are not
-converted to or from plain objects automatically. Custom protocols can perform
-those conversions explicitly. Ordinary built-in parsing buffers the body and
-has no client byte limit; custom deserializers own their size policy.
-
-```ts
-import type { BodyCodec } from "@rest-rpc/core";
-
-const binaryCodec: BodyCodec<Response> = {
-	match: (mediaType) => mediaType === "application/octet-stream",
-	deserialize: async (response) => new Uint8Array(await response.arrayBuffer()),
-};
-
-const client = initClient(api, {
-	baseUrl: "https://api.example.com",
-	bodyCodecs: [binaryCodec],
-});
-// Binary response schemas must accept Uint8Array for this custom protocol.
-// Outgoing binary bodies still use the default Blob serializer.
-```
-
-A serializer returns `{ body, headers?, contentType? }`. Its body goes directly
-to Fetch; it must be Fetch-compatible. Codec header values can be strings or
-numbers; undefined values are omitted. Global headers are merged first, codec
-headers next, and declared request headers last, with case-insensitive names.
-Codec headers cannot contain `Content-Type`, `Content-Length`, or
-`Transfer-Encoding`. Set content type through the dedicated directive:
-omission uses the selected declaration, a string can adjust its parameters,
-and `null` delegates header generation to Fetch (for example, for multipart
-boundaries).
-
-Schema validation runs after parsing when `validateResponses` is enabled.
-Raw response headers are always available through `response.headers`; typed
-`responseHeaders` are returned when declared. There is no incoming
-`response.contentType` property.
+See [HTTP Serialization](/docs/http-serialization) for the default body codecs
+and how to override them with `bodyCodecs`.
 
 :::tip
 Headers provided by `getGlobalHeaders` make matching declared request headers

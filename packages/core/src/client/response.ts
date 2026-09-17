@@ -1,5 +1,5 @@
 import {
-	resolveBodyCodecs,
+	resolveBodyCodec,
 	defaultBodyCodecs,
 	normalizeMediaType,
 	type BodyCodec,
@@ -132,7 +132,7 @@ export const fetchResponse = async <E extends RouteDeclaration>(
 	const mediaType = normalizeMediaType(rawResponse.headers.get("content-type"));
 	let value: unknown;
 	if (mediaType && rawResponse.body !== null) {
-		const resolvedCodec = resolveBodyCodecs(mediaType, [
+		const resolvedCodec = resolveBodyCodec(mediaType, [
 			...(bodyCodecs ?? []),
 			...defaultBodyCodecs,
 		]);

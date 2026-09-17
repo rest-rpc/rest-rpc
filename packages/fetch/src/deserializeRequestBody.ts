@@ -1,7 +1,7 @@
 import {
 	defaultBodyCodecs,
 	normalizeMediaType,
-	resolveBodyCodecs,
+	resolveBodyCodec,
 	type BodyCodec,
 } from "@rest-rpc/core/codecs";
 
@@ -28,7 +28,7 @@ export async function deserializeRequestBody<TRequest>(
 		return { body: undefined, rejection: undefined };
 	}
 
-	const resolvedUserCodec = resolveBodyCodecs(mediaType, bodyCodecs);
+	const resolvedUserCodec = resolveBodyCodec(mediaType, bodyCodecs);
 	if (resolvedUserCodec?.deserialize) {
 		return {
 			body: await resolvedUserCodec.deserialize(request),
@@ -36,7 +36,7 @@ export async function deserializeRequestBody<TRequest>(
 		};
 	}
 
-	const resolvedDefaultCodec = resolveBodyCodecs(mediaType, defaultBodyCodecs);
+	const resolvedDefaultCodec = resolveBodyCodec(mediaType, defaultBodyCodecs);
 	if (!resolvedDefaultCodec?.deserialize)
 		return { body: undefined, rejection: undefined };
 

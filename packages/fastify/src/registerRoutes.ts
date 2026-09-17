@@ -1,5 +1,5 @@
 import type { BodyCodec, SerializedBody } from "@rest-rpc/core";
-import { normalizeMediaType, resolveBodyCodecs } from "@rest-rpc/core/codecs";
+import { normalizeMediaType, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
 import { toColonPath } from "@rest-rpc/core/contract";
 import {
@@ -104,7 +104,7 @@ export function registerRoutes(
 				}
 
 				const signal = createRequestSignal(req.raw, reply.raw);
-				const codec = resolveBodyCodecs(
+				const codec = resolveBodyCodec(
 					normalizeMediaType(req.headers["content-type"]),
 					bodyCodecs,
 				);
@@ -140,7 +140,7 @@ export function registerRoutes(
 				let serialized: SerializedBody | undefined;
 				if (result.kind === "response" && result.body) {
 					const { value, contentType } = result.body;
-					const codec = resolveBodyCodecs(normalizeMediaType(contentType), [
+					const codec = resolveBodyCodec(normalizeMediaType(contentType), [
 						...bodyCodecs,
 						...nodeBodyCodecs,
 					]);

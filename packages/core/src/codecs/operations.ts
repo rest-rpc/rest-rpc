@@ -7,8 +7,8 @@ export function normalizeMediaType(
 	return contentType?.split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
-/** Resolves each body operation in the supplied codec order, without invoking it. */
-export function resolveBodyCodecs<TSource>(
+/** Resolves a matching body codec for a given media type from a list of codecs. */
+export function resolveBodyCodec<TSource>(
 	mediaType: string,
 	codecs: readonly BodyCodec<TSource>[],
 ):

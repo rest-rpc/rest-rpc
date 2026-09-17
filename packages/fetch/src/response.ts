@@ -2,7 +2,7 @@ import type { BodyCodec, SerializedBody } from "@rest-rpc/core";
 import {
 	defaultBodyCodecs,
 	normalizeMediaType,
-	resolveBodyCodecs,
+	resolveBodyCodec,
 } from "@rest-rpc/core/codecs";
 import type { HttpRouteResult } from "@rest-rpc/server";
 
@@ -52,7 +52,7 @@ export async function createFetchResponse(
 	let serialized: SerializedBody | undefined;
 	if (result.kind === "response" && result.body) {
 		const { value, contentType } = result.body;
-		const codec = resolveBodyCodecs(normalizeMediaType(contentType), [
+		const codec = resolveBodyCodec(normalizeMediaType(contentType), [
 			...bodyCodecs,
 			...defaultBodyCodecs,
 		]);

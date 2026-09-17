@@ -182,9 +182,13 @@ RestRpcModule.forRoot({
 
 ```ts
 type RestRpcModuleOptions<TContext = DefaultContext> = {
+	bodyCodecs?: readonly BodyCodec<unknown>[];
 	createContext?: (context: ExecutionContext) => TContext | Promise<TContext>;
 };
 ```
+
+`bodyCodecs` customizes body serialization and deserialization. See
+[HTTP Serialization](/docs/http-serialization) for defaults and overrides.
 
 ### Error handling
 

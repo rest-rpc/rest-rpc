@@ -103,19 +103,15 @@ const result = await handler(req, res, { user });
 
 ```ts
 type CreateNodeHandlerOptions = {
-	bodyParser?: NodeBodyParser;
+	bodyCodecs?: readonly BodyCodec<IncomingMessage>[];
+	requestBody?: { maxBytes?: number };
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 };
 ```
 
-### Body parsing
-
-```ts
-const handler = createRouteHandler(routes, {
-	bodyParser: async (request) => readCustomBody(request),
-});
-```
+`bodyCodecs` customizes body serialization and deserialization. See
+[HTTP Serialization](/docs/http-serialization) for defaults and overrides.
 
 ### Error handling
 

@@ -23,7 +23,7 @@ type HttpRoutes<TContract> = TContract extends {
  * @remarks Server adapters validate and serialize its response as an ordinary
  * declared route result instead of treating it as an unexpected server error.
  *
- * @see {@link https://rest-rpc.dev/docs/http-responses#response-with-multiple-status-codes}
+ * @see {@link https://rest-rpc.dev/docs/contract/declaration}
  */
 export class RouteResponseError<
 	TContract extends Contract = Contract,

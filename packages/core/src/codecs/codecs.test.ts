@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import {
 	defaultBodyCodecs,
 	normalizeMediaType,
-	resolveBodyCodecs,
+	resolveBodyCodec,
 	type BodyCodec,
 } from "./index.ts";
 
@@ -28,7 +28,7 @@ describe("body codec resolution", () => {
 				return source.text();
 			},
 		};
-		const resolvedCodec = resolveBodyCodecs(normalizeMediaType(contentType), [
+		const resolvedCodec = resolveBodyCodec(normalizeMediaType(contentType), [
 			codec,
 		]);
 		assert.deepEqual(await resolvedCodec.serialize("hello", contentType), {
@@ -58,7 +58,7 @@ describe("body codec resolution", () => {
 				deserialize: () => "late",
 			},
 		];
-		const resolvedCodec = resolveBodyCodecs("application/json", [
+		const resolvedCodec = resolveBodyCodec("application/json", [
 			...codecs,
 			...defaultBodyCodecs,
 		]);
@@ -66,14 +66,14 @@ describe("body codec resolution", () => {
 			body: "custom",
 		});
 		assert.equal(resolvedCodec?.deserialize, codecs[2].deserialize);
-		const partial = resolveBodyCodecs("application/json", [
+		const partial = resolveBodyCodec("application/json", [
 			...codecs.slice(0, 2),
 			...defaultBodyCodecs,
 		]);
 		assert.deepEqual(await partial.deserialize(Response.json({ ok: true })), {
 			ok: true,
 		});
-		const deserializeOnly = resolveBodyCodecs("text/plain", [
+		const deserializeOnly = resolveBodyCodec("text/plain", [
 			codecs[2],
 			...defaultBodyCodecs,
 		]);
@@ -85,7 +85,7 @@ describe("body codec resolution", () => {
 
 	it("returns undefined without matching for an empty type or unmatched rules", () => {
 		assert.equal(
-			resolveBodyCodecs("", [
+			resolveBodyCodec("", [
 				{
 					match: () => {
 						throw new Error("Must not match");
@@ -96,13 +96,13 @@ describe("body codec resolution", () => {
 			undefined,
 		);
 		assert.equal(
-			resolveBodyCodecs("text/plain", [
+			resolveBodyCodec("text/plain", [
 				{ match: () => false, serialize: () => ({ body: "" }) },
 			]),
 			undefined,
 		);
 		assert.equal(
-			typeof resolveBodyCodecs("text/plain", defaultBodyCodecs)?.serialize,
+			typeof resolveBodyCodec("text/plain", defaultBodyCodecs)?.serialize,
 			"function",
 		);
 	});
@@ -121,7 +121,7 @@ describe("body codec resolution", () => {
 				throw new Error("Must not deserialize");
 			},
 		};
-		const resolvedCodec = resolveBodyCodecs("text/plain", [codec]);
+		const resolvedCodec = resolveBodyCodec("text/plain", [codec]);
 		assert.equal(matches, 1);
 		assert.equal(typeof resolvedCodec?.serialize, "function");
 		assert.equal(resolvedCodec?.deserialize, codec.deserialize);
@@ -129,7 +129,7 @@ describe("body codec resolution", () => {
 
 	it("resolves native user callbacks with fallbacks explicitly disabled", async () => {
 		const source = { native: true };
-		const resolvedCodec = resolveBodyCodecs("application/json", [
+		const resolvedCodec = resolveBodyCodec("application/json", [
 			{ match: () => true, deserialize: (request: typeof source) => request },
 		]);
 		assert.equal(resolvedCodec?.serialize, undefined);
@@ -162,7 +162,7 @@ describe("built-in body codecs", () => {
 				new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }),
 			],
 		] as const) {
-			const resolvedCodec = resolveBodyCodecs(
+			const resolvedCodec = resolveBodyCodec(
 				normalizeMediaType(contentType),
 				defaultBodyCodecs,
 			);
@@ -199,13 +199,13 @@ describe("built-in body codecs", () => {
 			"text/plain",
 			"application/octet-stream",
 		]) {
-			const resolvedCodec = resolveBodyCodecs(mediaType, defaultBodyCodecs);
+			const resolvedCodec = resolveBodyCodec(mediaType, defaultBodyCodecs);
 			await assert.rejects(
 				async () => resolvedCodec!.serialize!({ title: "Hello" }, mediaType),
 				TypeError,
 			);
 		}
-		const json = resolveBodyCodecs("application/json", defaultBodyCodecs)!;
+		const json = resolveBodyCodec("application/json", defaultBodyCodecs)!;
 		await assert.rejects(
 			async () => json.serialize!(undefined, "application/json"),
 			TypeError,
@@ -220,7 +220,7 @@ describe("built-in body codecs", () => {
 			"application/x-www-form-urlencoded",
 			"application/octet-stream",
 		]) {
-			const resolvedCodec = resolveBodyCodecs(mediaType, defaultBodyCodecs)!;
+			const resolvedCodec = resolveBodyCodec(mediaType, defaultBodyCodecs)!;
 			const parsed = await resolvedCodec.deserialize!(
 				new Response(new Uint8Array(), {
 					headers: { "content-type": mediaType },

@@ -59,6 +59,7 @@ type RouteHandlerFields = {
 
 ```ts
 type RegisterRoutesOptions = {
+	bodyCodecs?: readonly BodyCodec<Request>[];
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 	middleware?: Array<
@@ -71,6 +72,9 @@ type RegisterRoutesOptions = {
 	>;
 };
 ```
+
+`bodyCodecs` customizes body serialization and deserialization. See
+[HTTP Serialization](/docs/http-serialization) for defaults and overrides.
 
 ### Error handling
 
