@@ -33,6 +33,7 @@ import {
 type NestRouteImplementation = {
 	readonly "~restrpc": RouteDeclaration & {
 		readonly handler: (request: unknown) => unknown;
+		readonly middleware?: readonly ((request: unknown) => unknown)[];
 	};
 };
 
@@ -125,6 +126,7 @@ export class RestRpcRouteInterceptor implements NestInterceptor {
 			{
 				route: metadata.route,
 				handler: implementation["~restrpc"].handler,
+				middleware: implementation["~restrpc"].middleware,
 			},
 			{
 				request: {

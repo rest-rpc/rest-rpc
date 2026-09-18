@@ -1,3 +1,4 @@
+import type { DefaultContext } from "./index.ts";
 import type { BodyCodec, SerializedBody } from "@rest-rpc/core";
 import { normalizeMediaType, resolveBodyCodec } from "@rest-rpc/core/codecs";
 import type { HttpMethod, RouteDeclaration } from "@rest-rpc/core/contract";
@@ -9,6 +10,8 @@ import {
 } from "@rest-rpc/node";
 import {
 	type RuntimeImplementationTree,
+	type ContextOptions,
+	resolveContext,
 	flattenRouteImplementations,
 	assertRequestContentType,
 	handleHttpRoute,
@@ -60,6 +63,13 @@ export type RegisterRoutesOptions = {
 	requestValidationErrorHandler?: RequestValidationErrorHandler;
 	responseValidationErrorHandler?: ResponseValidationErrorHandler;
 	preHandler?: ExtendedFastifyPreHandler[];
+} & ContextOptions<DefaultContext, ContextFields>;
+
+type ContextFields = {
+	route: RouteDeclaration;
+	req: FastifyRequest;
+	reply: FastifyReply;
+	signal: AbortSignal;
 };
 
 /**
@@ -70,8 +80,11 @@ export type RegisterRoutesOptions = {
 export function registerRoutes(
 	app: FastifyInstance,
 	implementations: RuntimeImplementationTree,
-	options: RegisterRoutesOptions = {},
+	...optionsArguments: {} extends DefaultContext
+		? [options?: RegisterRoutesOptions]
+		: [options: RegisterRoutesOptions]
 ) {
+	const options = optionsArguments[0] ?? ({} as RegisterRoutesOptions);
 	const {
 		preHandler = [],
 		bodyCodecs = [],
@@ -118,7 +131,12 @@ export function registerRoutes(
 						params: req.params,
 						headers: req.headers,
 					},
-					context: {},
+					context: await resolveContext(options.context, {
+						route,
+						req,
+						reply,
+						signal,
+					}),
 					handlerFields: { req, reply, signal },
 				});
 				if (result instanceof RequestValidationError) {

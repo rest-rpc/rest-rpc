@@ -15,11 +15,6 @@ import { RestRpcRouteInterceptor } from "./routeInterceptor.ts";
  */
 export interface DefaultContext {}
 
-interface ContextShape {
-	// oxlint-disable-next-line typescript/no-explicit-any -- `any` allows named interfaces without leaking an index signature.
-	[key: string]: any;
-}
-
 /**
  * Options for configuring the rest-rpc Nest adapter.
  *
@@ -28,9 +23,7 @@ interface ContextShape {
  *
  * @see {@link https://rest-rpc.dev/docs/server/nest#options}
  */
-export type RestRpcModuleOptions<
-	TContext extends ContextShape = DefaultContext,
-> = {
+export type RestRpcModuleOptions<TContext extends object = DefaultContext> = {
 	bodyCodecs?: readonly BodyCodec<unknown>[];
 	createContext?: (context: ExecutionContext) => TContext | Promise<TContext>;
 };
@@ -50,7 +43,7 @@ export class RestRpcModule {
 	 *
 	 * @see {@link https://rest-rpc.dev/docs/server/nest#options}
 	 */
-	static forRoot<TContext extends ContextShape = DefaultContext>(
+	static forRoot<TContext extends object = DefaultContext>(
 		options: RestRpcModuleOptions<TContext> = {},
 	): DynamicModule {
 		const restRpcModuleOptions = Symbol.for("rest-rpc:nest-options");
