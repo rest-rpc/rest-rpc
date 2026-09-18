@@ -18,14 +18,14 @@ export interface DefaultContext {}
 /**
  * Options for configuring the rest-rpc Nest adapter.
  *
- * @remarks Use `createContext` for request-scoped values shared by all
+ * @remarks Use `context` for request-scoped values shared by all
  * rest-rpc Nest handlers.
  *
  * @see {@link https://rest-rpc.dev/docs/server/nest#options}
  */
 export type RestRpcModuleOptions<TContext extends object = DefaultContext> = {
 	bodyCodecs?: readonly BodyCodec<unknown>[];
-	createContext?: (context: ExecutionContext) => TContext | Promise<TContext>;
+	context?: (context: ExecutionContext) => TContext | Promise<TContext>;
 };
 
 /**

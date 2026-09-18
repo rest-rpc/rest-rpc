@@ -70,10 +70,8 @@ export type RegisterRoutesOptions = {
 } & ContextOptions<DefaultContext, ContextFields>;
 
 type ContextFields = {
-	route: RouteDeclaration;
 	req: Request;
 	res: ExpressResponse;
-	signal: AbortSignal;
 };
 
 /**
@@ -133,10 +131,8 @@ export function registerRoutes(
 						headers: req.headers,
 					},
 					context: await resolveContext(options.context, {
-						route,
 						req,
 						res,
-						signal,
 					}),
 					handlerFields: { req, res, signal },
 				});

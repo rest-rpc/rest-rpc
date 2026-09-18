@@ -64,9 +64,7 @@ export type RegisterRoutesOptions<TEnv extends Env = Env> = {
 } & ContextOptions<DefaultContext, ContextFields<TEnv>>;
 
 type ContextFields<TEnv extends Env = Env> = {
-	route: RouteDeclaration;
 	c: Context<TEnv>;
-	signal: AbortSignal;
 };
 
 /**
@@ -139,9 +137,7 @@ export function registerRoutes<TEnv extends Env = Env>(
 						headers: c.req.header(),
 					},
 					context: await resolveContext(options.context, {
-						route,
 						c,
-						signal: c.req.raw.signal,
 					}),
 					handlerFields: { c, signal: c.req.raw.signal },
 				});

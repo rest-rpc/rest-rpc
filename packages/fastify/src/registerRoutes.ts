@@ -66,10 +66,8 @@ export type RegisterRoutesOptions = {
 } & ContextOptions<DefaultContext, ContextFields>;
 
 type ContextFields = {
-	route: RouteDeclaration;
 	req: FastifyRequest;
 	reply: FastifyReply;
-	signal: AbortSignal;
 };
 
 /**
@@ -132,10 +130,8 @@ export function registerRoutes(
 						headers: req.headers,
 					},
 					context: await resolveContext(options.context, {
-						route,
 						req,
 						reply,
-						signal,
 					}),
 					handlerFields: { req, reply, signal },
 				});
