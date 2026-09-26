@@ -96,7 +96,7 @@ See [Fetch Client](/docs/client/fetch-client) for client-specific behavior and
 [Serialization and Codecs](/docs/http-behavior/serialization) for the decoding
 that precedes validation.
 
-## Type-only Schemas
+## Unchecked Schemas
 
 ```ts
 import { type } from "@rest-rpc/core";
@@ -107,5 +107,15 @@ const create = route
 ```
 
 `type<T>()` accepts runtime values unchanged. It does not validate, coerce, or
-transform HTTP strings or decoded bodies. Use a validating schema when those
-operations are needed.
+otherwise inspect HTTP strings or decoded bodies. It can also synchronously map
+an asserted input type to a different output type:
+
+```ts
+const normalized = type<number>((input) => Math.max(0, input));
+const displayed = type<number, string>((input) => input.toString());
+```
+
+Supplying one generic fixes both input and output to that type. A mapper that
+changes the output must therefore supply both generics. Mapper exceptions
+propagate normally. Use a validating schema when runtime validation or
+narrowing is needed.

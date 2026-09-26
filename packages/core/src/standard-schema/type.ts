@@ -1,21 +1,37 @@
 import type { StandardSchemaV1 } from "./index.ts";
 
-const TYPE_ONLY_SCHEMA_VENDOR = "rest-rpc";
+const UNCHECKED_SCHEMA_VENDOR = "rest-rpc";
 
 /**
- * Creates a type-only Standard Schema for compile-time contracts.
+ * Creates an unchecked Standard Schema for compile-time contracts and optional
+ * synchronous output mapping.
  *
- * @remarks Runtime validation accepts the input as-is. Use this helper only
- * when runtime validation is not needed.
+ * @remarks Runtime validation asserts the value to be `TInput` without
+ * checking it. When provided, the mapper transforms that asserted value and
+ * any exception it throws propagates to the caller. Use this helper only when
+ * runtime validation is not needed.
  *
  * @see {@link https://rest-rpc.dev/docs/http-behavior/schemas}
  */
-export function type<T>(): StandardSchemaV1<T, T> {
+export function type<TInput>(
+	map?: (input: TInput) => TInput,
+): StandardSchemaV1<TInput, TInput>;
+export function type<TInput, TOutput>(
+	map: (input: TInput) => TOutput,
+): StandardSchemaV1<TInput, TOutput>;
+export function type<TInput, TOutput = TInput>(
+	map?: (input: TInput) => TOutput,
+): StandardSchemaV1<TInput, TOutput> {
 	return {
 		"~standard": {
 			version: 1,
-			vendor: TYPE_ONLY_SCHEMA_VENDOR,
-			validate: (value) => ({ value: value as T }),
+			vendor: UNCHECKED_SCHEMA_VENDOR,
+			validate: (value) => {
+				const input = value as TInput;
+				return {
+					value: map === undefined ? (input as unknown as TOutput) : map(input),
+				};
+			},
 		},
 	};
 }
