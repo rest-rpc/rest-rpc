@@ -102,6 +102,30 @@ Segmented requests can still return plain outputs.
 Flat `.input()` remains a separate request form and cannot be combined with
 `.body()`, `.query()`, `.params()`, or `.headers()`.
 
+Each request location can declare more than one schema. Every schema validates
+the same original wire value in declaration order; the schemas are not a
+transformation pipeline.
+
+```ts
+const list = route
+	.get("/todos")
+	.query(paginationSchema)
+	.query(filterSchema)
+	.handler(({ query }) => listTodos(query));
+```
+
+On the client, the schemas' input types are intersected because the wire value
+must satisfy all of them. In the handler, validated object outputs are merged
+in declaration order, so properties from later schemas win. A single schema's
+output is preserved unchanged and may be a primitive. With two or more schemas
+for a location, every successful output must be a non-null object so it can be
+merged.
+
+Repeated `.input()` calls stack flat input schemas in the same way, while flat
+input remains mutually exclusive with every segmented request method. Repeated
+body declarations must use one effective content type; selecting a conflicting
+content type throws when the declaration is built.
+
 ## Choose Plain Outputs or Status Responses
 
 A plain handler result reaches the client directly. Declare `.output(schema)`

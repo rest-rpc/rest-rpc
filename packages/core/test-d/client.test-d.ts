@@ -629,6 +629,17 @@ optionalGlobalHeaderClient.todos.secure({
 	headers: { authorization: "Bearer token" },
 });
 
+const stackedInputRoute = route
+	.input(z.object({ value: z.string(), left: z.string() }))
+	.input(z.object({ value: z.string(), right: z.string() }))
+	.output(todoSchema);
+const stackedInputClient = initClient(
+	{ create: stackedInputRoute },
+	{ baseUrl: "https://example.test" },
+);
+stackedInputClient.create({ value: "shared", left: "a", right: "b" });
+expectError(stackedInputClient.create({ value: "shared", left: "a" }));
+
 const additiveHeadersApi = {
 	items: route
 		.get("/items")

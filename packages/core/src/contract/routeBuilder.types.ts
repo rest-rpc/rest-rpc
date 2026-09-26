@@ -78,7 +78,7 @@ type WhenUnused<
 type WhenInputAvailable<
 	TState extends BuilderState,
 	TView,
-> = TState["input"] extends "none" ? TView : EmptyObject;
+> = TState["input"] extends "segments" ? EmptyObject : TView;
 type WhenSegmentsAvailable<
 	TState extends BuilderState,
 	TView,
@@ -96,15 +96,36 @@ type WithRequest<
 	TState extends BuilderState,
 	TKey extends keyof RouteRequestDeclaration,
 	TValue,
-	TMethod extends BuilderMethod,
 > = {
 	route: TState["route"];
 	method: TState["method"];
-	request: Omit<TState["request"], TKey> & Record<TKey, TValue>;
+	request: Omit<TState["request"], TKey> &
+		Record<
+			TKey,
+			TState["request"] extends Record<
+				TKey,
+				infer TCurrent extends readonly unknown[]
+			>
+				? readonly [...TCurrent, TValue]
+				: readonly [TValue]
+		>;
 	responses: TState["responses"];
 	openApi: TState["openApi"];
-	used: TState["used"] | TMethod;
+	used: TState["used"];
 	input: "segments";
+	output: TState["output"];
+};
+
+type WithContentType<TState extends BuilderState, TContentType> = {
+	route: TState["route"];
+	method: TState["method"];
+	request: Omit<TState["request"], "contentType"> & {
+		contentType: TContentType;
+	};
+	responses: TState["responses"];
+	openApi: TState["openApi"];
+	used: TState["used"];
+	input: TState["input"];
 	output: TState["output"];
 };
 
@@ -135,10 +156,26 @@ type WithFlatInput<
 > = {
 	route: TState["route"];
 	method: TState["method"];
-	request: TState["request"] &
-		(TState["route"]["method"] extends "GET"
-			? { query: TSchema }
-			: { body: TSchema; contentType: ContentTypeFor<TOptions> });
+	request: TState["route"]["method"] extends "GET"
+		? Omit<TState["request"], "query"> & {
+				query: TState["request"] extends {
+					query: infer TCurrent extends readonly unknown[];
+				}
+					? readonly [...TCurrent, TSchema]
+					: readonly [TSchema];
+			}
+		: Omit<TState["request"], "body" | "contentType"> & {
+				body: TState["request"] extends {
+					body: infer TCurrent extends readonly unknown[];
+				}
+					? readonly [...TCurrent, TSchema]
+					: readonly [TSchema];
+				contentType: TState["request"] extends {
+					contentType: infer TContentType;
+				}
+					? TContentType
+					: ContentTypeFor<TOptions>;
+			};
 	responses: TState["responses"];
 	openApi: TState["openApi"];
 	used: TState["used"] | "input";
@@ -300,33 +337,29 @@ type BodyMethods<
 	TExtension extends BuilderExtension | never,
 > = WhenSegmentsAvailable<
 	TState,
-	WhenUnused<
-		TState,
-		"body",
-		{
-			/** Declares a request body and its HTTP metadata. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
-			body<
-				const TSchema extends StandardSchemaV1,
-				const TOptions extends BodyOptions | undefined = undefined,
-				const TPath extends string = string,
-				const TMetadata extends RouteMetadata | never = never,
-			>(
-				this: BuilderReceiver<TPath, TMetadata>,
-				schema: TSchema,
-				options?: TOptions,
-			): RouteBuilderView<
-				WithRequest<
-					WithRequest<TState, "body", TSchema, "body">,
-					"contentType",
-					ContentTypeFor<TOptions>,
-					"body"
-				>,
-				TExtension,
-				TPath,
-				TMetadata
-			>;
-		}
-	>
+	{
+		/** Declares a request body and its HTTP metadata. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
+		body<
+			const TSchema extends StandardSchemaV1,
+			const TOptions extends BodyOptions | undefined = undefined,
+			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
+		>(
+			this: BuilderReceiver<TPath, TMetadata>,
+			schema: TSchema,
+			options?: TOptions,
+		): RouteBuilderView<
+			WithContentType<
+				WithRequest<TState, "body", TSchema>,
+				TState["request"] extends { contentType: infer TContentType }
+					? TContentType
+					: ContentTypeFor<TOptions>
+			>,
+			TExtension,
+			TPath,
+			TMetadata
+		>;
+	}
 >;
 
 type RequestMethods<
@@ -334,72 +367,60 @@ type RequestMethods<
 	TExtension extends BuilderExtension | never,
 > = WhenSegmentsAvailable<
 	TState,
-	WhenUnused<
+	{
+		/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
+		query<
+			const TSchema extends RequestQuerySchema,
+			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
+		>(
+			this: BuilderReceiver<TPath, TMetadata>,
+			schema: TSchema,
+		): RouteBuilderView<
+			WithRequest<TState, "query", TSchema>,
+			TExtension,
+			TPath,
+			TMetadata
+		>;
+	}
+> &
+	WhenSegmentsAvailable<
 		TState,
-		"query",
 		{
-			/** Declares URL query parameters. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
-			query<
-				const TSchema extends RequestQuerySchema,
+			/** Declares path parameters. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
+			params<
+				const TSchema extends RequestParamsSchema,
 				const TPath extends string = string,
 				const TMetadata extends RouteMetadata | never = never,
 			>(
 				this: BuilderReceiver<TPath, TMetadata>,
 				schema: TSchema,
 			): RouteBuilderView<
-				WithRequest<TState, "query", TSchema, "query">,
+				WithRequest<TState, "params", TSchema>,
 				TExtension,
 				TPath,
 				TMetadata
 			>;
 		}
-	>
-> &
-	WhenSegmentsAvailable<
-		TState,
-		WhenUnused<
-			TState,
-			"params",
-			{
-				/** Declares path parameters. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
-				params<
-					const TSchema extends RequestParamsSchema,
-					const TPath extends string = string,
-					const TMetadata extends RouteMetadata | never = never,
-				>(
-					this: BuilderReceiver<TPath, TMetadata>,
-					schema: TSchema,
-				): RouteBuilderView<
-					WithRequest<TState, "params", TSchema, "params">,
-					TExtension,
-					TPath,
-					TMetadata
-				>;
-			}
-		>
 	> &
 	WhenSegmentsAvailable<
 		TState,
-		WhenUnused<
-			TState,
-			"headers",
-			{
-				/** Declares request headers. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
-				headers<
-					const THeaders extends RequestHeadersSchema,
-					const TPath extends string = string,
-					const TMetadata extends RouteMetadata | never = never,
-				>(
-					this: BuilderReceiver<TPath, TMetadata>,
-					schema: THeaders,
-				): RouteBuilderView<
-					WithRequest<TState, "headers", THeaders, "headers">,
-					TExtension,
-					TPath,
-					TMetadata
-				>;
-			}
-		>
+		{
+			/** Declares request headers. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
+			headers<
+				const THeaders extends RequestHeadersSchema,
+				const TPath extends string = string,
+				const TMetadata extends RouteMetadata | never = never,
+			>(
+				this: BuilderReceiver<TPath, TMetadata>,
+				schema: THeaders,
+			): RouteBuilderView<
+				WithRequest<TState, "headers", THeaders>,
+				TExtension,
+				TPath,
+				TMetadata
+			>;
+		}
 	> &
 	WhenUnused<
 		TState,

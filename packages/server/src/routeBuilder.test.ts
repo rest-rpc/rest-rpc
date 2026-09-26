@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { route as coreRoute } from "@rest-rpc/core";
+import { route as coreRoute, type } from "@rest-rpc/core";
 import { serverFirstRoute } from "./routeBuilder.ts";
 
 describe("server route builder", () => {
@@ -26,5 +26,16 @@ describe("server route builder", () => {
 		assert.equal(implementation["~restrpc"].method, "POST");
 		assert.equal(implementation["~restrpc"].path, "");
 		assert.deepEqual(implementation["~restrpc"].responses, {});
+	});
+
+	it("preserves pending method invariants across server extensions", () => {
+		assert.throws(
+			() =>
+				serverFirstRoute
+					.input(type<string>(), { contentType: "application/json" })
+					.use(() => undefined)
+					.get("/items"),
+			/GET flat input cannot declare a body content type/,
+		);
 	});
 });

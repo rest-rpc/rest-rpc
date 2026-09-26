@@ -53,7 +53,7 @@ describe("route builder runtime", () => {
 			.params(type<{ id: string }>())
 			.metadata({ scope: "write" })
 			.openAPI({ tags: ["Items"] });
-		assert.equal(declaration["~restrpc"].request?.body, schema);
+		assert.deepEqual(declaration["~restrpc"].request?.body, [schema]);
 		assert.equal(
 			declaration["~restrpc"].request?.contentType,
 			"application/json",
@@ -77,11 +77,29 @@ describe("route builder runtime", () => {
 		const schema = z.object({ search: z.string() });
 
 		assert.deepEqual(route.input(schema).get("/items")["~restrpc"].request, {
-			query: schema,
+			query: [schema],
 		});
 		assert.deepEqual(route.input(schema).post("/items")["~restrpc"].request, {
-			body: schema,
+			body: [schema],
 			contentType: "application/json",
+		});
+	});
+
+	it("stores repeated request schemas in declaration order", () => {
+		const first = z.object({ first: z.string() });
+		const second = z.object({ second: z.string() });
+		const headers = z.object({ authorization: z.string() });
+		const declaration = route
+			.post("/items")
+			.body(first)
+			.body(second)
+			.headers(headers)
+			.headers(headers);
+
+		assert.deepEqual(declaration["~restrpc"].request, {
+			body: [first, second],
+			contentType: "application/json",
+			headers: [headers, headers],
 		});
 	});
 
@@ -95,7 +113,7 @@ describe("route builder runtime", () => {
 			.response(204, undefined, { headers });
 
 		assert.deepEqual(declaration["~restrpc"].request, {
-			body: bodySchema,
+			body: [bodySchema],
 			contentType: "text/plain",
 		});
 		assert.deepEqual(declaration["~restrpc"].responses[201], {
@@ -112,7 +130,7 @@ describe("route builder runtime", () => {
 			.input(bodySchema, { contentType: "text/plain" })
 			.output(bodySchema, { contentType: "text/csv" });
 		assert.deepEqual(procedure["~restrpc"].request, {
-			body: bodySchema,
+			body: [bodySchema],
 			contentType: "text/plain",
 		});
 		assert.deepEqual(procedure["~restrpc"].responses[200], {
@@ -189,6 +207,13 @@ describe("route builder runtime", () => {
 			/Cannot combine flat input with request segments/,
 		);
 		assert.throws(
+			() =>
+				runtimeRoute
+					.body(schema, { contentType: "text/plain" })
+					.body(schema, { contentType: "application/json" }),
+			/Request body content type has already been declared/,
+		);
+		assert.throws(
 			() => runtimeRoute.response(201, schema).response(201, schema),
 			/Response status "201" has already been declared/,
 		);
@@ -211,7 +236,7 @@ describe("route builder runtime", () => {
 		assert.equal(initial["~restrpc"].request, undefined);
 		assert.deepEqual(initial["~restrpc"].responses, {});
 		assert.deepEqual(withBody["~restrpc"].responses, {});
-		assert.equal(withBody["~restrpc"].request?.body, schema);
+		assert.deepEqual(withBody["~restrpc"].request?.body, [schema]);
 		assert.equal(withResponse["~restrpc"].metadata, undefined);
 		assert.deepEqual(metadata["~restrpc"].metadata, { scope: "write" });
 

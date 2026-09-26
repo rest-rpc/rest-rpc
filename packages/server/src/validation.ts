@@ -56,22 +56,42 @@ const parseQuery = (searchParams: URLSearchParams) => {
 };
 
 const validateRequestSegment = async (
-	schema: RequestObjectSchema | undefined,
+	segment: keyof RequestSegments,
+	schemas: readonly RequestObjectSchema[] | undefined,
 	input: unknown,
 ): Promise<SegmentValidationResult> => {
-	if (!schema) return { data: undefined, errors: [] };
-	const result = await validateStandardSchema(schema, input);
-	if (result.issues) {
-		return { data: undefined, errors: result.issues };
+	if (!schemas || schemas.length === 0) return { data: undefined, errors: [] };
+	const values: unknown[] = [];
+	const errors: StandardSchemaV1.Issue[] = [];
+	for (const schema of schemas) {
+		const result = await validateStandardSchema(schema, input);
+		if (result.issues) errors.push(...result.issues);
+		else values.push(result.value);
 	}
-	return { data: result.value, errors: [] };
+	if (errors.length > 0) return { data: undefined, errors };
+	if (values.length === 1) return { data: values[0], errors: [] };
+
+	const merged: Record<PropertyKey, unknown> = {};
+	for (const [index, value] of values.entries()) {
+		if (typeof value !== "object" || value === null) {
+			throw new Error(
+				`Cannot merge ${segment} schema output at index ${index}: expected a non-null object.`,
+			);
+		}
+		Object.assign(merged, value);
+	}
+	return { data: merged, errors: [] };
 };
 
 const validateRequestQuery = async (
-	schema: RequestObjectSchema | undefined,
+	schemas: readonly RequestObjectSchema[] | undefined,
 	query: URLSearchParams | undefined,
 ): Promise<SegmentValidationResult> => {
-	return validateRequestSegment(schema, query ? parseQuery(query) : undefined);
+	return validateRequestSegment(
+		"query",
+		schemas,
+		query ? parseQuery(query) : undefined,
+	);
 };
 
 export async function validateRequestSegments(
@@ -80,6 +100,7 @@ export async function validateRequestSegments(
 ) {
 	const requestSchemas = route.request;
 	const body = await validateRequestSegment(
+		"body",
 		requestSchemas?.body,
 		segments.body,
 	);
@@ -88,10 +109,12 @@ export async function validateRequestSegments(
 		segments.query,
 	);
 	const params = await validateRequestSegment(
+		"params",
 		requestSchemas?.params,
 		segments.params,
 	);
 	const headers = await validateRequestSegment(
+		"headers",
 		requestSchemas?.headers,
 		segments.headers,
 	);

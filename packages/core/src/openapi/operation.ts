@@ -58,8 +58,9 @@ export type OpenApiOperation = {
 	[key: `x-${string}`]: unknown;
 };
 
+/** Converts the ordered schemas for one request or response location to OpenAPI. */
 export type SchemaConverter = (
-	schema: StandardSchemaV1,
+	schemas: readonly StandardSchemaV1[],
 	mode: "input" | "output",
 ) => OpenApiSchema | undefined;
 
@@ -107,13 +108,13 @@ const createContent = (
 	Object.fromEntries(contentTypes.map((contentType) => [contentType, value]));
 
 export const createParameters = (
-	schema: StandardSchemaV1 | undefined,
+	schemas: readonly StandardSchemaV1[] | undefined,
 	location: "path" | "query" | "header",
 	options: CreateOperationOptions,
 ): OpenApiParameter[] => {
-	if (!schema) return [];
+	if (!schemas || schemas.length === 0) return [];
 
-	const jsonSchema = options.schemaConverter?.(schema, "input") ?? {};
+	const jsonSchema = options.schemaConverter?.(schemas, "input") ?? {};
 	const properties = getSchemaProperties(jsonSchema);
 	const requiredKeys = getRequiredSchemaKeys(jsonSchema);
 
@@ -132,16 +133,16 @@ export const createParameters = (
 };
 
 export const createHeaderParameters = (
-	headers: RequestHeadersSchema | undefined,
+	headers: readonly RequestHeadersSchema[] | undefined,
 	options: CreateOperationOptions,
 ): OpenApiParameter[] => createParameters(headers, "header", options);
 
 export const createRequestBody = (
-	schema: RequestBodySchema | undefined,
+	schemas: readonly RequestBodySchema[] | undefined,
 	converter: SchemaConverter | undefined,
 	customContentType?: string | readonly string[],
 ): OpenApiRequestBody | undefined => {
-	if (!schema) return undefined;
+	if (!schemas || schemas.length === 0) return undefined;
 	const contentTypes =
 		customContentType !== undefined
 			? Array.isArray(customContentType)
@@ -149,7 +150,7 @@ export const createRequestBody = (
 				: [customContentType as string]
 			: [JSON_CONTENT_TYPE];
 	if (contentTypes.length === 0) return undefined;
-	const openApiSchema = converter?.(schema, "input") ?? {};
+	const openApiSchema = converter?.(schemas, "input") ?? {};
 
 	return {
 		content: createContent(contentTypes, { schema: openApiSchema }),
@@ -180,7 +181,7 @@ export const createResponse = (
 	}
 
 	if (responseDeclaration.kind === "stream") {
-		const openApiSchema = converter?.(schema, "output") ?? {};
+		const openApiSchema = converter?.([schema], "output") ?? {};
 		return {
 			description: openApiResponse?.description ?? description,
 			...(headers ? { headers } : {}),
@@ -198,7 +199,7 @@ export const createResponse = (
 				? contentType
 				: [contentType as string]
 			: [JSON_CONTENT_TYPE];
-	const openApiSchema = converter?.(schema, "output") ?? {};
+	const openApiSchema = converter?.([schema], "output") ?? {};
 
 	return {
 		description: openApiResponse?.description ?? description,
@@ -213,7 +214,7 @@ export const createResponseHeaders = (
 ): OpenApiResponse["headers"] | undefined => {
 	if (!headers) return undefined;
 
-	const schema = converter?.(headers, "output") ?? {};
+	const schema = converter?.([headers], "output") ?? {};
 	return Object.fromEntries(
 		Object.entries(getSchemaProperties(schema)).map(
 			([name, propertySchema]) => [name, { schema: propertySchema }],
@@ -237,7 +238,7 @@ export const createOpenApiResponseHeaders = (
 				name,
 				{
 					...(description ? { description } : {}),
-					schema: converter?.(schema, "output") ?? {},
+					schema: converter?.([schema], "output") ?? {},
 				},
 			];
 		}),
