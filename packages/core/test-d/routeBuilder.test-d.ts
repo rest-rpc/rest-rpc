@@ -62,7 +62,7 @@ expectType<"application/x-www-form-urlencoded">(
 	formInput["~restrpc"].request.contentType,
 );
 
-// Completed shorthand declarations do not expose explicit HTTP setters.
+// Completed shorthand declarations remain eligible for explicit HTTP details.
 expectError(route.handler(() => ({ id: "todo-1", title: "Todo" })));
 expectError(
 	shorthandInput.handler((request: { title: string }) => ({
@@ -80,6 +80,11 @@ expectError(streamOutput.streamOutput(event));
 expectError(shorthandWithInput.response(200, todo));
 const explicitFlat = route.post("/todos").input(input).output(todo);
 expectType<typeof input>(explicitFlat["~restrpc"].request.body);
+
+const methodLastFlat = route.input(input).output(todo).post("/todos");
+expectType<"POST">(methodLastFlat["~restrpc"].method);
+expectType<typeof input>(methodLastFlat["~restrpc"].request.body);
+expectError(methodLastFlat.get("/again"));
 
 // HTTP route builders
 
@@ -121,13 +126,23 @@ expectType<"output">(flatGet["~restrpc"].output);
 expectType<typeof scalarQuery>(flatGet["~restrpc"].request.query);
 expectError(flatGet.query(scalarQuery));
 expectError(flatGet.response(200, todo));
-expectError(route.get("/search").body(input));
-expectError(
-	route.get("/search").input(scalarQuery, { contentType: "text/plain" }),
-);
-expectError(
-	route.get("/search").input(schemaType<{ nested: { value: string } }>()),
-);
+route.get("/search").body(input);
+route.get("/search").input(scalarQuery, { contentType: "text/plain" });
+route.get("/search").input(schemaType<{ nested: { value: string } }>());
+
+const inputFirstGet = route.input(scalarQuery).get("/input-first");
+expectType<typeof scalarQuery>(inputFirstGet["~restrpc"].request.query);
+expectError(inputFirstGet["~restrpc"].request.body);
+
+const segmentsFirstGet = route
+	.headers(input)
+	.query(scalarQuery)
+	.response(401)
+	.get("/method-last");
+expectType<"GET">(segmentsFirstGet["~restrpc"].method);
+expectType<typeof input>(segmentsFirstGet["~restrpc"].request.headers);
+expectType<typeof scalarQuery>(segmentsFirstGet["~restrpc"].request.query);
+expectError(segmentsFirstGet.post("/again"));
 
 // Preserves schema inference for form and multipart content types.
 const importRoute = route

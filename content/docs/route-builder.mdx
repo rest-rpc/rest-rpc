@@ -55,7 +55,17 @@ const todo = route
 
 Use `.get(path)`, `.post(path)`, `.put(path)`, `.patch(path)`, or `.delete(path)`.
 Flat GET input becomes query parameters, while other methods send it as the body.
-Use request segments for dynamic paths.
+Use request segments for dynamic paths. The method can be selected before or
+after request and response declarations, and can only be selected once:
+
+```ts
+route.get("/todos").query(querySchema);
+route.query(querySchema).get("/todos");
+```
+
+HTTP-specific configuration rules are checked as soon as the method and the
+relevant request declaration are both known. For example, GET cannot have a
+body or a flat-input body content type, and flat input requires a static path.
 
 ## Declare Request Segments
 
@@ -88,6 +98,9 @@ Declare a schema for every dynamic path segment. Both `:id` and `{id}` syntax
 are supported. Use lowercase header names.
 
 Segmented requests can still return plain outputs.
+
+Flat `.input()` remains a separate request form and cannot be combined with
+`.body()`, `.query()`, `.params()`, or `.headers()`.
 
 ## Choose Plain Outputs or Status Responses
 

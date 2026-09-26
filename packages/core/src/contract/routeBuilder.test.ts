@@ -65,6 +65,26 @@ describe("route builder runtime", () => {
 		);
 	});
 
+	it("selects the HTTP method before or after request declarations", () => {
+		const query = z.object({ search: z.string() });
+		const methodFirst = route.get("/items").query(query);
+		const methodLast = route.query(query).get("/items");
+
+		assert.deepEqual(methodLast["~restrpc"], methodFirst["~restrpc"]);
+	});
+
+	it("materializes flat input for the selected HTTP method", () => {
+		const schema = z.object({ search: z.string() });
+
+		assert.deepEqual(route.input(schema).get("/items")["~restrpc"].request, {
+			query: schema,
+		});
+		assert.deepEqual(route.input(schema).post("/items")["~restrpc"].request, {
+			body: schema,
+			contentType: "application/json",
+		});
+	});
+
 	it("stores request and response options beside their schemas", () => {
 		const bodySchema = z.string();
 		const headers = z.object({ location: z.string() });
@@ -146,8 +166,35 @@ describe("route builder runtime", () => {
 			/Flat input requires a static route path/,
 		);
 		assert.throws(
+			() => runtimeRoute.body(schema).get("/items"),
+			/GET routes cannot declare a request body/,
+		);
+		assert.throws(
+			() =>
+				runtimeRoute
+					.input(schema, { contentType: "application/json" })
+					.get("/items"),
+			/GET flat input cannot declare a body content type/,
+		);
+		assert.throws(
+			() => runtimeRoute.input(schema).get("/items/:id"),
+			/Flat input requires a static route path/,
+		);
+		assert.throws(
+			() => runtimeRoute.headers(schema).input(schema),
+			/Cannot combine flat input with request segments/,
+		);
+		assert.throws(
+			() => runtimeRoute.input(schema).headers(schema),
+			/Cannot combine flat input with request segments/,
+		);
+		assert.throws(
 			() => runtimeRoute.response(201, schema).response(201, schema),
 			/Response status "201" has already been declared/,
+		);
+		assert.throws(
+			() => runtimeRoute.query(schema).get("/items").post("/items"),
+			/Route method and path have already been selected/,
 		);
 	});
 

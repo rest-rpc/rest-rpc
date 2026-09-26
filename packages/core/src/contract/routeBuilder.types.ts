@@ -49,6 +49,7 @@ type BuilderRoute = {
 /** Type state carried by a route-builder view. */
 export type BuilderState = {
 	route: BuilderRoute;
+	method: "available" | "selected";
 	request: unknown;
 	responses: unknown;
 	openApi: OpenApiRouteOptions | never;
@@ -59,6 +60,7 @@ export type BuilderState = {
 
 type UseMethod<TState extends BuilderState, TMethod extends BuilderMethod> = {
 	route: TState["route"];
+	method: TState["method"];
 	request: TState["request"];
 	responses: TState["responses"];
 	openApi: TState["openApi"];
@@ -97,6 +99,7 @@ type WithRequest<
 	TMethod extends BuilderMethod,
 > = {
 	route: TState["route"];
+	method: TState["method"];
 	request: Omit<TState["request"], TKey> & Record<TKey, TValue>;
 	responses: TState["responses"];
 	openApi: TState["openApi"];
@@ -111,6 +114,7 @@ type WithResponse<
 	TResponse,
 > = {
 	route: TState["route"];
+	method: TState["method"];
 	request: TState["request"];
 	responses: TState["responses"] & Record<TStatus, TResponse>;
 	openApi: TState["openApi"];
@@ -130,6 +134,7 @@ type WithFlatInput<
 	TOptions extends BodyOptions | undefined,
 > = {
 	route: TState["route"];
+	method: TState["method"];
 	request: TState["request"] &
 		(TState["route"]["method"] extends "GET"
 			? { query: TSchema }
@@ -138,6 +143,28 @@ type WithFlatInput<
 	openApi: TState["openApi"];
 	used: TState["used"] | "input";
 	input: "input";
+	output: TState["output"];
+};
+
+type MoveFlatInput<
+	TState extends BuilderState,
+	TMethod extends HttpMethod,
+> = TState["input"] extends "input"
+	? TMethod extends "GET"
+		? Omit<TState["request"], "body" | "contentType" | "query"> & {
+				query: TState["request"] extends { body: infer TBody } ? TBody : never;
+			}
+		: TState["request"]
+	: TState["request"];
+
+type WithHttpRoute<TState extends BuilderState, TMethod extends HttpMethod> = {
+	route: { readonly kind: "http"; readonly method: TMethod };
+	method: "selected";
+	request: MoveFlatInput<TState, TMethod>;
+	responses: TState["responses"];
+	openApi: TState["openApi"];
+	used: TState["used"];
+	input: TState["input"];
 	output: TState["output"];
 };
 
@@ -152,6 +179,7 @@ type MergeMetadata<
 
 type WithOpenApi<TState extends BuilderState> = {
 	route: TState["route"];
+	method: TState["method"];
 	request: TState["request"];
 	responses: TState["responses"];
 	openApi: OpenApiRouteOptions;
@@ -416,16 +444,14 @@ type FlatMethods<
 	{
 		/** Declares one flat input value. GET inputs use query encoding; other methods use a body. */
 		input<
-			const TSchema extends (TState["route"]["method"] extends "GET"
-				? RequestQuerySchema
-				: StandardSchemaV1),
+			const TSchema extends StandardSchemaV1,
 			const TOptions extends BodyOptions | undefined = undefined,
 			const TPath extends string = string,
 			const TMetadata extends RouteMetadata | never = never,
 		>(
 			this: BuilderReceiver<TPath, TMetadata>,
 			schema: TSchema,
-			options?: TState["route"]["method"] extends "GET" ? never : TOptions,
+			options?: TOptions,
 		): RouteBuilderView<
 			WithFlatInput<TState, TSchema, TOptions>,
 			TExtension,
@@ -476,12 +502,79 @@ type FlatMethods<
 		}
 	>;
 
+type HttpMethods<
+	TState extends BuilderState,
+	TExtension extends BuilderExtension | never,
+> = TState["method"] extends "available"
+	? {
+			get<
+				const TPath extends string,
+				const TMetadata extends RouteMetadata | never = never,
+			>(
+				this: BuilderReceiver<string, TMetadata>,
+				path: TPath,
+			): RouteBuilderView<
+				WithHttpRoute<TState, "GET">,
+				TExtension,
+				TPath,
+				TMetadata
+			>;
+			post<
+				const TPath extends string,
+				const TMetadata extends RouteMetadata | never = never,
+			>(
+				this: BuilderReceiver<string, TMetadata>,
+				path: TPath,
+			): RouteBuilderView<
+				WithHttpRoute<TState, "POST">,
+				TExtension,
+				TPath,
+				TMetadata
+			>;
+			put<
+				const TPath extends string,
+				const TMetadata extends RouteMetadata | never = never,
+			>(
+				this: BuilderReceiver<string, TMetadata>,
+				path: TPath,
+			): RouteBuilderView<
+				WithHttpRoute<TState, "PUT">,
+				TExtension,
+				TPath,
+				TMetadata
+			>;
+			patch<
+				const TPath extends string,
+				const TMetadata extends RouteMetadata | never = never,
+			>(
+				this: BuilderReceiver<string, TMetadata>,
+				path: TPath,
+			): RouteBuilderView<
+				WithHttpRoute<TState, "PATCH">,
+				TExtension,
+				TPath,
+				TMetadata
+			>;
+			delete<
+				const TPath extends string,
+				const TMetadata extends RouteMetadata | never = never,
+			>(
+				this: BuilderReceiver<string, TMetadata>,
+				path: TPath,
+			): RouteBuilderView<
+				WithHttpRoute<TState, "DELETE">,
+				TExtension,
+				TPath,
+				TMetadata
+			>;
+		}
+	: EmptyObject;
+
 type AvailableMethods<TState, TExtension> = TState extends BuilderState
-	? FlatMethods<TState, Extract<TExtension, BuilderExtension>> &
+	? HttpMethods<TState, Extract<TExtension, BuilderExtension>> &
+			FlatMethods<TState, Extract<TExtension, BuilderExtension>> &
 			ResponseMethods<TState, Extract<TExtension, BuilderExtension>> &
-			(TState["route"]["method"] extends "GET"
-				? EmptyObject
-				: BodyMethods<TState, Extract<TExtension, BuilderExtension>>) &
+			BodyMethods<TState, Extract<TExtension, BuilderExtension>> &
 			RequestMethods<TState, Extract<TExtension, BuilderExtension>>
 	: never;
 
@@ -503,40 +596,13 @@ export type RouteBuilderView<
 
 type DerivedState = {
 	route: { readonly kind: "procedure"; readonly method: "POST" };
+	method: "available";
 	request: EmptyObject;
 	responses: EmptyObject;
 	openApi: never;
 	used: never;
 	input: "none";
 	output: "none";
-};
-
-type HttpStateFor<TMethod extends HttpMethod> = {
-	route: { readonly kind: "http"; readonly method: TMethod };
-	request: EmptyObject;
-	responses: EmptyObject;
-	openApi: never;
-	used: never;
-	input: "none";
-	output: "none";
-};
-
-type HttpRootMethods<TExtension extends BuilderExtension | never> = {
-	get<const TPath extends string>(
-		path: TPath,
-	): RouteBuilderView<HttpStateFor<"GET">, TExtension, TPath>;
-	post<const TPath extends string>(
-		path: TPath,
-	): RouteBuilderView<HttpStateFor<"POST">, TExtension, TPath>;
-	put<const TPath extends string>(
-		path: TPath,
-	): RouteBuilderView<HttpStateFor<"PUT">, TExtension, TPath>;
-	patch<const TPath extends string>(
-		path: TPath,
-	): RouteBuilderView<HttpStateFor<"PATCH">, TExtension, TPath>;
-	delete<const TPath extends string>(
-		path: TPath,
-	): RouteBuilderView<HttpStateFor<"DELETE">, TExtension, TPath>;
 };
 
 /** Type-level view of the root route builder. */
@@ -546,6 +612,5 @@ export type RootRouteBuilder<
 > = TOptions extends undefined
 	? {
 			readonly "~restrpc": { readonly path: "" };
-		} & HttpRootMethods<TExtension> &
-			Omit<RouteBuilderView<DerivedState, TExtension, "", never>, "~restrpc">
+		} & Omit<RouteBuilderView<DerivedState, TExtension, "", never>, "~restrpc">
 	: never;
