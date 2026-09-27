@@ -66,49 +66,17 @@ const document = createOpenApiDocument(routes, {
 		title: "Todo API",
 		version: "1.0.0",
 	},
-	schemaConverter: (schemas, mode) => {
-		const zodSchemas = schemas as readonly z.ZodType[];
-		if (zodSchemas.length === 1) {
-			return z.toJSONSchema(zodSchemas[0], { io: mode });
+	schemaConverter: (schema, mode) => {
+		if (schema["~standard"].vendor === "zod") {
+			return z.toJSONSchema(schema as z.ZodType, { io: mode });
 		}
-		const shape: z.ZodRawShape = {};
-		for (const schema of zodSchemas) {
-			if (!(schema instanceof z.ZodObject)) {
-				throw new Error("Expected object schemas");
-			}
-			for (const [key, property] of Object.entries(schema.shape)) {
-				if (key in shape) throw new Error(`Overlapping field: ${key}`);
-				shape[key] = property;
-			}
-		}
-		return z.toJSONSchema(z.object(shape), { io: mode });
 	},
 });
 ```
 
-The converter signature is:
-
-```ts
-type SchemaConverter = (
-	schemas: readonly StandardSchemaV1[],
-	mode: "input" | "output",
-) => OpenApiSchema | undefined;
-```
-
-Request schemas are passed in declaration order and the converter must account
-for every schema. Response bodies and response headers are not stacked, so
-they are passed as one-element arrays.
-
-For object-shaped path, query, and header schemas, rest-rpc reads top-level
+For object-shaped path and query schemas, rest-rpc reads top-level
 `properties` and `required` from the converted JSON Schema to create OpenAPI
-parameters. Stacked path, query, and header conversion must therefore return
-the effective object shape at the top level; a root `allOf` does not expose
-fields to the parameter renderer. Native object merging is best suited to
-disjoint fragments. When fields overlap, combine every constraint or reject
-the composition rather than silently replacing an earlier constraint.
-
-Converted property schemas must be inline or use references to valid OpenAPI
-components. Schema records and headers do not always
+parameters. Schema records and headers do not always
 carry parameter-level requiredness in the converted schema. Use
 `transformParameter` when generated parameters need project-specific metadata.
 
@@ -136,7 +104,7 @@ const document = createOpenApiDocument(routes, {
 		title: "Todo API",
 		version: "1.0.0",
 	},
-	schemaConverter: ([schema], mode) =>
+	schemaConverter: (schema, mode) =>
 		z.toJSONSchema(schema as z.ZodType, { io: mode }),
 	transformParameter: ({ parameter }) => {
 		const metadata = parameter.schema as

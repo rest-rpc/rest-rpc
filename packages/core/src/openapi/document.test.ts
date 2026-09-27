@@ -5,8 +5,8 @@ import { route } from "../contract/routeBuilder.ts";
 import { createOpenApiDocument } from "./document.ts";
 import type { SchemaConverter } from "./operation.ts";
 
-const schemaConverter: SchemaConverter = (schemas, mode) =>
-	z.toJSONSchema(schemas[0] as z.ZodType, {
+const schemaConverter: SchemaConverter = (schema, mode) =>
+	z.toJSONSchema(schema as z.ZodType, {
 		target: "openapi-3.0",
 		io: mode,
 		unrepresentable: "throw",

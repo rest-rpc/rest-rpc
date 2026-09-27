@@ -58,9 +58,8 @@ export type OpenApiOperation = {
 	[key: `x-${string}`]: unknown;
 };
 
-/** Converts the ordered schemas for one request or response location to OpenAPI. */
 export type SchemaConverter = (
-	schemas: readonly StandardSchemaV1[],
+	schema: StandardSchemaV1,
 	mode: "input" | "output",
 ) => OpenApiSchema | undefined;
 
@@ -82,8 +81,14 @@ type CreateOperationOptions = {
 	transformOperation?: (context: OperationTransformContext) => OpenApiOperation;
 };
 
-const getSchemaProperties = (schema: OpenApiSchema) =>
-	(schema.properties ?? {}) as Record<string, OpenApiSchema>;
+const getSchemaProperties = (schema: OpenApiSchema) => {
+	const properties = schema.properties;
+	return typeof properties === "object" &&
+		properties !== null &&
+		!Array.isArray(properties)
+		? (properties as Record<string, OpenApiSchema>)
+		: {};
+};
 
 type SchemaRequiredKeys =
 	| { type: "known"; keys: unknown[] }
@@ -107,42 +112,66 @@ const createContent = (
 ) =>
 	Object.fromEntries(contentTypes.map((contentType) => [contentType, value]));
 
+type SchemaOrSchemas<TSchema extends StandardSchemaV1> =
+	| TSchema
+	| readonly TSchema[];
+
+const getSchemas = <TSchema extends StandardSchemaV1>(
+	schemaOrSchemas: SchemaOrSchemas<TSchema>,
+): readonly TSchema[] =>
+	Array.isArray(schemaOrSchemas)
+		? (schemaOrSchemas as readonly TSchema[])
+		: [schemaOrSchemas as TSchema];
+
 export const createParameters = (
-	schemas: readonly StandardSchemaV1[] | undefined,
+	schemaOrSchemas: SchemaOrSchemas<StandardSchemaV1> | undefined,
 	location: "path" | "query" | "header",
 	options: CreateOperationOptions,
 ): OpenApiParameter[] => {
-	if (!schemas || schemas.length === 0) return [];
+	if (!schemaOrSchemas) return [];
 
-	const jsonSchema = options.schemaConverter?.(schemas, "input") ?? {};
-	const properties = getSchemaProperties(jsonSchema);
-	const requiredKeys = getRequiredSchemaKeys(jsonSchema);
+	const properties: Record<string, OpenApiSchema> = {};
+	const requiredKeys = new Set<unknown>();
+	for (const schema of getSchemas(schemaOrSchemas)) {
+		const jsonSchema = options.schemaConverter?.(schema, "input") ?? {};
+		for (const [name, propertySchema] of Object.entries(
+			getSchemaProperties(jsonSchema),
+		)) {
+			properties[name] = properties[name]
+				? { allOf: [properties[name], propertySchema] }
+				: propertySchema;
+		}
+		const schemaRequiredKeys = getRequiredSchemaKeys(jsonSchema);
+		if (schemaRequiredKeys.type === "known") {
+			for (const name of schemaRequiredKeys.keys) requiredKeys.add(name);
+		}
+	}
 
 	return Object.entries(properties).map(([name, propertySchema]) => {
-		const isRequired =
-			requiredKeys.type === "known"
-				? requiredKeys.keys.includes(name)
-				: undefined;
 		return {
 			name,
 			in: location,
-			...(location === "path" ? { required: true } : { required: isRequired }),
+			...(location === "path"
+				? { required: true }
+				: { required: requiredKeys.has(name) }),
 			schema: propertySchema,
 		};
 	});
 };
 
 export const createHeaderParameters = (
-	headers: readonly RequestHeadersSchema[] | undefined,
+	headers: SchemaOrSchemas<RequestHeadersSchema> | undefined,
 	options: CreateOperationOptions,
 ): OpenApiParameter[] => createParameters(headers, "header", options);
 
 export const createRequestBody = (
-	schemas: readonly RequestBodySchema[] | undefined,
+	schemaOrSchemas: SchemaOrSchemas<RequestBodySchema> | undefined,
 	converter: SchemaConverter | undefined,
 	customContentType?: string | readonly string[],
 ): OpenApiRequestBody | undefined => {
-	if (!schemas || schemas.length === 0) return undefined;
+	if (!schemaOrSchemas) return undefined;
+	const schemas = getSchemas(schemaOrSchemas);
+	if (schemas.length === 0) return undefined;
 	const contentTypes =
 		customContentType !== undefined
 			? Array.isArray(customContentType)
@@ -150,7 +179,13 @@ export const createRequestBody = (
 				: [customContentType as string]
 			: [JSON_CONTENT_TYPE];
 	if (contentTypes.length === 0) return undefined;
-	const openApiSchema = converter?.(schemas, "input") ?? {};
+	const convertedSchemas = schemas.map(
+		(schema) => converter?.(schema, "input") ?? {},
+	);
+	const openApiSchema =
+		convertedSchemas.length === 1
+			? convertedSchemas[0]
+			: { allOf: convertedSchemas };
 
 	return {
 		content: createContent(contentTypes, { schema: openApiSchema }),
@@ -181,7 +216,7 @@ export const createResponse = (
 	}
 
 	if (responseDeclaration.kind === "stream") {
-		const openApiSchema = converter?.([schema], "output") ?? {};
+		const openApiSchema = converter?.(schema, "output") ?? {};
 		return {
 			description: openApiResponse?.description ?? description,
 			...(headers ? { headers } : {}),
@@ -199,7 +234,7 @@ export const createResponse = (
 				? contentType
 				: [contentType as string]
 			: [JSON_CONTENT_TYPE];
-	const openApiSchema = converter?.([schema], "output") ?? {};
+	const openApiSchema = converter?.(schema, "output") ?? {};
 
 	return {
 		description: openApiResponse?.description ?? description,
@@ -214,7 +249,7 @@ export const createResponseHeaders = (
 ): OpenApiResponse["headers"] | undefined => {
 	if (!headers) return undefined;
 
-	const schema = converter?.([headers], "output") ?? {};
+	const schema = converter?.(headers, "output") ?? {};
 	return Object.fromEntries(
 		Object.entries(getSchemaProperties(schema)).map(
 			([name, propertySchema]) => [name, { schema: propertySchema }],
@@ -238,7 +273,7 @@ export const createOpenApiResponseHeaders = (
 				name,
 				{
 					...(description ? { description } : {}),
-					schema: converter?.([schema], "output") ?? {},
+					schema: converter?.(schema, "output") ?? {},
 				},
 			];
 		}),

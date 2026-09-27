@@ -12,8 +12,8 @@ import {
 import type { SchemaConverter } from "./operation.ts";
 import type { RouteDeclaration } from "../contract/routeDeclaration.ts";
 
-const schemaConverter: SchemaConverter = (schemas, mode) =>
-	z.toJSONSchema(schemas[0] as z.ZodType, {
+const schemaConverter: SchemaConverter = (schema, mode) =>
+	z.toJSONSchema(schema as z.ZodType, {
 		target: "openapi-3.0",
 		io: mode,
 		unrepresentable: "throw",
@@ -24,17 +24,15 @@ const operationOptions = { schemaConverter };
 describe("OpenAPI operations", () => {
 	it("creates required path params and schema-required query params", () => {
 		const params = createParameters(
-			[z.object({ id: z.string() })],
+			z.object({ id: z.string() }),
 			"path",
 			operationOptions,
 		);
 		const query = createParameters(
-			[
-				z.object({
-					search: z.string(),
-					includeCompleted: z.boolean().optional(),
-				}),
-			],
+			z.object({
+				search: z.string(),
+				includeCompleted: z.boolean().optional(),
+			}),
 			"query",
 			operationOptions,
 		);
@@ -55,12 +53,12 @@ describe("OpenAPI operations", () => {
 
 	it("creates path params as required and query params from object schemas", () => {
 		const params = createParameters(
-			[z.object({ id: z.string() })],
+			z.object({ id: z.string() }),
 			"path",
 			operationOptions,
 		);
 		const query = createParameters(
-			[z.object({ search: z.string(), page: z.number().optional() })],
+			z.object({ search: z.string(), page: z.number().optional() }),
 			"query",
 			operationOptions,
 		);
@@ -82,7 +80,7 @@ describe("OpenAPI operations", () => {
 
 	it("documents object-schema path params as required", () => {
 		const parameters = createParameters(
-			[z.object({ id: z.string().optional() })],
+			z.object({ id: z.string().optional() }),
 			"path",
 			operationOptions,
 		);
@@ -99,7 +97,7 @@ describe("OpenAPI operations", () => {
 
 	it("documents object-schema path params as required", () => {
 		const parameters = createParameters(
-			[z.object({ id: z.string().optional() })],
+			z.object({ id: z.string().optional() }),
 			"path",
 			operationOptions,
 		);
@@ -205,12 +203,10 @@ describe("OpenAPI operations", () => {
 
 	it("creates request header parameters", () => {
 		const headers = createHeaderParameters(
-			[
-				z.object({
-					"x-api-key": z.string(),
-					"x-request-id": z.string().optional(),
-				}),
-			],
+			z.object({
+				"x-api-key": z.string(),
+				"x-request-id": z.string().optional(),
+			}),
 			operationOptions,
 		);
 
@@ -234,103 +230,96 @@ describe("OpenAPI operations", () => {
 		]);
 	});
 
-	it("converts every stacked request schema and one schema per response", () => {
-		const pathSchemas = [
-			z.object({ accountId: z.string() }),
-			z.object({ itemId: z.string() }),
-		] as const;
-		const querySchemas = [
-			z.object({ page: z.number() }),
-			z.object({ search: z.string().optional() }),
-		] as const;
-		const headerSchemas = [
-			z.object({ authorization: z.string() }),
-			z.object({ "x-trace-id": z.string() }),
-		] as const;
-		const bodySchemas = [
-			z.object({ title: z.string() }),
-			z.object({ done: z.boolean() }),
-		] as const;
-		const responseSchema = z.object({ id: z.string() });
-		const calls: Array<{
-			mode: "input" | "output";
-			schemas: readonly unknown[];
-		}> = [];
-		const combinedConverter: SchemaConverter = (schemas, mode) => {
-			calls.push({ mode, schemas });
-			const shape = Object.assign(
-				{},
-				...schemas.map((schema) => (schema as z.ZodObject).shape),
-			);
-			return z.toJSONSchema(z.object(shape), {
-				target: "openapi-3.0",
-				io: mode,
-				reused: "inline",
-			}) as Record<string, unknown>;
+	it("composes stacked request schemas after converting them individually", () => {
+		const firstQuery = z.object({ id: z.string().optional() });
+		const secondQuery = z.object({
+			id: z.string(),
+			cursor: z.string().optional(),
+		});
+		const firstBody = z.string();
+		const secondBody = z.string();
+		const convertedSchemas = new Map<object, Record<string, unknown>>([
+			[
+				firstQuery,
+				{
+					type: "object",
+					properties: { id: { type: "string", minLength: 3 } },
+				},
+			],
+			[
+				secondQuery,
+				{
+					type: "object",
+					properties: {
+						id: { type: "string", pattern: "^usr_" },
+						cursor: { type: "string" },
+					},
+					required: ["id"],
+				},
+			],
+			[firstBody, { type: "string", minLength: 3 }],
+			[secondBody, { type: "string", pattern: "^usr_" }],
+		]);
+		const calls: object[] = [];
+		const converter: SchemaConverter = (schema) => {
+			calls.push(schema);
+			return convertedSchemas.get(schema);
 		};
-		const operation = createOperation(
-			createRoute
-				.post("/accounts/:accountId/items/:itemId")
-				.params(pathSchemas[0])
-				.params(pathSchemas[1])
-				.query(querySchemas[0])
-				.query(querySchemas[1])
-				.headers(headerSchemas[0])
-				.headers(headerSchemas[1])
-				.body(bodySchemas[0])
-				.body(bodySchemas[1])
-				.response(200, responseSchema)["~restrpc"],
-			{ schemaConverter: combinedConverter },
-		);
 
 		assert.deepEqual(
-			operation.parameters?.map(({ name, in: location }) => ({
-				name,
-				location,
-			})),
+			createParameters([firstQuery, secondQuery], "query", {
+				schemaConverter: converter,
+			}),
 			[
-				{ name: "accountId", location: "path" },
-				{ name: "itemId", location: "path" },
-				{ name: "page", location: "query" },
-				{ name: "search", location: "query" },
-				{ name: "authorization", location: "header" },
-				{ name: "x-trace-id", location: "header" },
+				{
+					name: "id",
+					in: "query",
+					required: true,
+					schema: {
+						allOf: [
+							{ type: "string", minLength: 3 },
+							{ type: "string", pattern: "^usr_" },
+						],
+					},
+				},
+				{
+					name: "cursor",
+					in: "query",
+					required: false,
+					schema: { type: "string" },
+				},
 			],
 		);
-		assert.deepEqual(
-			Object.keys(
-				(operation.requestBody?.content["application/json"].schema
-					?.properties ?? {}) as object,
-			),
-			["title", "done"],
-		);
-		assert.deepEqual(
-			calls.map(({ mode, schemas }) => ({ mode, schemas })),
-			[
-				{ mode: "input", schemas: pathSchemas },
-				{ mode: "input", schemas: querySchemas },
-				{ mode: "input", schemas: headerSchemas },
-				{ mode: "input", schemas: bodySchemas },
-				{ mode: "output", schemas: [responseSchema] },
-			],
-		);
+		assert.deepEqual(createRequestBody([firstBody, secondBody], converter), {
+			content: {
+				"application/json": {
+					schema: {
+						allOf: [
+							{ type: "string", minLength: 3 },
+							{ type: "string", pattern: "^usr_" },
+						],
+					},
+				},
+			},
+		});
+		assert.deepEqual(calls, [firstQuery, secondQuery, firstBody, secondBody]);
 	});
 
 	it("creates JSON and custom request bodies", () => {
 		const jsonBody = createRequestBody(
-			[z.object({ title: z.string() })],
+			z.object({ title: z.string() }),
 			schemaConverter,
 		);
-		const custom = createRequestBody([z.string()], schemaConverter, "text/csv");
+		const custom = createRequestBody(z.string(), schemaConverter, "text/csv");
 
 		assert.equal(jsonBody?.content["application/json"].schema.type, "object");
 		assert.equal(custom?.content["text/csv"].schema.type, "string");
 	});
 
 	it("uses empty OpenAPI schemas when conversion is unavailable", () => {
-		const withoutConverter = createRequestBody([z.string()], undefined);
+		const withoutConverter = createRequestBody(z.string(), undefined);
 		const withoutConvertedSchema = createRequestBody(
-			[z.string()],
+			z.string(),
 			() => undefined,
 		);
 
@@ -343,7 +332,7 @@ describe("OpenAPI operations", () => {
 	});
 
 	it("creates custom request bodies with multiple declared content types", () => {
-		const body = createRequestBody([z.string()], schemaConverter, [
+		const body = createRequestBody(z.string(), schemaConverter, [
 			"image/png",
 			"image/jpeg",
 		]);
@@ -355,7 +344,7 @@ describe("OpenAPI operations", () => {
 
 	it("creates urlencoded form request bodies", () => {
 		const body = createRequestBody(
-			[z.object({ title: z.string() })],
+			z.object({ title: z.string() }),
 			schemaConverter,
 			"application/x-www-form-urlencoded",
 		);
@@ -369,7 +358,7 @@ describe("OpenAPI operations", () => {
 
 	it("creates multipart request bodies", () => {
 		const body = createRequestBody(
-			[z.object({ title: z.string(), file: z.string() })],
+			z.object({ title: z.string(), file: z.string() }),
 			schemaConverter,
 			"multipart/form-data",
 		);
@@ -380,12 +369,10 @@ describe("OpenAPI operations", () => {
 
 	it("creates JSON request bodies from object schemas", () => {
 		const body = createRequestBody(
-			[
-				z.object({
-					title: z.string(),
-					priority: z.number().optional(),
-				}),
-			],
+			z.object({
+				title: z.string(),
+				priority: z.number().optional(),
+			}),
 			schemaConverter,
 		);
 
