@@ -55,17 +55,7 @@ const todo = route
 
 Use `.get(path)`, `.post(path)`, `.put(path)`, `.patch(path)`, or `.delete(path)`.
 Flat GET input becomes query parameters, while other methods send it as the body.
-Use request segments for dynamic paths. The method can be selected before or
-after request and response declarations, and can only be selected once:
-
-```ts
-route.get("/todos").query(querySchema);
-route.query(querySchema).get("/todos");
-```
-
-HTTP-specific configuration rules are checked as soon as the method and the
-relevant request declaration are both known. For example, GET cannot have a
-body or a flat-input body content type, and flat input requires a static path.
+Use request segments for dynamic paths.
 
 ## Declare Request Segments
 
@@ -99,32 +89,24 @@ are supported. Use lowercase header names.
 
 Segmented requests can still return plain outputs.
 
-Flat `.input()` remains a separate request form and cannot be combined with
-`.body()`, `.query()`, `.params()`, or `.headers()`.
+## Stacking Schemas
 
-Each request location can declare more than one schema. Every schema validates
-the same original wire value in declaration order; the schemas are not a
-transformation pipeline.
+Stacking schemas is supported for `body`, `query`, `params`, `headers` and `input`. Each schema is validated in declaration order
+against the original request value. The schema outputs are shallow-merged into a single object.
+
+:::warning
+When stacking schemas, the output of each schema must be an object. Non-object outputs will throw a runtime error
+during validation. Use single schema validation for non-object outputs. Avoid using strict schemas such as `z.strictObject()`
+that forbid unknown keys, if those keys are required by the other schemas in the stack.
+:::
 
 ```ts
-const list = route
-	.get("/todos")
-	.query(paginationSchema)
-	.query(filterSchema)
-	.handler(({ query }) => listTodos(query));
+const stacked = route
+	.post("/todos")
+	.body(z.object({ title: z.string() }))
+	.body(z.object({ description: z.string().optional() }))
+	.handler(({ body }) => createTodo(body.title, body.description));
 ```
-
-On the client, the schemas' input types are intersected because the wire value
-must satisfy all of them. In the handler, validated object outputs are merged
-in declaration order, so properties from later schemas win. A single schema's
-output is preserved unchanged and may be a primitive. With two or more schemas
-for a location, every successful output must be a non-null object so it can be
-merged.
-
-Repeated `.input()` calls stack flat input schemas in the same way, while flat
-input remains mutually exclusive with every segmented request method. Repeated
-body declarations must use one effective content type; selecting a conflicting
-content type throws when the declaration is built.
 
 ## Choose Plain Outputs or Status Responses
 

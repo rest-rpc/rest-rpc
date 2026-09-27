@@ -76,9 +76,18 @@ describe("route builder runtime", () => {
 	it("materializes flat input for the selected HTTP method", () => {
 		const schema = z.object({ search: z.string() });
 
-		assert.deepEqual(route.input(schema).get("/items")["~restrpc"].request, {
-			query: [schema],
-		});
+		assert.deepEqual(
+			route.input(schema, { contentType: "text/plain" }).get("/items")[
+				"~restrpc"
+			].request,
+			{ query: [schema] },
+		);
+		assert.deepEqual(
+			route.get("/items").input(schema, { contentType: "text/plain" })[
+				"~restrpc"
+			].request,
+			{ query: [schema] },
+		);
 		assert.deepEqual(route.input(schema).post("/items")["~restrpc"].request, {
 			body: [schema],
 			contentType: "application/json",
@@ -91,14 +100,14 @@ describe("route builder runtime", () => {
 		const headers = z.object({ authorization: z.string() });
 		const declaration = route
 			.post("/items")
-			.body(first)
-			.body(second)
+			.body(first, { contentType: "text/plain" })
+			.body(second, { contentType: "application/json" })
 			.headers(headers)
 			.headers(headers);
 
 		assert.deepEqual(declaration["~restrpc"].request, {
 			body: [first, second],
-			contentType: "application/json",
+			contentType: "text/plain",
 			headers: [headers, headers],
 		});
 	});
@@ -175,24 +184,12 @@ describe("route builder runtime", () => {
 			/GET routes cannot declare a request body/,
 		);
 		assert.throws(
-			() =>
-				runtimeRoute.get("/items").input(schema, { contentType: "text/plain" }),
-			/GET flat input cannot declare a body content type/,
-		);
-		assert.throws(
 			() => runtimeRoute.get("/items/:id").input(schema),
 			/Flat input requires a static route path/,
 		);
 		assert.throws(
 			() => runtimeRoute.body(schema).get("/items"),
 			/GET routes cannot declare a request body/,
-		);
-		assert.throws(
-			() =>
-				runtimeRoute
-					.input(schema, { contentType: "application/json" })
-					.get("/items"),
-			/GET flat input cannot declare a body content type/,
 		);
 		assert.throws(
 			() => runtimeRoute.input(schema).get("/items/:id"),
@@ -205,13 +202,6 @@ describe("route builder runtime", () => {
 		assert.throws(
 			() => runtimeRoute.input(schema).headers(schema),
 			/Cannot combine flat input with request segments/,
-		);
-		assert.throws(
-			() =>
-				runtimeRoute
-					.body(schema, { contentType: "text/plain" })
-					.body(schema, { contentType: "application/json" }),
-			/Request body content type has already been declared/,
 		);
 		assert.throws(
 			() => runtimeRoute.response(201, schema).response(201, schema),

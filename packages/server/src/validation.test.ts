@@ -87,11 +87,11 @@ describe("validateRequestSegments", () => {
 			.body(z.string().transform((value) => ({ value })))["~restrpc"];
 		await assert.rejects(
 			() => validateRequestSegments(stacked, { body: "value" }),
-			/Cannot merge body schema output at index 0: expected a non-null object/,
+			/Stacked request schema outputs must be objects/,
 		);
 	});
 
-	it("collects issues from every schema in a request stack", async () => {
+	it("stops at the first failed schema in a request stack", async () => {
 		const declaration = route
 			.post("/todos")
 			.body(z.object({ title: z.string() }))
@@ -101,7 +101,7 @@ describe("validateRequestSegments", () => {
 			() => validateRequestSegments(declaration, { body: {} }),
 			(error) => {
 				assert(error instanceof RequestValidationError);
-				assert.equal(error.issues.body.length, 2);
+				assert.equal(error.issues.body.length, 1);
 				return true;
 			},
 		);

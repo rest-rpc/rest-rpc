@@ -19,10 +19,6 @@ import type { RootRouteBuilder } from "./routeBuilder.types.ts";
 
 type RouteBuilderState = Partial<RouteDeclaration>;
 
-type RouteBuilderContext = {
-	flatInputOptionsDeclared: boolean;
-};
-
 const assertMutable = (state: RouteBuilderState) => {
 	if ("handler" in state) {
 		throw new Error("Cannot change a route after attaching a handler.");
@@ -52,29 +48,10 @@ const appendSchema = <TSchema extends StandardSchemaV1>(
 	schema: TSchema,
 ) => [...(schemas ?? []), schema];
 
-const sameContentType = (
-	left: BodyOptions["contentType"],
-	right: BodyOptions["contentType"],
-) =>
-	Array.isArray(left) && Array.isArray(right)
-		? left.length === right.length &&
-			left.every((value, index) => value === right[index])
-		: left === right;
-
 const requestContentType = (
 	state: RouteBuilderState,
 	options: BodyOptions | undefined,
-) => {
-	const existing = state.request?.contentType;
-	if (
-		existing !== undefined &&
-		options !== undefined &&
-		!sameContentType(existing, options.contentType)
-	) {
-		throw new Error("Request body content type has already been declared.");
-	}
-	return existing ?? options?.contentType ?? "application/json";
-};
+) => state.request?.contentType ?? options?.contentType ?? "application/json";
 
 const assertHttpStatusCode = (status: number) => {
 	if (!Number.isInteger(status) || status < 100 || status > 599) {
@@ -135,7 +112,6 @@ const procedureState = (state: RouteBuilderState): RouteBuilderState => {
 
 const httpState = (
 	state: RouteBuilderState,
-	context: RouteBuilderContext,
 	method: HttpMethod,
 	path: string,
 ): RouteBuilderState => {
@@ -148,13 +124,6 @@ const httpState = (
 	}
 	if (method === "GET" && state.input !== "input" && state.request?.body) {
 		throw new Error("GET routes cannot declare a request body.");
-	}
-	if (
-		method === "GET" &&
-		state.input === "input" &&
-		context.flatInputOptionsDeclared
-	) {
-		throw new Error("GET flat input cannot declare a body content type.");
 	}
 	let request = state.request;
 	if (method === "GET" && state.input === "input") {
@@ -193,52 +162,37 @@ const addResponse = (
 /** Immutable runtime implementation used by every route-builder stage. */
 export class RouteBuilder {
 	readonly "~restrpc": RouteBuilderState;
-	readonly #context: RouteBuilderContext;
 
-	constructor(
-		state: RouteBuilderState = {},
-		context: RouteBuilderContext = { flatInputOptionsDeclared: false },
-	) {
+	constructor(state: RouteBuilderState = {}) {
 		this["~restrpc"] = { ...state };
-		this.#context = context;
 	}
 
-	#next(
-		state: RouteBuilderState,
-		context: RouteBuilderContext = this.#context,
-	): RouteBuilder {
-		return this.clone(state, context);
+	#next(state: RouteBuilderState): RouteBuilder {
+		return this.clone(state);
 	}
 
-	clone(
-		state: RouteBuilderState,
-		context: RouteBuilderContext = this.#context,
-	): RouteBuilder {
-		return new RouteBuilder(state, context);
+	clone(state: RouteBuilderState): RouteBuilder {
+		return new RouteBuilder(state);
 	}
 
 	get(path: string): RouteBuilder {
-		return this.#next(httpState(this["~restrpc"], this.#context, "GET", path));
+		return this.#next(httpState(this["~restrpc"], "GET", path));
 	}
 
 	post(path: string): RouteBuilder {
-		return this.#next(httpState(this["~restrpc"], this.#context, "POST", path));
+		return this.#next(httpState(this["~restrpc"], "POST", path));
 	}
 
 	put(path: string): RouteBuilder {
-		return this.#next(httpState(this["~restrpc"], this.#context, "PUT", path));
+		return this.#next(httpState(this["~restrpc"], "PUT", path));
 	}
 
 	patch(path: string): RouteBuilder {
-		return this.#next(
-			httpState(this["~restrpc"], this.#context, "PATCH", path),
-		);
+		return this.#next(httpState(this["~restrpc"], "PATCH", path));
 	}
 
 	delete(path: string): RouteBuilder {
-		return this.#next(
-			httpState(this["~restrpc"], this.#context, "DELETE", path),
-		);
+		return this.#next(httpState(this["~restrpc"], "DELETE", path));
 	}
 
 	body(schema: StandardSchemaV1, options?: BodyOptions): RouteBuilder {
@@ -260,32 +214,23 @@ export class RouteBuilder {
 
 	input(schema: StandardSchemaV1, options?: BodyOptions): RouteBuilder {
 		const state = procedureState(this["~restrpc"]);
-		if (state.method === "GET" && options !== undefined) {
-			throw new Error("GET flat input cannot declare a body content type.");
-		}
 		assertInputMode(state, "input");
 		if (getPathParamNames(state.path ?? "").length > 0) {
 			throw new Error("Flat input requires a static route path.");
 		}
-		return this.#next(
-			{
-				...state,
-				input: "input",
-				request: {
-					...state.request,
-					...(state.method === "GET"
-						? { query: appendSchema(state.request?.query, schema) }
-						: {
-								body: appendSchema(state.request?.body, schema),
-								contentType: requestContentType(state, options),
-							}),
-				},
+		return this.#next({
+			...state,
+			input: "input",
+			request: {
+				...state.request,
+				...(state.method === "GET"
+					? { query: appendSchema(state.request?.query, schema) }
+					: {
+							body: appendSchema(state.request?.body, schema),
+							contentType: requestContentType(state, options),
+						}),
 			},
-			{
-				flatInputOptionsDeclared:
-					this.#context.flatInputOptionsDeclared || options !== undefined,
-			},
-		);
+		});
 	}
 
 	headers(schema: RequestHeadersSchema): RouteBuilder {

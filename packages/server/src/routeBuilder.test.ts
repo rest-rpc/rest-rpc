@@ -28,14 +28,13 @@ describe("server route builder", () => {
 		assert.deepEqual(implementation["~restrpc"].responses, {});
 	});
 
-	it("preserves pending method invariants across server extensions", () => {
-		assert.throws(
-			() =>
-				serverFirstRoute
-					.input(type<string>(), { contentType: "application/json" })
-					.use(() => undefined)
-					.get("/items"),
-			/GET flat input cannot declare a body content type/,
-		);
+	it("materializes pending flat input across server extensions", () => {
+		const schema = type<Record<string, string>>();
+		const declaration = serverFirstRoute
+			.input(schema, { contentType: "application/json" })
+			.use(() => undefined)
+			.get("/items")["~restrpc"];
+
+		assert.deepEqual(declaration.request, { query: [schema] });
 	});
 });
