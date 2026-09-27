@@ -29,7 +29,17 @@ const assertInputMode = (
 	state: RouteBuilderState,
 	mode: "input" | "segments",
 ) => {
-	if (state.input && state.input !== mode) {
+	const onlyHeaders =
+		state.request !== undefined &&
+		state.request.headers !== undefined &&
+		state.request.body === undefined &&
+		state.request.query === undefined &&
+		state.request.params === undefined;
+	if (
+		state.input &&
+		state.input !== mode &&
+		!(mode === "input" && onlyHeaders)
+	) {
 		throw new Error("Cannot combine flat input with request segments.");
 	}
 };
@@ -235,10 +245,9 @@ export class RouteBuilder {
 
 	headers(schema: RequestHeadersSchema): RouteBuilder {
 		const state = procedureState(this["~restrpc"]);
-		assertInputMode(state, "segments");
 		return this.#next({
 			...state,
-			input: "segments",
+			input: state.input === "input" ? "input" : "segments",
 			request: {
 				...state.request,
 				headers: appendSchema(state.request?.headers, schema),

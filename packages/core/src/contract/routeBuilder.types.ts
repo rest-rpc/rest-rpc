@@ -54,7 +54,7 @@ export type BuilderState = {
 	responses: unknown;
 	openApi: OpenApiRouteOptions | never;
 	used: BuilderMethod;
-	input: "none" | "input" | "segments";
+	input: "none" | "headers" | "input" | "segments";
 	output: "none" | "output" | "response";
 };
 
@@ -114,6 +114,17 @@ type WithRequest<
 	used: TState["used"];
 	input: "segments";
 	output: TState["output"];
+};
+
+type WithHeaders<
+	TState extends BuilderState,
+	THeaders extends RequestHeadersSchema,
+> = Omit<WithRequest<TState, "headers", THeaders>, "input"> & {
+	input: TState["input"] extends "input"
+		? "input"
+		: TState["input"] extends "segments"
+			? "segments"
+			: "headers";
 };
 
 type WithContentType<TState extends BuilderState, TContentType> = {
@@ -251,7 +262,11 @@ export type PublicDeclarationFor<
 				responses: TState["responses"];
 			} & (TState["input"] extends "none"
 				? EmptyObject
-				: { readonly input: TState["input"] }) &
+				: {
+						readonly input: TState["input"] extends "headers"
+							? "segments"
+							: TState["input"];
+					}) &
 			(TState["output"] extends "none"
 				? EmptyObject
 				: { readonly output: TState["output"] }) &
@@ -402,27 +417,22 @@ type RequestMethods<
 				TMetadata
 			>;
 		}
-	> &
-	WhenSegmentsAvailable<
-		TState,
-		{
-			/** Declares request headers. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
-			headers<
-				const THeaders extends RequestHeadersSchema,
-				const TPath extends string = string,
-				const TMetadata extends RouteMetadata | never = never,
-			>(
-				this: BuilderReceiver<TPath, TMetadata>,
-				schema: THeaders,
-			): RouteBuilderView<
-				WithRequest<TState, "headers", THeaders>,
-				TExtension,
-				TPath,
-				TMetadata
-			>;
-		}
-	> &
-	WhenUnused<
+	> & {
+		/** Declares request headers. Headers may be combined with flat input and must then be supplied by client global headers. @see {@link https://rest-rpc.dev/docs/route-builder#declare-request-segments} */
+		headers<
+			const THeaders extends RequestHeadersSchema,
+			const TPath extends string = string,
+			const TMetadata extends RouteMetadata | never = never,
+		>(
+			this: BuilderReceiver<TPath, TMetadata>,
+			schema: THeaders,
+		): RouteBuilderView<
+			WithHeaders<TState, THeaders>,
+			TExtension,
+			TPath,
+			TMetadata
+		>;
+	} & WhenUnused<
 		TState,
 		"metadata",
 		{

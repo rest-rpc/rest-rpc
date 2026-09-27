@@ -433,3 +433,13 @@ route
 	.params(z.object({ id: z.string(), name: z.string() }))
 	.body(z.string())
 	.use(reusableMiddleware);
+
+// when mixing flat input with headers, both should be accessible in the handler
+route
+	.headers(z.object({ authorization: z.string() }))
+	.input(z.object({ title: z.string() }))
+	.handler(({ headers, input }) => {
+		expectType<string>(headers.authorization);
+		expectType<string>(input.title);
+		return { id: "todo-1", title: input.title };
+	});

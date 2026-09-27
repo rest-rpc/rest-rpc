@@ -127,8 +127,6 @@ expectType<string>(
 		typeof stackedFlat
 	>["input"]["second"],
 );
-expectError(stackedFlat.headers(input));
-expectError(route.headers(input).input(input));
 
 // HTTP route builders
 

@@ -112,6 +112,27 @@ describe("route builder runtime", () => {
 		});
 	});
 
+	it("combines flat input with stacked headers in either order", () => {
+		const input = z.object({ title: z.string() });
+		const details = z.object({ description: z.string().optional() });
+		const authorization = z.object({ authorization: z.string() });
+		const requestId = z.object({ "x-request-id": z.string() });
+
+		const declaration = route
+			.headers(authorization)
+			.input(input)
+			.headers(requestId)
+			.input(details)
+			.post("/items");
+
+		assert.equal(declaration["~restrpc"].input, "input");
+		assert.deepEqual(declaration["~restrpc"].request, {
+			body: [input, details],
+			contentType: "application/json",
+			headers: [authorization, requestId],
+		});
+	});
+
 	it("stores request and response options beside their schemas", () => {
 		const bodySchema = z.string();
 		const headers = z.object({ location: z.string() });
@@ -194,14 +215,6 @@ describe("route builder runtime", () => {
 		assert.throws(
 			() => runtimeRoute.input(schema).get("/items/:id"),
 			/Flat input requires a static route path/,
-		);
-		assert.throws(
-			() => runtimeRoute.headers(schema).input(schema),
-			/Cannot combine flat input with request segments/,
-		);
-		assert.throws(
-			() => runtimeRoute.input(schema).headers(schema),
-			/Cannot combine flat input with request segments/,
 		);
 		assert.throws(
 			() => runtimeRoute.response(201, schema).response(201, schema),
