@@ -10,7 +10,12 @@ import {
 	type as schemaType,
 } from "@rest-rpc/core";
 import z from "zod";
-import { expectAssignable, expectError, expectType } from "tsd";
+import {
+	expectAssignable,
+	expectError,
+	expectNotAssignable,
+	expectType,
+} from "tsd";
 
 const todo = schemaType<{ id: string; title: string }>();
 const input = schemaType<{ title: string }>();
@@ -46,7 +51,7 @@ expectAssignable<Contract>(shorthandOutputFirst);
 
 // Input starts with an empty response map until an output is declared.
 const shorthandInput = route.input(input);
-expectAssignable<Contract>(shorthandInput);
+expectNotAssignable<Contract>(shorthandInput);
 const shorthandWithInput = shorthandInput.output(todo);
 expectType<readonly [typeof input]>(
 	shorthandWithInput["~restrpc"].request.body,
@@ -157,7 +162,7 @@ expectError(create.output(todo));
 // Routes without a declared response carry an empty response map.
 const incompleteHttp = route.get("/incomplete");
 expectAssignable<RouteDeclaration>(incompleteHttp["~restrpc"]);
-expectAssignable<Contract>(incompleteHttp);
+expectNotAssignable<Contract>(incompleteHttp);
 
 const flatGet = route.get("/search").input(scalarQuery).output(todo);
 expectType<"input">(flatGet["~restrpc"].input);
