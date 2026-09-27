@@ -2,36 +2,32 @@ import type { StandardSchemaV1 } from "./index.ts";
 
 const UNCHECKED_SCHEMA_VENDOR = "rest-rpc";
 
+type MaybePromise<T> = T | Promise<T>;
+type TypeMapper = (input: never) => unknown;
+
 /**
- * Creates an unchecked Standard Schema for compile-time contracts and optional
- * synchronous output mapping.
+ * Creates an unchecked Standard Schema with optional output mapping.
  *
- * @remarks Runtime validation asserts the value to be `TInput` without
- * checking it. When provided, the mapper transforms that asserted value and
- * any exception it throws propagates to the caller. Use this helper only when
- * runtime validation is not needed.
- *
- * @see {@link https://rest-rpc.dev/docs/http-behavior/schemas}
+ * @see {@link https://rest-rpc.dev/docs/http-behavior/schemas#type-helper}
  */
-export function type<TInput>(
-	map?: (input: TInput) => TInput,
-): StandardSchemaV1<TInput, TInput>;
-export function type<TInput, TOutput>(
-	map: (input: TInput) => TOutput,
+export function type<TInput>(): StandardSchemaV1<TInput, TInput>;
+export function type<TMapper extends TypeMapper>(
+	map: TMapper,
+): StandardSchemaV1<Parameters<TMapper>[0], Awaited<ReturnType<TMapper>>>;
+export function type<TInput, TOutput = TInput>(
+	map: (input: TInput) => MaybePromise<TOutput>,
 ): StandardSchemaV1<TInput, TOutput>;
 export function type<TInput, TOutput = TInput>(
-	map?: (input: TInput) => TOutput,
+	map?: (input: TInput) => MaybePromise<TOutput>,
 ): StandardSchemaV1<TInput, TOutput> {
 	return {
 		"~standard": {
 			version: 1,
 			vendor: UNCHECKED_SCHEMA_VENDOR,
-			validate: (value) => {
-				const input = value as TInput;
-				return {
-					value: map === undefined ? (input as unknown as TOutput) : map(input),
-				};
-			},
+			validate: async (value) => ({
+				value:
+					map === undefined ? (value as TOutput) : await map(value as TInput),
+			}),
 		},
 	};
 }

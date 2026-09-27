@@ -8,7 +8,7 @@ expectAssignable<StandardSchemaV1<number, number>>(identity);
 const normalized = schemaType<number>((input) => Math.max(0, input));
 expectAssignable<StandardSchemaV1<number, number>>(normalized);
 
-const mapped = schemaType<number, string>((input) => input.toString());
+const mapped = schemaType((input: number) => input.toString());
 expectAssignable<StandardSchemaV1<number, string>>(mapped);
 expectType<number>(
 	undefined as unknown as StandardSchemaV1.InferInput<typeof mapped>,
@@ -17,7 +17,8 @@ expectType<string>(
 	undefined as unknown as StandardSchemaV1.InferOutput<typeof mapped>,
 );
 
-expectError(schemaType<number>((input) => input.toString()));
+const asyncMapped = schemaType(async (input: number) => input.toString());
+expectAssignable<StandardSchemaV1<number, string>>(asyncMapped);
 
 schemaType<{ value: number }, { result: string }>((input) => {
 	expectType<{ value: number }>(input);

@@ -96,7 +96,11 @@ See [Fetch Client](/docs/client/fetch-client) for client-specific behavior and
 [Serialization and Codecs](/docs/http-behavior/serialization) for the decoding
 that precedes validation.
 
-## Unchecked Schemas
+## Type Helper
+
+When you don't need runtime validation, use the built-in `type<T>()` helper to declare
+schemas with only TypeScript types. The helper accepts an optional mapping function
+to transform input to output. The mapping function can be asynchronous.
 
 ```ts
 import { type } from "@rest-rpc/core";
@@ -104,18 +108,6 @@ import { type } from "@rest-rpc/core";
 const create = route
 	.input(type<{ title: string }>())
 	.handler(({ input: { title } }) => ({ id: crypto.randomUUID(), title }));
+
+const numberToStringSchema = type((input: number) => input.toString());
 ```
-
-`type<T>()` accepts runtime values unchanged. It does not validate, coerce, or
-otherwise inspect HTTP strings or decoded bodies. It can also synchronously map
-an asserted input type to a different output type:
-
-```ts
-const normalized = type<number>((input) => Math.max(0, input));
-const displayed = type<number, string>((input) => input.toString());
-```
-
-Supplying one generic fixes both input and output to that type. A mapper that
-changes the output must therefore supply both generics. Mapper exceptions
-propagate normally. Use a validating schema when runtime validation or
-narrowing is needed.
