@@ -19,8 +19,9 @@ This repo is `rest-rpc`, a TypeScript library for defining REST APIs with RPC-li
 ### Commands
 
 - `pnpm run typecheck` - Run workspace typechecking.
+- `pnpm run test` - Run runtime and type tests with Vitest.
 - `pnpm run lint` - Run lint verification.
-- `pnpm run check` - Run lint, typechecking, and API documentation verification in sequence. Use this as the broad all-in-one pass.
+- `pnpm run check` - Run lint, typechecking, tests, and API documentation verification in sequence. Use this as the broad all-in-one pass.
 
 ### Formatting
 

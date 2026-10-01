@@ -4,13 +4,12 @@
 		"lib": ["ES2022"],
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
-		"types": ["node"],
+		"types": ["node", "vitest/globals"],
 		"strict": true,
 		"skipLibCheck": true,
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
-		"declaration": true,
 		"rewriteRelativeImportExtensions": true
 	},
-	"exclude": ["**/*.test.ts", "**/*.type-test.ts"]
+	"exclude": ["content/**"]
 }
