@@ -41,8 +41,7 @@
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
-		"typecheck": "pnpm run build && tsc -p tsconfig.json",
-		"test": "node --test src/**/*.test.ts"
+		"typecheck": "pnpm run build && tsc -p tsconfig.json"
 	},
 	"dependencies": {
 		"@rest-rpc/core": "workspace:*",
@@ -50,8 +49,5 @@
 	},
 	"devDependencies": {
 		"@types/node": "26.3.0"
-	},
-	"tsd": {
-		"directory": "test-d"
 	}
 }

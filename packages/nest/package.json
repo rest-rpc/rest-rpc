@@ -68,8 +68,5 @@
 		"@nestjs/platform-fastify": {
 			"optional": true
 		}
-	},
-	"tsd": {
-		"directory": "test-d"
 	}
 }

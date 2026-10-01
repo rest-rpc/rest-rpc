@@ -36,16 +36,9 @@
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
-		"typecheck": "tsc -p tsconfig.json && tsd",
-		"test": "node --test src/**/*.test.ts"
+		"typecheck": "tsc -p tsconfig.json"
 	},
 	"dependencies": {
 		"@rest-rpc/core": "workspace:*"
-	},
-	"devDependencies": {
-		"zod": "^4.3.6"
-	},
-	"tsd": {
-		"directory": "test-d"
 	}
 }

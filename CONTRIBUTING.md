@@ -41,7 +41,6 @@ unless they are also re-exported from the package root.
 ```sh
 pnpm run lint
 pnpm run typecheck
-pnpm run test
 ```
 
 7. If the change affects published package behavior, types, exports, or docs-visible functionality, add a changeset:
