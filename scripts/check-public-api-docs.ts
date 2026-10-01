@@ -1,15 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
-import * as ts from "typescript-compiler-api";
+import ts from "typescript-compiler-api";
 
-const formatPath = (root, filePath) =>
+const formatPath = (root: string, filePath: string) =>
 	path.relative(root, filePath).replaceAll(path.sep, "/");
 
-const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, "utf8"));
+const readJson = (filePath: string) =>
+	JSON.parse(fs.readFileSync(filePath, "utf8"));
 
-const hasRootEntryPoint = (packageJson) => {
+const hasRootEntryPoint = (packageJson: Record<string, unknown>) => {
 	const exportsField = packageJson.exports;
 
 	if (typeof exportsField === "string") {
@@ -23,7 +23,7 @@ const hasRootEntryPoint = (packageJson) => {
 	);
 };
 
-const loadPackageProgram = (packageDir) => {
+const loadPackageProgram = (packageDir: string) => {
 	const configPath = path.join(packageDir, "tsconfig.json");
 	const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
 
@@ -47,7 +47,7 @@ const loadPackageProgram = (packageDir) => {
 	});
 };
 
-const getLeadingCommentText = (node, sourceFile) => {
+const getLeadingCommentText = (node: ts.Node, sourceFile: ts.SourceFile) => {
 	const comments = ts.getLeadingCommentRanges(sourceFile.text, node.pos) ?? [];
 
 	return comments
@@ -55,8 +55,8 @@ const getLeadingCommentText = (node, sourceFile) => {
 		.find((comment) => comment.startsWith("/**"));
 };
 
-const getNodeWithDocComment = (declaration) => {
-	let node = declaration;
+const getNodeWithDocComment = (declaration: ts.Declaration) => {
+	let node: ts.Node | undefined = declaration;
 
 	while (node && !ts.isSourceFile(node)) {
 		const sourceFile = node.getSourceFile();
@@ -71,32 +71,39 @@ const getNodeWithDocComment = (declaration) => {
 	return undefined;
 };
 
-const hasDocComment = (symbol) =>
+const hasDocComment = (symbol: ts.Symbol) =>
 	(symbol.getDeclarations() ?? []).some((declaration) =>
 		Boolean(getNodeWithDocComment(declaration)),
 	);
 
-const isRegularFunctionDeclaration = (symbol) =>
+const isRegularFunctionDeclaration = (symbol: ts.Symbol) =>
 	(symbol.getDeclarations() ?? []).some(
 		(declaration) =>
 			ts.isFunctionDeclaration(declaration) ||
 			ts.isFunctionDeclaration(declaration.parent),
 	);
 
-const hasCallableValueDeclaration = (checker, symbol) =>
+const hasCallableValueDeclaration = (
+	checker: ts.TypeChecker,
+	symbol: ts.Symbol,
+) =>
 	(symbol.getDeclarations() ?? []).some((declaration) => {
 		const type = checker.getTypeOfSymbolAtLocation(symbol, declaration);
 		return type.getCallSignatures().length > 0;
 	});
 
-const isDeclaredAsVariable = (symbol) =>
+const isDeclaredAsVariable = (symbol: ts.Symbol) =>
 	(symbol.getDeclarations() ?? []).some(
 		(declaration) =>
 			ts.isVariableDeclaration(declaration) ||
 			ts.isVariableDeclaration(declaration.parent),
 	);
 
-const checkWildcardExports = (root, sourceFile, failures) => {
+const checkWildcardExports = (
+	root: string,
+	sourceFile: ts.SourceFile,
+	failures: string[],
+) => {
 	for (const statement of sourceFile.statements) {
 		if (!ts.isExportDeclaration(statement)) {
 			continue;
@@ -117,7 +124,7 @@ const checkWildcardExports = (root, sourceFile, failures) => {
 	}
 };
 
-const checkPackage = (root, packageDir) => {
+const checkPackage = (root: string, packageDir: string) => {
 	const packageJsonPath = path.join(packageDir, "package.json");
 	const packageJson = readJson(packageJsonPath);
 
@@ -126,7 +133,7 @@ const checkPackage = (root, packageDir) => {
 	}
 
 	const indexPath = path.join(packageDir, "src", "index.ts");
-	const failures = [];
+	const failures: string[] = [];
 
 	if (!fs.existsSync(indexPath)) {
 		failures.push(
@@ -209,6 +216,4 @@ const run = () => {
 	}
 };
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-	run();
-}
+run();
