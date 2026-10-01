@@ -11,6 +11,9 @@ importers:
       '@changesets/cli':
         specifier: ^3.0.0
         version: 3.0.0
+      '@types/node':
+        specifier: 26.3.0
+        version: 26.3.0
       lefthook:
         specifier: 2.1.5
         version: 2.1.5
@@ -110,9 +113,6 @@ importers:
 
   packages/core:
     devDependencies:
-      '@types/node':
-        specifier: 26.3.0
-        version: 26.3.0
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -160,10 +160,6 @@ importers:
       '@rest-rpc/server':
         specifier: workspace:*
         version: link:../server
-    devDependencies:
-      '@types/node':
-        specifier: 26.3.0
-        version: 26.3.0
 
   packages/hono:
     dependencies:
@@ -207,9 +203,6 @@ importers:
       '@types/express':
         specifier: ^5.0.1
         version: 5.0.6
-      '@types/node':
-        specifier: ^26.3.0
-        version: 26.3.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -228,10 +221,6 @@ importers:
       '@rest-rpc/server':
         specifier: workspace:*
         version: link:../server
-    devDependencies:
-      '@types/node':
-        specifier: 26.3.0
-        version: 26.3.0
 
   packages/server:
     dependencies:

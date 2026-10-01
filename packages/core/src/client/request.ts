@@ -228,7 +228,7 @@ export const executeRequest = async <
 			...options.fetchOptions,
 			...requestFetchOptions,
 			method: route.method,
-			body: serialized?.body as BodyInit | undefined,
+			body: serialized?.body as RequestInit["body"],
 			headers: {
 				...clientHeaders,
 				...normalizeHeaders(requestHeaders),
