@@ -1,6 +1,5 @@
 import Fastify from "fastify";
-import { route, type } from "./index.ts";
-import { registerRoutes } from "./registerRoutes.ts";
+import { registerRoutes, route, type } from "@rest-rpc/fastify";
 
 describe("registerRoutes", () => {
 	it("awaits pre-handlers and supplies the native Fastify request and reply", async () => {
@@ -30,9 +29,11 @@ describe("registerRoutes", () => {
 			},
 		);
 		try {
-			const response = await app.inject({ url: "/users/42" });
-			expect(response.json()).toEqual({ id: "42" });
-			expect(response.headers["x-method"]).toBe("GET");
+			const url = await app.listen({ port: 0, host: "127.0.0.1" });
+			const response = await fetch(`${url}/users/42`);
+			expect(response.status).toBe(200);
+			expect(await response.json()).toEqual({ id: "42" });
+			expect(response.headers.get("x-method")).toBe("GET");
 			expect(calls).toEqual(["preHandler", "handler"]);
 		} finally {
 			await app.close();
@@ -64,10 +65,11 @@ describe("registerRoutes", () => {
 			},
 		);
 		try {
-			const response = await app.inject({ url: "/message" });
-			expect(response.body).toBe("hello");
-			expect(response.headers["x-source"]).toBe("route");
-			expect(response.headers["content-type"]).toBe(
+			const url = await app.listen({ port: 0, host: "127.0.0.1" });
+			const response = await fetch(`${url}/message`);
+			expect(await response.text()).toBe("hello");
+			expect(response.headers.get("x-source")).toBe("route");
+			expect(response.headers.get("content-type")).toBe(
 				"application/json; charset=utf-8",
 			);
 		} finally {

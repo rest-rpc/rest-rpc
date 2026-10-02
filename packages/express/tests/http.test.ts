@@ -1,23 +1,6 @@
 import express from "express";
-import { createServer } from "node:http";
-import type { AddressInfo } from "node:net";
-import { route, type } from "./index.ts";
-import { registerRoutes } from "./registerRoutes.ts";
-
-const withServer = async (
-	app: express.Express,
-	run: (url: string) => Promise<void>,
-) => {
-	const server = createServer(app);
-	await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-	try {
-		await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
-	} finally {
-		await new Promise<void>((resolve, reject) =>
-			server.close((error) => (error ? reject(error) : resolve())),
-		);
-	}
-};
+import { withHttpServer as withServer } from "../../../tests/httpServer.ts";
+import { registerRoutes, route, type } from "@rest-rpc/express";
 
 describe("registerRoutes", () => {
 	it("passes the native Express request and response after route middleware", async () => {

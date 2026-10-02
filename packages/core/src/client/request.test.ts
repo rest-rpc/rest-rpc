@@ -1,6 +1,90 @@
 import { constructBaseRequest, executeRequest } from "./request.ts";
 
 describe("request", () => {
+	it("passes caller cancellation through to fetch", async () => {
+		const controller = new AbortController();
+		const fetch = vi.fn(async () => new Response(null, { status: 204 }));
+		await executeRequest(
+			{ method: "GET", path: "/" },
+			[undefined, { signal: controller.signal }],
+			{
+				baseUrl: "",
+				fetch,
+			},
+		);
+		expect(fetch.mock.calls[0]).toEqual([
+			"/",
+			expect.objectContaining({ signal: controller.signal }),
+		]);
+	});
+
+	it.each(["timeout", "caller", "combined timeout", "combined caller"])(
+		"allows %s to abort a pending fetch",
+		async (source) => {
+			vi.useFakeTimers();
+			try {
+				const controller = new AbortController();
+				let started!: () => void;
+				const ready = new Promise<void>((resolve) => {
+					started = resolve;
+				});
+				const fetch = vi.fn(
+					(_input: unknown, init?: RequestInit) =>
+						new Promise<Response>((_resolve, reject) => {
+							init!.signal!.addEventListener(
+								"abort",
+								() => reject(init!.signal!.reason),
+								{ once: true },
+							);
+							started();
+						}),
+				);
+				const request = executeRequest(
+					{ method: "GET", path: "/" },
+					[
+						undefined,
+						{ signal: source !== "timeout" ? controller.signal : undefined },
+					],
+					{
+						baseUrl: "",
+						fetch,
+						timeoutMs: source !== "caller" ? 100 : undefined,
+					},
+				);
+				const rejection = expect(request).rejects.toMatchObject({
+					name: "AbortError",
+				});
+				await ready;
+				if (source.endsWith("caller")) controller.abort();
+				else await vi.advanceTimersByTimeAsync(100);
+				await rejection;
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it("stops the timeout when fetch returns even if the response body is still pending", async () => {
+		vi.useFakeTimers();
+		try {
+			let signal: AbortSignal | null | undefined;
+			const body = new ReadableStream<Uint8Array>({});
+			const response = await executeRequest({ method: "GET", path: "/" }, [], {
+				baseUrl: "",
+				timeoutMs: 100,
+				fetch: async (_input, init) => {
+					signal = init?.signal;
+					return new Response(body);
+				},
+			});
+			await vi.advanceTimersByTimeAsync(200);
+			expect(signal?.aborted).toBe(false);
+			expect(response.bodyUsed).toBe(false);
+			await response.body?.cancel();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 	it("encodes path segments, repeated query values and defined headers", () => {
 		const request = constructBaseRequest(
 			"https://example.test",

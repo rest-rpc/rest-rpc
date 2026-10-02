@@ -1,6 +1,30 @@
 import { frameSseStream, sse } from "./sse.ts";
 
 describe("sse", () => {
+	it("emits the supported JSON data and metadata frames", async () => {
+		async function* values() {
+			yield sse({ data: { count: 1 }, id: "one", event: "update", retry: 100 });
+			yield { count: 2 };
+		}
+		const frames: string[] = [];
+		for await (const frame of frameSseStream(values())) frames.push(frame);
+		expect(frames).toEqual([
+			'id: one\nevent: update\nretry: 100\ndata: {"count":1}\n\n',
+			'data: {"count":2}\n\n',
+		]);
+	});
+
+	it.each([undefined, 1n])(
+		"rejects unframed stream data without a JSON representation (%s)",
+		async (data) => {
+			async function* values() {
+				yield data;
+			}
+			await expect(
+				frameSseStream(values())[Symbol.asyncIterator]().next(),
+			).rejects.toThrow();
+		},
+	);
 	it("frames raw data and branded event metadata without interpreting unbranded objects", async () => {
 		async function* values() {
 			yield { data: "ordinary object" };

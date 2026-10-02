@@ -6,6 +6,40 @@ import {
 import { serverFirstRoute as route } from "./routeBuilder.ts";
 
 describe("match", () => {
+	it.each(["/users/:id/items/:id", "/users/{id}/items/{id}"] as const)(
+		"accepts repeated parameter names in %s",
+		(path) => {
+			expect(createPathMatcher(path)("/users/first/items/last")).toBeDefined();
+		},
+	);
+
+	it("sorts static segments before dynamic segments at every differing depth", () => {
+		const paths = [
+			"/{group}/{id}/edit",
+			"/users/{id}/edit",
+			"/users/me/{action}",
+			"/users/me/edit",
+		] as const;
+		const tree = Object.fromEntries(
+			paths.map((path) => [path, route.get(path).handler(() => path)]),
+		);
+		expect(
+			flattenRouteImplementations(tree).map(({ route }) => route.path),
+		).toEqual([...paths].reverse());
+		const match = createRouteMatcher(tree);
+		expect(
+			match({ method: "GET", path: "/users/me/edit" })?.implementation.route
+				.path,
+		).toBe("/users/me/edit");
+		expect(
+			match({ method: "GET", path: "/users/42/edit" })?.implementation.route
+				.path,
+		).toBe("/users/{id}/edit");
+		expect(
+			match({ method: "GET", path: "/teams/42/edit" })?.implementation.route
+				.path,
+		).toBe("/{group}/{id}/edit");
+	});
 	it("matches complete paths, decodes params, and allows a trailing slash", () => {
 		const match = createPathMatcher("/files/{name}/v1.0");
 		expect(match("/files/a%20b/v1.0/")).toEqual({ name: "a b" });

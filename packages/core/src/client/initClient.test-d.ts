@@ -3,6 +3,44 @@ import { type } from "../standard-schema/type.ts";
 import { initClient } from "./initClient.ts";
 
 describe("initClient types", () => {
+	it("allows empty requests and optional or guaranteed segmented headers", () => {
+		const empty = initClient(route.get("/").response(204), { baseUrl: "" });
+		empty();
+		empty(undefined, {});
+		const contract = route
+			.get("/")
+			.headers(type<{ token: string; optional?: string }>())
+			.response(204);
+		const literal = initClient(contract, {
+			baseUrl: "",
+			globalHeaders: { token: "value" },
+		});
+		const asyncProvider = initClient(contract, {
+			baseUrl: "",
+			globalHeaders: { token: async () => "value" },
+		});
+		const optionalProvider = initClient(contract, {
+			baseUrl: "",
+			globalHeaders: { token: (): string | undefined => undefined },
+		});
+		expectTypeOf(literal).parameter(0).toEqualTypeOf<{
+			headers?: { token?: string; optional?: string };
+		}>();
+		expectTypeOf(asyncProvider)
+			.parameter(0)
+			.toEqualTypeOf<Parameters<typeof literal>[0]>();
+		literal({});
+		asyncProvider({ headers: { optional: "value" } });
+		optionalProvider({ headers: { token: "value" } });
+		// @ts-expect-error An optional provider cannot guarantee the required token.
+		optionalProvider({});
+		const optional = initClient(
+			route.get("/").headers(type<{ token?: string }>()).response(204),
+			{ baseUrl: "" },
+		);
+		optional({});
+	});
+
 	it("uses schema inputs for arguments and schema outputs for results", () => {
 		const contract = {
 			length: route
